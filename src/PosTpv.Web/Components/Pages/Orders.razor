@@ -1,0 +1,156 @@
+@page "/orders"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin,Waiter,Cashier")]
+@using Microsoft.AspNetCore.SignalR.Client
+@using PosTpv.Web.Hubs
+@implements IAsyncDisposable
+@inject IOrderService OrderSvc
+@inject NavigationManager Nav
+
+<PageTitle>Orders · PosTPV</PageTitle>
+
+<div class="toolbar">
+    <h1>@Loc.T("Open orders")</h1>
+    <span class="spacer"></span>
+    <select class="select" style="max-width:170px" @bind="_statusFilter">
+        <option value="">@Loc.T("All statuses")</option>
+        @foreach (var s in new[] { OrderStatus.Open, OrderStatus.Sent, OrderStatus.InPreparation, OrderStatus.Ready, OrderStatus.Delivered })
+        {
+            <option value="@s">@Loc.T(s.ToString())</option>
+        }
+    </select>
+    <button class="btn btn--ghost" @onclick="Load">↻ @Loc.T("Refresh")</button>
+</div>
+
+<div class="orders">
+    @foreach (var o in Filtered)
+    {
+        <div class="card order-card">
+            <div class="order-card__head">
+                <div>
+                    <strong>🪑 @o.TableName</strong>
+                    <span class="muted"> · @o.Number</span>
+                </div>
+                <span class="badge @StatusClass(o.Status)">@Loc.T(o.Status.ToString())</span>
+            </div>
+            <div class="order-card__meta muted">@o.WaiterName · @o.Items.Sum(i => i.Quantity) @Loc.T("items") · @o.CreatedAt.ToLocalTime().ToString("HH:mm")</div>
+
+            @{
+                var foodLines = o.Items.Where(i => !i.IsDrink).ToList();
+                var drinkLines = o.Items.Where(i => i.IsDrink).ToList();
+            }
+
+            @if (foodLines.Count > 0)
+            {
+                <div class="order-card__group muted">🍽 @Loc.T("Food")</div>
+                <div class="order-card__lines">
+                    @foreach (var it in foodLines)
+                    {
+                        <div class="order-card__line">
+                            <span>@it.Quantity× @it.ProductName</span>
+                            <span>@it.LineTotal.ToString("C")</span>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (drinkLines.Count > 0)
+            {
+                <div class="order-card__group muted">🥤 @Loc.T("Drinks")</div>
+                <div class="order-card__lines">
+                    @foreach (var it in drinkLines)
+                    {
+                        <div class="order-card__line">
+                            <span>@it.Quantity× @it.ProductName</span>
+                            @if (it.Status == OrderItemStatus.Delivered)
+                            {
+                                <span class="badge badge--success">@Loc.T("Served")</span>
+                            }
+                            else
+                            {
+                                <button class="btn btn--ghost btn--sm" @onclick="() => Serve(it.Id)">@Loc.T("Serve")</button>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="order-card__foot">
+                <button class="btn @(o.SecondsFiredAt is null ? "btn--primary" : "btn--ghost")"
+                        disabled="@(o.SecondsFiredAt is not null)"
+                        title="@Loc.T("Tell the kitchen to start the second courses")"
+                        @onclick="() => FireSeconds(o.Id)">
+                    @(o.SecondsFiredAt is null ? Loc.T("🔔 Fire seconds") : Loc.T("🔔 Seconds fired"))
+                </button>
+                <span class="spacer"></span>
+                <strong>@o.Total.ToString("C")</strong>
+                <button class="btn btn--success" @onclick="() => Charge(o.Id, PaymentMethod.Cash)">💵</button>
+                <button class="btn btn--success" @onclick="() => Charge(o.Id, PaymentMethod.Card)">💳</button>
+            </div>
+        </div>
+    }
+    @if (Filtered.Count == 0) { <p class="empty">@Loc.T("No open orders.")</p> }
+</div>
+
+@code {
+    private List<OrderDto> _orders = new();
+    private OrderStatus? _statusFilterValue;
+    private HubConnection? _hub;
+
+    private string _statusFilter
+    {
+        get => _statusFilterValue?.ToString() ?? "";
+        set => _statusFilterValue = Enum.TryParse<OrderStatus>(value, out var s) ? s : null;
+    }
+
+    private List<OrderDto> Filtered =>
+        _statusFilterValue is null ? _orders : _orders.Where(o => o.Status == _statusFilterValue).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+        if (!RendererInfo.IsInteractive) return;
+        _hub = new HubConnectionBuilder().WithUrl(Nav.ToAbsoluteUri(KitchenHub.Path)).WithAutomaticReconnect().Build();
+        _hub.On<int, int>(KitchenHub.ItemStatusChanged, async (_, _) => await Reload());
+        _hub.On<int>(KitchenHub.OrderReady, async _ => await Reload());
+        _hub.On<int>(KitchenHub.OrderSent, async _ => await Reload());
+        _hub.On<int>(KitchenHub.SecondsFired, async _ => await Reload());
+        await _hub.StartAsync();
+    }
+
+    private async Task Load() => _orders = await OrderSvc.GetOpenOrdersAsync();
+    private async Task Reload() { await Load(); await InvokeAsync(StateHasChanged); }
+
+    private async Task Charge(int orderId, PaymentMethod method)
+    {
+        await OrderSvc.CheckoutAsync(orderId, method);
+        await Load();
+    }
+
+    // Drinks come from the bar, so the waiter serves them from here (they never reach the KDS).
+    private async Task Serve(int orderItemId)
+    {
+        await OrderSvc.SetItemStatusAsync(orderItemId, OrderItemStatus.Delivered);
+        await Load();
+    }
+
+    // "Marchar segundos": alert the kitchen — in real time — to start this table's second courses.
+    private async Task FireSeconds(int orderId)
+    {
+        await OrderSvc.FireSecondCoursesAsync(orderId);
+        await Load();
+    }
+
+    private static string StatusClass(OrderStatus s) => s switch
+    {
+        OrderStatus.Ready => "badge--success",
+        OrderStatus.InPreparation => "badge--warning",
+        OrderStatus.Sent => "badge--primary",
+        _ => ""
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hub is not null) await _hub.DisposeAsync();
+    }
+}

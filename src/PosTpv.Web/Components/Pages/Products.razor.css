@@ -1,0 +1,56 @@
+.catalog {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 1rem;
+    align-items: start;
+    height: calc(100vh - var(--topbar-h) - 2.8rem);
+}
+
+/* --- Left rail: categories --- */
+.catalog__cats { display: flex; flex-direction: column; min-height: 0; padding: 1rem; }
+.catalog__cats-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .8rem; }
+.catalog__cats-head h2 { margin: 0; }
+
+.catalog__notice {
+    margin-bottom: .8rem;
+    padding: .55rem .7rem;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--danger) 16%, transparent);
+    color: var(--danger);
+    font-size: .82rem; font-weight: 600;
+    cursor: pointer;
+}
+
+.catalog__cats-list { display: flex; flex-direction: column; gap: .5rem; overflow-y: auto; padding-right: .2rem; }
+
+.catRow {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .6rem .7rem;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--cat, var(--primary));
+    border-radius: var(--radius-sm);
+    background: var(--card-2);
+    cursor: pointer;
+    transition: box-shadow var(--transition), border-color var(--transition), background var(--transition);
+}
+.catRow:hover { box-shadow: var(--shadow-sm); }
+.catRow[data-active] { background: var(--card); box-shadow: 0 0 0 2px var(--cat) inset; }
+
+.catRow__main { display: flex; flex-direction: column; gap: .2rem; min-width: 0; flex: 1; }
+.catRow__name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.catRow__meta { display: flex; align-items: center; gap: .35rem; font-size: .74rem; flex-wrap: wrap; }
+
+.catRow__actions { display: flex; align-items: center; gap: .15rem; }
+.catRow__actions .btn { width: 30px; height: 30px; padding: 0; font-size: .8rem; }
+
+/* --- Right panel: products --- */
+.catalog__products { display: flex; flex-direction: column; min-height: 0; }
+.catalog__products .toolbar { margin-bottom: 1rem; }
+.catalog__products .grid-cards { overflow-y: auto; padding: .2rem; align-content: start; }
+
+.mgmt-card[data-off] { opacity: .6; }
+
+@media (max-width: 900px) {
+    .catalog { grid-template-columns: 1fr; height: auto; }
+    .catalog__cats-list { max-height: 40vh; }
+}

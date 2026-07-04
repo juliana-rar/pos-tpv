@@ -1,0 +1,55 @@
+.login {
+    position: relative;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem;
+    background:
+        radial-gradient(1200px 600px at 10% -10%, color-mix(in srgb, var(--primary) 22%, transparent), transparent),
+        radial-gradient(900px 500px at 110% 110%, color-mix(in srgb, var(--secondary) 20%, transparent), transparent),
+        var(--background);
+}
+
+/* Language switch, pinned to the top-right of the login screen. */
+.login__lang {
+    position: absolute;
+    top: 1.2rem;
+    right: 1.2rem;
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--card) 80%, transparent);
+    backdrop-filter: blur(6px);
+}
+.login__lang-opt {
+    color: var(--text-soft);
+    font-weight: 700;
+    font-size: .78rem;
+    padding: .25rem .6rem;
+    border-radius: 999px;
+    transition: background var(--transition), color var(--transition);
+}
+.login__lang-opt--on { background: var(--primary); color: var(--on-primary); }
+
+.login__card {
+    width: min(400px, 100%);
+    padding: 2rem;
+}
+
+.login__brand { text-align: center; margin-bottom: 1.5rem; }
+.login__logo { font-size: 2.4rem; }
+.login__brand h1 { margin: .3rem 0 .1rem; font-size: 1.7rem; }
+.login__brand h1 span { color: var(--primary); }
+
+.login__error {
+    background: color-mix(in srgb, var(--danger) 15%, transparent);
+    color: var(--danger);
+    border-radius: var(--radius-sm);
+    padding: .6rem .8rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    font-size: .9rem;
+}
+
+.login__hint { margin-top: 1.2rem; text-align: center; font-size: .82rem; }

@@ -1,0 +1,77 @@
+namespace PosTpv.Domain.Enums;
+
+/// <summary>Application roles that gate access to screens and actions.</summary>
+public enum UserRole
+{
+    Admin = 0,
+    Waiter = 1,
+    Kitchen = 2,
+    Cashier = 3
+}
+
+/// <summary>Physical shape used when rendering a table on the floor map.</summary>
+public enum TableShape
+{
+    Square = 0,
+    Round = 1,
+    Rectangular = 2,
+    Oval = 3
+}
+
+/// <summary>Lifecycle state of a table on the floor.</summary>
+public enum TableStatus
+{
+    Available = 0,
+    Occupied = 1,
+    Reserved = 2,
+    Locked = 3
+}
+
+/// <summary>Lifecycle state of a reservation.</summary>
+public enum ReservationStatus
+{
+    Pending = 0,
+    Confirmed = 1,
+    Seated = 2,
+    Finished = 3,
+    Cancelled = 4
+}
+
+/// <summary>Lifecycle state of an order (comanda).</summary>
+public enum OrderStatus
+{
+    Open = 0,
+    Sent = 1,
+    InPreparation = 2,
+    Ready = 3,
+    Delivered = 4,
+    Paid = 5,
+    Cancelled = 6
+}
+
+/// <summary>Preparation state of a single order line, driven by the kitchen display.</summary>
+public enum OrderItemStatus
+{
+    Pending = 0,
+    Preparing = 1,
+    Ready = 2,
+    Delivered = 3
+}
+
+/// <summary>
+/// Preparation station a category belongs to. Food is cooked in the kitchen and appears on the
+/// kitchen display (KDS); drinks are served from the bar and never reach the kitchen tickets.
+/// </summary>
+public enum CategoryKind
+{
+    Food = 0,
+    Drink = 1
+}
+
+/// <summary>Supported payment methods.</summary>
+public enum PaymentMethod
+{
+    Cash = 0,
+    Card = 1,
+    Other = 2
+}

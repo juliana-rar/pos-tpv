@@ -1,0 +1,18 @@
+# Podman/Docker Compose for the PosTPV development database.
+# Start with:  podman-compose up -d   (or: docker compose up -d)
+services:
+  postpv-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: postpv-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SA_PASSWORD:-PosTpv!Dev2026}"
+      MSSQL_PID: "Developer"
+    ports:
+      - "14333:1433"
+    volumes:
+      - postpv-data:/var/opt/mssql
+    restart: unless-stopped
+
+volumes:
+  postpv-data:

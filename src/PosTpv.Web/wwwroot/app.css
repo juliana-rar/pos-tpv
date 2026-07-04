@@ -1,0 +1,225 @@
+/* ============================================================================
+   PosTPV — global design tokens, reset and shared components.
+   Per-page styles live in each page's scoped *.razor.css file.
+   ========================================================================= */
+
+:root {
+    /* Brand + semantic colours */
+    --primary: #6366f1;
+    --primary-strong: #4f46e5;
+    --secondary: #0ea5e9;
+    --danger: #ef4444;
+    --success: #22c55e;
+    --warning: #f59e0b;
+
+    /* Surfaces */
+    --background: #f1f5f9;
+    --card: #ffffff;
+    --card-2: #f8fafc;
+    --border: #e2e8f0;
+
+    /* Text */
+    --text: #0f172a;
+    --text-soft: #64748b;
+    --on-primary: #ffffff;
+
+    /* Effects */
+    --radius: 14px;
+    --radius-sm: 9px;
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, .06), 0 1px 3px rgba(15, 23, 42, .08);
+    --shadow: 0 4px 12px rgba(15, 23, 42, .08), 0 2px 4px rgba(15, 23, 42, .05);
+    --shadow-lg: 0 20px 40px rgba(15, 23, 42, .18);
+    --transition: 160ms cubic-bezier(.4, 0, .2, 1);
+
+    --sidebar-w: 240px;
+    --topbar-h: 62px;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+[data-theme="dark"] {
+    --primary: #818cf8;
+    --primary-strong: #6366f1;
+    --secondary: #38bdf8;
+    --danger: #f87171;
+    --success: #4ade80;
+    --warning: #fbbf24;
+
+    --background: #0b1120;
+    --card: #131c31;
+    --card-2: #0f172a;
+    --border: #243049;
+
+    --text: #e2e8f0;
+    --text-soft: #94a3b8;
+    --on-primary: #0b1120;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+    --shadow: 0 6px 16px rgba(0, 0, 0, .45);
+    --shadow-lg: 0 24px 48px rgba(0, 0, 0, .6);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+    margin: 0;
+    font-family: var(--font);
+    background: var(--background);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    transition: background var(--transition), color var(--transition);
+}
+
+h1, h2, h3, h4 { margin: 0 0 .4em; font-weight: 700; letter-spacing: -.01em; }
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.25rem; }
+a { color: var(--primary); text-decoration: none; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+
+/* ---- Buttons -------------------------------------------------------------- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    padding: .6rem 1.1rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: var(--card-2);
+    color: var(--text);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform var(--transition), box-shadow var(--transition), background var(--transition), opacity var(--transition);
+    user-select: none;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.btn--primary { background: var(--primary); color: var(--on-primary); }
+.btn--primary:hover { background: var(--primary-strong); }
+.btn--danger { background: var(--danger); color: #fff; }
+.btn--success { background: var(--success); color: #06210f; }
+.btn--ghost { background: transparent; border-color: var(--border); }
+.btn--block { width: 100%; }
+.btn--lg { padding: .85rem 1.4rem; font-size: 1.05rem; }
+.btn--sm { padding: .35rem .6rem; font-size: .8rem; }
+.btn--icon { padding: .5rem; width: 38px; height: 38px; }
+
+/* ---- Cards & surfaces ----------------------------------------------------- */
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+}
+.surface { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
+
+/* ---- Form controls -------------------------------------------------------- */
+.input, .select, textarea.input {
+    width: 100%;
+    padding: .6rem .75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card-2);
+    color: var(--text);
+    font: inherit;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+.input:focus, .select:focus, textarea.input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+.field { display: flex; flex-direction: column; gap: .35rem; margin-bottom: .9rem; }
+.field > label { font-size: .82rem; font-weight: 600; color: var(--text-soft); }
+.validation-message, .field-error { color: var(--danger); font-size: .8rem; }
+
+/* ---- Badges --------------------------------------------------------------- */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .2rem .55rem;
+    border-radius: 999px;
+    font-size: .74rem;
+    font-weight: 700;
+    background: var(--card-2);
+    color: var(--text-soft);
+}
+.badge--success { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); }
+.badge--warning { background: color-mix(in srgb, var(--warning) 22%, transparent); color: var(--warning); }
+.badge--danger { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); }
+.badge--primary { background: color-mix(in srgb, var(--primary) 20%, transparent); color: var(--primary); }
+
+/* ---- Modal ---------------------------------------------------------------- */
+.modal-backdrop {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(15, 23, 42, .5);
+    backdrop-filter: blur(3px);
+    display: grid; place-items: center;
+    padding: 1rem;
+    animation: fade var(--transition);
+}
+.modal {
+    width: min(520px, 100%);
+    max-height: 90vh; overflow: auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    animation: pop var(--transition);
+}
+.modal__head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+.modal__body { padding: 1.25rem; }
+.modal__foot { display: flex; justify-content: flex-end; gap: .6rem; padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
+
+@keyframes fade { from { opacity: 0; } }
+@keyframes pop { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+
+/* ---- Misc helpers --------------------------------------------------------- */
+.page-loading, .access-denied { display: grid; place-content: center; gap: .5rem; min-height: 60vh; text-align: center; }
+.toolbar { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+.toolbar h1 { margin: 0; }
+.spacer { flex: 1; }
+.muted { color: var(--text-soft); }
+.empty { text-align: center; color: var(--text-soft); padding: 2rem; grid-column: 1 / -1; }
+.search { max-width: 220px; }
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+
+/* ---- Management card grids (products, categories, reservations) ----------- */
+.grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+.mgmt-card { padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .5rem; transition: transform var(--transition), box-shadow var(--transition); }
+.mgmt-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.mgmt-card__head { display: flex; align-items: center; gap: .5rem; }
+.mgmt-card__icon { font-size: 1.3rem; }
+.mgmt-card__meta { font-size: .82rem; }
+.mgmt-card__actions { display: flex; align-items: center; gap: .5rem; margin-top: .3rem; }
+.mgmt-card__actions .btn { padding: .4rem .8rem; }
+
+.switch { display: inline-flex; align-items: center; gap: .4rem; font-size: .85rem; font-weight: 600; cursor: pointer; }
+.switch input { width: 2.4rem; height: 1.3rem; accent-color: var(--primary); }
+
+/* ---- Metric tiles (dashboard, billing) ------------------------------------ */
+.dash__metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+.metric { display: flex; flex-direction: column; gap: .4rem; padding: 1.1rem 1.2rem; transition: transform var(--transition), box-shadow var(--transition); }
+.metric:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.metric__label { color: var(--text-soft); font-size: .82rem; font-weight: 600; }
+.metric__value { font-size: 1.7rem; font-weight: 700; letter-spacing: -.02em; }
+
+/* ---- Tables --------------------------------------------------------------- */
+.table { width: 100%; border-collapse: collapse; }
+.table th { text-align: left; color: var(--text-soft); font-size: .8rem; font-weight: 700; padding: .55rem .5rem; border-bottom: 1px solid var(--border); }
+.table td { padding: .6rem .5rem; border-bottom: 1px solid var(--border); }
+.table tr:last-child td { border-bottom: none; }
+.ta-r { text-align: right; }

@@ -1,0 +1,27 @@
+@using PosTpv.Web.Components.Shared
+@using PosTpv.Web.Localization
+
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                @if (context.User.Identity?.IsAuthenticated ?? false)
+                {
+                    <div class="access-denied">
+                        <h1>@Loc.T("Access denied")</h1>
+                        <p>@Loc.T("Your role does not have permission to view this page.")</p>
+                        <a class="btn btn--primary" href="/">@Loc.T("Back to home")</a>
+                    </div>
+                }
+                else
+                {
+                    <RedirectToLogin />
+                }
+            </NotAuthorized>
+            <Authorizing>
+                <div class="page-loading">@Loc.T("Loading…")</div>
+            </Authorizing>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>

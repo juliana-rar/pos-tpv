@@ -1,0 +1,75 @@
+@page "/dashboard"
+@rendermode InteractiveServer
+@inject IDashboardService Dashboard
+
+<PageTitle>@Loc.T("Dashboard") · PosTPV</PageTitle>
+
+<h1>@Loc.T("Dashboard")</h1>
+
+@if (_data is null)
+{
+    <div class="page-loading">@Loc.T("Loading…")</div>
+}
+else
+{
+    <div class="dash">
+        <div class="dash__metrics">
+            <div class="metric card">
+                <span class="metric__label">@Loc.T("Sales today")</span>
+                <span class="metric__value">@_data.SalesToday.ToString("C")</span>
+            </div>
+            <div class="metric card">
+                <span class="metric__label">@Loc.T("Sales this month")</span>
+                <span class="metric__value">@_data.SalesMonth.ToString("C")</span>
+            </div>
+            <div class="metric card">
+                <span class="metric__label">@Loc.T("Orders today")</span>
+                <span class="metric__value">@_data.OrdersToday</span>
+            </div>
+            <div class="metric card">
+                <span class="metric__label">@Loc.T("Open orders")</span>
+                <span class="metric__value">@_data.OpenOrders</span>
+            </div>
+            <div class="metric card">
+                <span class="metric__label">@Loc.T("Occupied tables")</span>
+                <span class="metric__value">@_data.OccupiedTables / @_data.TotalTables</span>
+            </div>
+            <div class="metric card">
+                <span class="metric__label">@Loc.T("Reservations today")</span>
+                <span class="metric__value">@_data.ReservationsToday</span>
+            </div>
+        </div>
+
+        <div class="dash__panel card">
+            <h2>@Loc.T("Top products")</h2>
+            @if (_data.TopProducts.Count == 0)
+            {
+                <p class="empty">@Loc.T("No sales recorded yet.")</p>
+            }
+            else
+            {
+                <table class="dash__table">
+                    <thead>
+                        <tr><th>@Loc.T("Product")</th><th>@Loc.T("Qty")</th><th>@Loc.T("Revenue")</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in _data.TopProducts)
+                        {
+                            <tr>
+                                <td>@p.Name</td>
+                                <td>@p.Quantity</td>
+                                <td>@p.Revenue.ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private DashboardDto? _data;
+
+    protected override async Task OnInitializedAsync() => _data = await Dashboard.GetAsync();
+}

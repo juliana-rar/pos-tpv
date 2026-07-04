@@ -1,0 +1,245 @@
+.legend { display: flex; gap: .9rem; }
+.legend__item { display: inline-flex; align-items: center; gap: .35rem; font-size: .82rem; color: var(--text-soft); font-weight: 600; }
+.dot { width: .8rem; height: .8rem; border-radius: 50%; display: inline-block; }
+.dot--available { background: var(--success); }
+.dot--occupied { background: var(--warning); }
+.dot--reserved { background: var(--secondary); }
+
+.floor {
+    position: relative;
+    height: calc(100vh - 220px);
+    min-height: 420px;
+    overflow: auto;
+    background-image:
+        linear-gradient(color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px);
+    background-size: 34px 34px;
+}
+
+.tbl {
+    position: absolute;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: .1rem;
+    border: 2px solid var(--border);
+    background: var(--card-2);
+    cursor: pointer;
+    user-select: none;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition), border-color var(--transition);
+}
+.tbl:hover { box-shadow: var(--shadow); }
+.tbl--square { border-radius: 10px; }
+.tbl--rectangular { border-radius: 10px; }
+.tbl--round { border-radius: 50%; }
+.tbl--oval { border-radius: 50%; }
+
+.tbl--available { border-color: var(--success); }
+.tbl--occupied { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 14%, var(--card-2)); }
+.tbl--reserved { border-color: var(--secondary); background: color-mix(in srgb, var(--secondary) 14%, var(--card-2)); }
+.tbl--locked { opacity: .6; }
+
+.tbl__name { font-weight: 800; }
+.tbl__seats { font-size: .72rem; color: var(--text-soft); }
+.tbl__total { font-size: .74rem; font-weight: 700; color: var(--primary); }
+
+/* ---- Edit mode ------------------------------------------------------------ */
+.floor-hint { margin: 0 0 .8rem; font-size: .85rem; }
+
+.floor--edit .tbl { cursor: move; touch-action: none; }
+.floor--edit .tbl--locked { cursor: not-allowed; }
+.tbl--active { box-shadow: var(--shadow-lg); z-index: 5; }
+
+/* Lock toggle (top-left corner) */
+.tbl__lock {
+    position: absolute;
+    top: -10px; left: -10px;
+    width: 24px; height: 24px;
+    padding: 0;
+    display: grid; place-items: center;
+    font-size: .8rem;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--card);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Shape toggle (bottom-left corner) — cycles Square → Round → Rectangular → Oval. */
+.tbl__shape {
+    position: absolute;
+    bottom: -10px; left: -10px;
+    width: 24px; height: 24px;
+    padding: 0;
+    display: grid; place-items: center;
+    font-size: .8rem; line-height: 1;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--card);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+}
+.tbl__shape:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Resize handle (bottom-right corner) */
+.tbl__handle--resize {
+    position: absolute;
+    right: -7px; bottom: -7px;
+    width: 16px; height: 16px;
+    border: 2px solid var(--primary);
+    border-radius: 4px;
+    background: var(--card);
+    cursor: nwse-resize;
+}
+
+/* Rotate handle (above the table, with a small stem) */
+.tbl__handle--rotate {
+    position: absolute;
+    top: -30px; left: 50%;
+    transform: translateX(-50%);
+    width: 16px; height: 16px;
+    border: 2px solid var(--secondary);
+    border-radius: 50%;
+    background: var(--card);
+    cursor: grab;
+}
+.tbl__handle--rotate::before {
+    content: "";
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: 2px; height: 16px;
+    background: var(--secondary);
+}
+
+/* Hide the manipulation handles on locked tables. */
+.tbl--locked .tbl__handle { display: none; }
+
+/* ---- Joined groups -------------------------------------------------------- */
+/* Members are snapped edge-to-edge on the floor; squaring the corners and sharing
+   the group colour/fill makes the row read as one continuous table surface. */
+.tbl--grouped {
+    border-color: var(--grp, var(--primary));
+    background: color-mix(in srgb, var(--grp, var(--primary)) 16%, var(--card-2));
+    border-radius: 0;
+    box-shadow: none;
+}
+.tbl--grouped:hover { box-shadow: var(--shadow); z-index: 4; }
+.tbl__group {
+    position: absolute;
+    top: -12px; left: 50%; transform: translateX(-50%);
+    font-size: .64rem;
+    font-weight: 800;
+    padding: .1rem .4rem;
+    border-radius: 999px;
+    color: #fff;
+    background: var(--grp, var(--primary));
+    box-shadow: var(--shadow-sm);
+    white-space: nowrap;
+}
+.join-info {
+    display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+    margin-top: .5rem; padding: .6rem .8rem;
+    border-radius: var(--radius-sm);
+    background: var(--card-2);
+    font-size: .88rem;
+}
+
+/* ---- Selection mode (join) ------------------------------------------------ */
+.floor--select .tbl { cursor: pointer; }
+.tbl--selected { box-shadow: 0 0 0 3px var(--primary); border-color: var(--primary); }
+
+.floor-notice {
+    margin: 0 0 .8rem;
+    padding: .55rem .8rem;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
+    color: var(--primary);
+    font-weight: 600;
+    font-size: .88rem;
+}
+
+/* ---- Reservations panel & assignment -------------------------------------- */
+.floor-layout--split { display: flex; gap: 1rem; align-items: stretch; }
+.floor-layout--split .floor { flex: 1 1 auto; min-width: 0; margin: 0; }
+
+/* Assign mode: clicking a table books the selected reservation onto it. */
+.floor-hint--assign { display: flex; align-items: center; gap: .6rem; color: var(--secondary); font-weight: 600; }
+.floor--assign .tbl { cursor: pointer; }
+.floor--assign .tbl:hover { box-shadow: 0 0 0 3px var(--secondary); border-color: var(--secondary); }
+
+/* Reservation badge on a table (bottom-centre, mirrors the group badge on top). */
+.tbl__resv {
+    position: absolute;
+    bottom: -11px; left: 50%; transform: translateX(-50%);
+    font-size: .6rem; font-weight: 800;
+    padding: .08rem .4rem;
+    border-radius: 999px;
+    background: var(--secondary); color: #fff;
+    white-space: nowrap;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Side drawer */
+.resv {
+    flex: 0 0 340px;
+    height: calc(100vh - 220px);
+    min-height: 420px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+}
+/* Collapsed to a thin rail — click anywhere on it to expand. */
+.resv--collapsed { flex: 0 0 46px; }
+.resv__rail {
+    flex: 1 1 auto;
+    display: flex; flex-direction: column; align-items: center; gap: .8rem;
+    padding: .9rem .2rem;
+    border: none; background: none; cursor: pointer;
+    color: var(--text); font: inherit;
+}
+.resv__rail:hover { background: var(--card-2); }
+.resv__rail-icon { font-size: 1.15rem; }
+.resv__rail-label { writing-mode: vertical-rl; font-weight: 600; font-size: .85rem; letter-spacing: .02em; }
+.resv__rail-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1.4rem; height: 1.4rem; padding: 0 .35rem;
+    border-radius: 999px; background: var(--primary); color: #fff;
+    font-size: .75rem; font-weight: 700;
+}
+
+.resv__head { display: flex; align-items: center; gap: .5rem; padding: .85rem 1rem; border-bottom: 1px solid var(--border); }
+.resv__head h2 { margin: 0; font-size: 1.05rem; }
+.resv__toolbar { display: flex; gap: .5rem; align-items: center; padding: .7rem 1rem; }
+.resv__toolbar .input { max-width: 165px; }
+.resv__assigning {
+    display: flex; align-items: center; gap: .5rem; justify-content: space-between;
+    margin: 0 1rem .6rem;
+    padding: .5rem .7rem;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--secondary) 16%, transparent);
+    color: var(--secondary);
+    font-weight: 600; font-size: .82rem;
+}
+.resv__list { flex: 1 1 auto; overflow: auto; padding: .1rem 1rem 1rem; display: flex; flex-direction: column; gap: .6rem; }
+
+.resv-card {
+    padding: .6rem .7rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card-2);
+    transition: box-shadow var(--transition);
+}
+.resv-card--active { box-shadow: 0 0 0 2px var(--secondary); }
+.resv-card__top { display: flex; align-items: center; gap: .5rem; font-size: .9rem; }
+.resv-card__name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.resv-card__meta { font-size: .78rem; margin: .25rem 0 .45rem; }
+.resv-card__actions { display: flex; gap: .3rem; flex-wrap: wrap; }
+
+@media (max-width: 900px) {
+    .floor-layout--split { flex-direction: column; }
+    .resv { flex-basis: auto; height: 420px; }
+    /* Collapsed panel becomes a short horizontal bar on narrow screens. */
+    .resv--collapsed { flex: 0 0 auto; height: auto; }
+    .resv--collapsed .resv__rail { flex-direction: row; padding: .7rem 1rem; }
+    .resv--collapsed .resv__rail-label { writing-mode: horizontal-tb; }
+}

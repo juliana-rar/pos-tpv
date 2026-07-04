@@ -1,0 +1,31 @@
+@* Lightweight modal dialog. Render conditionally with @if(Visible). *@
+@if (Visible)
+{
+    <div class="modal-backdrop" @onclick="OnBackdrop">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal__head">
+                <h2>@Title</h2>
+                <button class="btn btn--icon btn--ghost" @onclick="Close" type="button">✕</button>
+            </div>
+            <div class="modal__body">
+                @ChildContent
+            </div>
+            @if (Footer is not null)
+            {
+                <div class="modal__foot">@Footer</div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public bool CloseOnBackdrop { get; set; } = true;
+
+    private Task Close() => OnClose.InvokeAsync();
+    private Task OnBackdrop() => CloseOnBackdrop ? OnClose.InvokeAsync() : Task.CompletedTask;
+}

@@ -1,0 +1,50 @@
+@page "/"
+@attribute [Authorize]
+
+<PageTitle>@Loc.T("Menu") · PosTPV</PageTitle>
+
+<AuthorizeView>
+    <Authorized Context="auth">
+        <div class="hub">
+            <header class="hub__header">
+                <h1>@Loc.T("Welcome back"), @(auth.User.FindFirst("FullName")?.Value ?? auth.User.Identity?.Name) 👋</h1>
+                <p class="muted">@Loc.T("Choose a module to get started")</p>
+            </header>
+
+            <div class="hub__grid">
+                <HubCard Href="/dashboard" Icon="📊" Accent="#6366f1"
+                         Title="@Loc.T("Dashboard")" Description="@Loc.T("Live sales overview and top products")" />
+
+                <AuthorizeView Roles="Admin,Waiter,Cashier" Context="a">
+                    <HubCard Href="/pos" Icon="🧾" Accent="#0ea5e9"
+                             Title="@Loc.T("Point of Sale")" Description="@Loc.T("Take orders and charge tables")" />
+                </AuthorizeView>
+
+                <AuthorizeView Roles="Admin,Waiter,Cashier" Context="a">
+                    <HubCard Href="/orders" Icon="📋" Accent="#8b5cf6"
+                             Title="@Loc.T("Orders")" Description="@Loc.T("Track and charge open orders")" />
+                </AuthorizeView>
+
+                <AuthorizeView Roles="Admin,Waiter,Cashier" Context="a">
+                    <HubCard Href="/tables" Icon="🪑" Accent="#10b981"
+                             Title="@Loc.T("Tables")" Description="@Loc.T("Floor plan, joins and reservations")" />
+                </AuthorizeView>
+
+                <AuthorizeView Roles="Admin,Kitchen" Context="a">
+                    <HubCard Href="/kitchen" Icon="👨‍🍳" Accent="#ef4444"
+                             Title="@Loc.T("Kitchen")" Description="@Loc.T("Kitchen display for live tickets")" />
+                </AuthorizeView>
+
+                <AuthorizeView Roles="Admin,Cashier" Context="a">
+                    <HubCard Href="/billing" Icon="💶" Accent="#14b8a6"
+                             Title="@Loc.T("Billing")" Description="@Loc.T("Revenue reports and invoices")" />
+                </AuthorizeView>
+
+                <AuthorizeView Roles="Admin" Context="a">
+                    <HubCard Href="/products" Icon="🍔" Accent="#ec4899"
+                             Title="@Loc.T("Products")" Description="@Loc.T("Manage the product catalogue")" />
+                </AuthorizeView>
+            </div>
+        </div>
+    </Authorized>
+</AuthorizeView>

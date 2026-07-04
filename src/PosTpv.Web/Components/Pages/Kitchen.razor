@@ -1,0 +1,164 @@
+@page "/kitchen"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin,Kitchen")]
+@using Microsoft.AspNetCore.SignalR.Client
+@using PosTpv.Web.Hubs
+@implements IAsyncDisposable
+@inject IOrderService Orders
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>Kitchen · PosTPV</PageTitle>
+
+<div class="kds__head toolbar">
+    <h1>@Loc.T("Kitchen display")</h1>
+    <span class="spacer"></span>
+    <span class="badge @(_connected ? "badge--success" : "badge--danger")">
+        @(_connected ? Loc.T("● Live") : Loc.T("● Offline"))
+    </span>
+    <span class="badge">@_orders.Count @Loc.T("active")</span>
+</div>
+
+@if (_orders.Count == 0)
+{
+    <p class="empty">@Loc.T("No orders in the kitchen. Enjoy the calm. ☕")</p>
+}
+else
+{
+    <div class="kds">
+        @foreach (var o in _orders)
+        {
+            <div class="ticket @TicketClass(o.Status) @(o.SecondsFiredAt is null ? "" : "ticket--seconds")">
+                <div class="ticket__head">
+                    <span class="ticket__table">🪑 @o.TableName</span>
+                    <span class="ticket__time">@Elapsed(o.CreatedAt)</span>
+                </div>
+                <div class="ticket__sub">
+                    <span>@o.Number</span><span>· @o.WaiterName</span>
+                </div>
+
+                @if (o.SecondsFiredAt is not null)
+                {
+                    <div class="ticket__fire">
+                        <span class="ticket__fire-label">🔔 @Loc.T("Fire second courses")</span>
+                        <button class="btn btn--icon" title="@Loc.T("Got it")"
+                                @onclick="() => AcknowledgeSeconds(o)">✓</button>
+                    </div>
+                }
+
+                <div class="ticket__items">
+                    @foreach (var it in o.Items.Where(i => !i.IsDrink && i.Status != OrderItemStatus.Delivered))
+                    {
+                        <div class="kitem kitem--@it.Status.ToString().ToLower()">
+                            <div class="kitem__row">
+                                <span class="kitem__qty">@it.Quantity×</span>
+                                <span class="kitem__name">@it.ProductName</span>
+                                <span class="spacer"></span>
+                                @if (it.Status == OrderItemStatus.Preparing)
+                                {
+                                    <button class="btn btn--icon btn--success" title="@Loc.T("Ready")"
+                                            @onclick="() => SetItem(it.Id, OrderItemStatus.Ready)">✓</button>
+                                }
+                                else if (it.Status == OrderItemStatus.Ready)
+                                {
+                                    <button class="btn btn--icon btn--primary" title="@Loc.T("Delivered")"
+                                            @onclick="() => SetItem(it.Id, OrderItemStatus.Delivered)">➜</button>
+                                }
+                            </div>
+                            @if (it.Extras.Count > 0)
+                            {
+                                <div class="kitem__extras">＋ @string.Join(", ", it.Extras.Select(e => e.Name))</div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(it.Comment))
+                            {
+                                <div class="kitem__comment">⚠ @it.Comment</div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="ticket__foot">
+                    <button class="btn btn--ghost btn--block" @onclick="() => MarkAllReady(o)">@Loc.T("Mark all ready")</button>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<OrderDto> _orders = new();
+    private HubConnection? _hub;
+    private bool _connected;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+
+        if (!RendererInfo.IsInteractive) return;
+
+        _hub = new HubConnectionBuilder()
+            .WithUrl(Nav.ToAbsoluteUri(KitchenHub.Path))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hub.On<int>(KitchenHub.OrderSent, async _ => await Reload());
+        _hub.On<int, int>(KitchenHub.ItemStatusChanged, async (_, _) => await Reload());
+        _hub.On<int>(KitchenHub.OrderReady, async _ => await Reload());
+        _hub.On<int>(KitchenHub.SecondsFired, async _ =>
+        {
+            await Reload();
+            await JS.InvokeVoidAsync("posBeep");
+        });
+        _hub.Reconnected += async _ => { _connected = true; await Reload(); };
+        _hub.Closed += async _ => { _connected = false; await InvokeAsync(StateHasChanged); };
+
+        await _hub.StartAsync();
+        _connected = true;
+        StateHasChanged();
+    }
+
+    private async Task Load() => _orders = await Orders.GetKitchenOrdersAsync();
+
+    private async Task Reload()
+    {
+        await Load();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SetItem(int itemId, OrderItemStatus status)
+    {
+        await Orders.SetItemStatusAsync(itemId, status);
+        await Load();
+    }
+
+    private async Task MarkAllReady(OrderDto o)
+    {
+        foreach (var it in o.Items.Where(i => !i.IsDrink && i.Status == OrderItemStatus.Preparing))
+            await Orders.SetItemStatusAsync(it.Id, OrderItemStatus.Ready);
+        await Load();
+    }
+
+    private async Task AcknowledgeSeconds(OrderDto o)
+    {
+        await Orders.AcknowledgeSecondCoursesAsync(o.Id);
+        await Load();
+    }
+
+    private static string TicketClass(OrderStatus s) => s switch
+    {
+        OrderStatus.Ready => "ticket--ready",
+        OrderStatus.InPreparation => "ticket--cooking",
+        _ => "ticket--new"
+    };
+
+    private static string Elapsed(DateTime createdUtc)
+    {
+        var mins = (int)(DateTime.UtcNow - createdUtc).TotalMinutes;
+        return mins <= 0 ? Loc.T("just now") : $"{mins} min";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hub is not null) await _hub.DisposeAsync();
+    }
+}

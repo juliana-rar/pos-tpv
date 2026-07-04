@@ -1,0 +1,14 @@
+## .NET
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+*.user
+.vs/
+
+## Secrets / local config
+.env
+
+## Rider / VS Code
+.idea/
+.vscode/

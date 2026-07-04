@@ -1,0 +1,372 @@
+@page "/products"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using FluentValidation
+@inject IProductService Service
+@inject ICategoryService CategoryService
+@inject IValidator<ProductFormDto> Validator
+@inject IValidator<CategoryFormDto> CategoryValidator
+
+<PageTitle>Products · PosTPV</PageTitle>
+
+<div class="catalog">
+    @* ---- Left rail: categories ---------------------------------------------- *@
+    <section class="catalog__cats surface">
+        <div class="catalog__cats-head">
+            <h2>@Loc.T("Categories")</h2>
+            <button class="btn btn--primary btn--sm" @onclick="() => OpenCategoryForm(null)">+ @Loc.T("New category")</button>
+        </div>
+
+        @if (_notice is not null)
+        {
+            <div class="catalog__notice" @onclick="() => _notice = null">@_notice ✕</div>
+        }
+
+        <div class="catalog__cats-list">
+            @foreach (var (c, i) in _categories.Select((c, i) => (c, i)))
+            {
+                <div class="catRow" data-active="@(c.Id == _selectedId ? "true" : null)" @onclick="() => Select(c.Id)"
+                     style="--cat:@c.Color">
+                    <div class="catRow__main">
+                        <span class="catRow__name">@c.Name</span>
+                        <span class="catRow__meta muted">
+                            <span class="badge">@c.ProductCount</span>
+                            <span class="badge @(c.IsVisible ? "badge--success" : "badge--danger")">
+                                @(c.IsVisible ? Loc.T("Visible") : Loc.T("Hidden"))
+                            </span>
+                            · @Loc.T("Order:") @c.DisplayOrder
+                        </span>
+                    </div>
+                    <div class="catRow__actions" @onclick:stopPropagation="true">
+                        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
+                                disabled="@(i == 0)" @onclick="() => MoveCategory(c.Id, -1)">▲</button>
+                        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
+                                disabled="@(i == _categories.Count - 1)" @onclick="() => MoveCategory(c.Id, 1)">▼</button>
+                        <button class="btn btn--icon btn--ghost btn--sm" title="@(c.IsVisible ? Loc.T("Hide") : Loc.T("Show"))"
+                                @onclick="() => ToggleCategoryVisibility(c)">@(c.IsVisible ? "🙈" : "👁")</button>
+                        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")"
+                                @onclick="() => OpenCategoryForm(c.Id)">✏️</button>
+                        <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")"
+                                @onclick="() => DeleteCategory(c)">🗑</button>
+                    </div>
+                </div>
+            }
+            @if (_categories.Count == 0) { <p class="empty">@Loc.T("No categories yet.")</p> }
+        </div>
+    </section>
+
+    @* ---- Right panel: products of the selected category ---------------------- *@
+    <section class="catalog__products">
+        <div class="toolbar">
+            <h1>@(_selected?.Name ?? Loc.T("Products"))</h1>
+            <span class="spacer"></span>
+            @if (_selected is not null)
+            {
+                <input class="input search" placeholder="@Loc.T("Search…")" @bind="_search" @bind:event="oninput" />
+                <button class="btn btn--primary" @onclick="() => OpenProductForm(null)">+ @Loc.T("New product")</button>
+            }
+        </div>
+
+        @if (_selected is null)
+        {
+            <p class="empty">@Loc.T("Select a category to manage its products.")</p>
+        }
+        else
+        {
+            <div class="grid-cards">
+                @foreach (var (p, i) in Filtered.Select((p, i) => (p, i)))
+                {
+                    <div class="card mgmt-card" style="border-top:4px solid @p.Color" data-off="@(!p.IsAvailable ? "true" : null)">
+                        <div class="mgmt-card__head">
+                            <strong>@p.Name</strong>
+                            @if (!p.IsVisible) { <span class="badge badge--danger">@Loc.T("hidden")</span> }
+                            <span class="spacer"></span>
+                            <span class="badge badge--primary">@p.Price.ToString("C")</span>
+                        </div>
+                        <div class="mgmt-card__meta muted">@Loc.T("VAT") @p.VatRate% · @Loc.T("Order:") @p.DisplayOrder</div>
+                        <div class="mgmt-card__actions">
+                            <label class="switch">
+                                <input type="checkbox" checked="@p.IsAvailable" @onchange="e => ToggleAvailable(p, (bool)e.Value!)" />
+                                <span>@(p.IsAvailable ? Loc.T("Available") : Loc.T("Off"))</span>
+                            </label>
+                            <span class="spacer"></span>
+                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
+                                    disabled="@(!string.IsNullOrWhiteSpace(_search) || i == 0)" @onclick="() => MoveProduct(p.Id, -1)">▲</button>
+                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
+                                    disabled="@(!string.IsNullOrWhiteSpace(_search) || i == Filtered.Count - 1)" @onclick="() => MoveProduct(p.Id, 1)">▼</button>
+                        </div>
+                        <div class="mgmt-card__actions">
+                            <button class="btn btn--ghost btn--sm" @onclick="() => OpenProductForm(p.Id)">@Loc.T("Edit")</button>
+                            <button class="btn btn--ghost btn--sm" @onclick="() => Duplicate(p.Id)">@Loc.T("Duplicate")</button>
+                            <button class="btn btn--ghost btn--sm" @onclick="() => OpenMove(p)">@Loc.T("Move…")</button>
+                            <span class="spacer"></span>
+                            <button class="btn btn--danger btn--sm" @onclick="() => DeleteProduct(p.Id)">@Loc.T("Delete")</button>
+                        </div>
+                    </div>
+                }
+                @if (Filtered.Count == 0) { <p class="empty">@Loc.T("No products found.")</p> }
+            </div>
+        }
+    </section>
+</div>
+
+@* ---- Product form modal -------------------------------------------------- *@
+<Modal Visible="_product is not null" Title="@(_product?.Id > 0 ? Loc.T("Edit product") : Loc.T("New product"))" OnClose="CloseProduct">
+    <ChildContent>
+        @if (_product is not null)
+        {
+            <div class="field"><label>@Loc.T("Name")</label><input class="input" @bind="_product.Name" /></div>
+            <div class="field"><label>@Loc.T("Description")</label><textarea class="input" rows="2" @bind="_product.Description"></textarea></div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Category")</label>
+                    <select class="select" @bind="_product.CategoryId">
+                        <option value="0">@Loc.T("— select —")</option>
+                        @foreach (var c in _categories)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="field"><label>@Loc.T("Colour")</label><input type="color" class="input" @bind="_product.Color" /></div>
+            </div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Price")</label><input type="number" step="0.01" class="input" @bind="_product.Price" /></div>
+                <div class="field"><label>@Loc.T("VAT %")</label><input type="number" step="0.5" class="input" @bind="_product.VatRate" /></div>
+            </div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Prep. minutes")</label><input type="number" class="input" @bind="_product.PreparationMinutes" /></div>
+                <div class="field"><label>@Loc.T("Display order")</label><input type="number" class="input" @bind="_product.DisplayOrder" /></div>
+            </div>
+            <div class="field"><label>@Loc.T("Allergens")</label><input class="input" @bind="_product.Allergens" placeholder="@Loc.T("gluten, dairy…")" /></div>
+            <div class="row-2">
+                <label class="switch"><input type="checkbox" @bind="_product.IsAvailable" /><span>@Loc.T("Available")</span></label>
+                <label class="switch"><input type="checkbox" @bind="_product.IsVisible" /><span>@Loc.T("Visible")</span></label>
+            </div>
+            @if (_productError is not null) { <div class="field-error">@_productError</div> }
+        }
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="CloseProduct">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="SaveProduct">@Loc.T("Save")</button>
+    </Footer>
+</Modal>
+
+@* ---- Category form modal ------------------------------------------------- *@
+<Modal Visible="_category is not null" Title="@(_category?.Id > 0 ? Loc.T("Edit category") : Loc.T("New category"))" OnClose="CloseCategory">
+    <ChildContent>
+        @if (_category is not null)
+        {
+            <div class="field"><label>@Loc.T("Name")</label><input class="input" @bind="_category.Name" /></div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Icon (emoji)")</label><input class="input" @bind="_category.Icon" /></div>
+                <div class="field"><label>@Loc.T("Colour")</label><input type="color" class="input" @bind="_category.Color" /></div>
+            </div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Display order")</label><input type="number" class="input" @bind="_category.DisplayOrder" /></div>
+                <label class="switch"><input type="checkbox" @bind="_category.IsVisible" /><span>@Loc.T("Visible")</span></label>
+            </div>
+            @if (_categoryError is not null) { <div class="field-error">@_categoryError</div> }
+        }
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="CloseCategory">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="SaveCategory">@Loc.T("Save")</button>
+    </Footer>
+</Modal>
+
+@* ---- Change-category modal ----------------------------------------------- *@
+<Modal Visible="_moving is not null" Title="@Loc.T("Move to category")" OnClose="() => _moving = null">
+    <ChildContent>
+        @if (_moving is not null)
+        {
+            <div class="field">
+                <label>@Loc.T("Category")</label>
+                <select class="select" @bind="_moveTargetId">
+                    @foreach (var c in _categories)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </select>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="() => _moving = null">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="ConfirmMove">@Loc.T("Move")</button>
+    </Footer>
+</Modal>
+
+@code {
+    private List<CategoryDto> _categories = new();
+    private List<ProductDto> _products = new();
+    private int? _selectedId;
+    private string _search = "";
+
+    private ProductFormDto? _product;
+    private string? _productError;
+
+    private CategoryFormDto? _category;
+    private string? _categoryError;
+
+    private ProductDto? _moving;
+    private int _moveTargetId;
+
+    private string? _notice;
+
+    private CategoryDto? _selected => _categories.FirstOrDefault(c => c.Id == _selectedId);
+
+    private List<ProductDto> Filtered => string.IsNullOrWhiteSpace(_search)
+        ? _products
+        : _products.Where(p => p.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+        _selectedId = _categories.FirstOrDefault()?.Id;
+        await LoadProducts();
+    }
+
+    private async Task LoadCategories() => _categories = await CategoryService.GetAllAsync();
+
+    private async Task LoadProducts() =>
+        _products = _selectedId is int id
+            ? await Service.GetByCategoryAsync(id, includeHidden: true)
+            : new();
+
+    private async Task Select(int id)
+    {
+        if (_selectedId == id) return;
+        _selectedId = id;
+        _search = "";
+        _notice = null;
+        await LoadProducts();
+    }
+
+    // ---- Categories -------------------------------------------------------
+    private void OpenCategoryForm(int? id) => _ = OpenCategoryFormAsync(id);
+
+    private async Task OpenCategoryFormAsync(int? id)
+    {
+        _categoryError = null;
+        _notice = null;
+        _category = id is null
+            ? new CategoryFormDto { DisplayOrder = _categories.Count }
+            : await CategoryService.GetForEditAsync(id.Value) ?? new CategoryFormDto();
+    }
+
+    private void CloseCategory() => _category = null;
+
+    private async Task SaveCategory()
+    {
+        if (_category is null) return;
+        var result = await CategoryValidator.ValidateAsync(_category);
+        if (!result.IsValid) { _categoryError = result.Errors[0].ErrorMessage; return; }
+
+        int savedId;
+        if (_category.Id > 0) { await CategoryService.UpdateAsync(_category); savedId = _category.Id; }
+        else savedId = await CategoryService.CreateAsync(_category);
+
+        _category = null;
+        await LoadCategories();
+        _selectedId ??= savedId;
+        await LoadProducts();
+    }
+
+    private async Task ToggleCategoryVisibility(CategoryDto c)
+    {
+        await CategoryService.SetVisibilityAsync(c.Id, !c.IsVisible);
+        await LoadCategories();
+    }
+
+    private async Task MoveCategory(int id, int direction)
+    {
+        await CategoryService.MoveAsync(id, direction);
+        await LoadCategories();
+    }
+
+    private async Task DeleteCategory(CategoryDto c)
+    {
+        try
+        {
+            await CategoryService.DeleteAsync(c.Id);
+        }
+        catch (InvalidOperationException)
+        {
+            _notice = Loc.T("Cannot delete a category that still has products.");
+            return;
+        }
+
+        if (_selectedId == c.Id) _selectedId = null;
+        await LoadCategories();
+        _selectedId ??= _categories.FirstOrDefault()?.Id;
+        await LoadProducts();
+    }
+
+    // ---- Products ---------------------------------------------------------
+    private void OpenProductForm(int? id) => _ = OpenProductFormAsync(id);
+
+    private async Task OpenProductFormAsync(int? id)
+    {
+        _productError = null;
+        _product = id is null
+            ? new ProductFormDto { CategoryId = _selectedId ?? 0 }
+            : await Service.GetForEditAsync(id.Value) ?? new ProductFormDto();
+    }
+
+    private void CloseProduct() => _product = null;
+
+    private async Task SaveProduct()
+    {
+        if (_product is null) return;
+        var result = await Validator.ValidateAsync(_product);
+        if (!result.IsValid) { _productError = result.Errors[0].ErrorMessage; return; }
+
+        if (_product.Id > 0) await Service.UpdateAsync(_product);
+        else await Service.CreateAsync(_product);
+
+        _product = null;
+        await LoadCategories(); // product counts may have changed
+        await LoadProducts();
+    }
+
+    private async Task ToggleAvailable(ProductDto p, bool value)
+    {
+        await Service.SetAvailabilityAsync(p.Id, value);
+        await LoadProducts();
+    }
+
+    private async Task MoveProduct(int id, int direction)
+    {
+        await Service.MoveAsync(id, direction);
+        await LoadProducts();
+    }
+
+    private async Task Duplicate(int id)
+    {
+        await Service.DuplicateAsync(id);
+        await LoadCategories();
+        await LoadProducts();
+    }
+
+    private void OpenMove(ProductDto p)
+    {
+        _moving = p;
+        _moveTargetId = p.CategoryId;
+    }
+
+    private async Task ConfirmMove()
+    {
+        if (_moving is null) return;
+        await Service.SetCategoryAsync(_moving.Id, _moveTargetId);
+        _moving = null;
+        await LoadCategories();
+        await LoadProducts();
+    }
+
+    private async Task DeleteProduct(int id)
+    {
+        await Service.DeleteAsync(id);
+        await LoadCategories();
+        await LoadProducts();
+    }
+}

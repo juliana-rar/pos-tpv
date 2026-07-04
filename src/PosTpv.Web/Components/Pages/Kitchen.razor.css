@@ -1,0 +1,67 @@
+.kds__head { margin-bottom: 1rem; }
+.kds__head h1 { margin: 0; }
+
+.kds {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.ticket {
+    display: flex; flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    border-top: 5px solid var(--border);
+    animation: pop var(--transition);
+}
+.ticket--new { border-top-color: var(--secondary); }
+.ticket--cooking { border-top-color: var(--warning); }
+.ticket--ready { border-top-color: var(--success); }
+
+/* A ticket whose second courses have been fired jumps out with a coloured frame and a pulse. */
+.ticket--seconds {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 2px var(--danger), var(--shadow-sm);
+    animation: secondsPulse 1.1s ease-in-out infinite;
+}
+@keyframes secondsPulse {
+    0%, 100% { box-shadow: 0 0 0 2px var(--danger), var(--shadow-sm); }
+    50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--danger) 45%, transparent), var(--shadow-sm); }
+}
+
+.ticket__fire {
+    display: flex; align-items: center; gap: .5rem;
+    margin: 0 .7rem .4rem;
+    padding: .45rem .6rem;
+    border-radius: var(--radius-sm);
+    background: var(--danger);
+    color: #fff;
+}
+.ticket__fire-label { font-weight: 800; font-size: .9rem; flex: 1; }
+.ticket__fire .btn--icon {
+    width: 30px; height: 30px; padding: 0;
+    background: rgba(255, 255, 255, .2); color: #fff; border: none;
+}
+.ticket__fire .btn--icon:hover { background: rgba(255, 255, 255, .35); }
+
+.ticket__head { display: flex; justify-content: space-between; align-items: center; padding: .7rem .9rem .2rem; }
+.ticket__table { font-weight: 800; font-size: 1.05rem; }
+.ticket__time { font-size: .8rem; color: var(--text-soft); font-weight: 700; }
+.ticket__sub { display: flex; gap: .4rem; padding: 0 .9rem .5rem; color: var(--text-soft); font-size: .8rem; }
+
+.ticket__items { display: flex; flex-direction: column; gap: .3rem; padding: .5rem .7rem; border-top: 1px dashed var(--border); }
+
+.kitem { border-radius: var(--radius-sm); padding: .4rem .5rem; background: var(--card-2); }
+.kitem--ready { background: color-mix(in srgb, var(--success) 15%, transparent); }
+.kitem__row { display: flex; align-items: center; gap: .5rem; }
+.kitem__qty { font-weight: 800; color: var(--primary); }
+.kitem__name { font-weight: 600; }
+.kitem__extras { margin-top: .25rem; font-size: .8rem; font-weight: 600; color: var(--secondary); }
+.kitem__comment { margin-top: .25rem; font-size: .8rem; font-weight: 700; color: var(--warning); }
+.kitem .btn--icon { width: 30px; height: 30px; padding: 0; }
+
+.ticket__foot { padding: .6rem .7rem; border-top: 1px solid var(--border); margin-top: auto; }

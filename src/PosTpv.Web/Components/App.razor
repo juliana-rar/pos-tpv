@@ -1,0 +1,30 @@
+@* Root document. Interactivity is declared per-page so the login page can run as static SSR
+   (required to set the authentication cookie). *@
+<!DOCTYPE html>
+<html lang="@(Loc.IsSpanish ? "es" : "en")" data-theme="light">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["PosTpv.Web.styles.css"]" />
+    <ImportMap />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <HeadOutlet />
+    <script>
+        // Apply the persisted theme before first paint to avoid a flash.
+        (function () {
+            const t = localStorage.getItem('pos-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+</head>
+
+<body>
+    <Routes />
+    <script src="_framework/blazor.web.js"></script>
+    <script src="js/pos.js"></script>
+</body>
+
+</html>

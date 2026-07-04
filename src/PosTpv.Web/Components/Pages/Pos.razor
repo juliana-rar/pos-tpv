@@ -1,0 +1,623 @@
+@page "/pos"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin,Waiter,Cashier")]
+@using System.Security.Claims
+@using Microsoft.AspNetCore.SignalR.Client
+@using PosTpv.Web.Hubs
+@implements IAsyncDisposable
+@inject ICategoryService Categories
+@inject IProductService Products
+@inject ITableService Tables
+@inject IOrderService Orders
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>POS · PosTPV</PageTitle>
+
+<div class="pos">
+    <!-- Left: categories -->
+    <div class="pos__cats">
+        @foreach (var c in _categories)
+        {
+            <button class="cat @(c.Id == _selectedCategoryId ? "cat--active" : "")"
+                    style="--cat:@c.Color" @onclick="() => SelectCategory(c.Id)">
+                <span class="cat__icon">@c.Icon</span>
+                <span class="cat__name">@c.Name</span>
+            </button>
+        }
+    </div>
+
+    <!-- Centre: product grid -->
+    <div class="pos__products">
+        <div class="pos__products-head toolbar">
+            <h2>@(_categories.FirstOrDefault(c => c.Id == _selectedCategoryId)?.Name ?? Loc.T("Products"))</h2>
+            <span class="spacer"></span>
+            @if (_order is not null)
+            {
+                <span class="badge badge--primary">@Loc.T("Table") @_order.TableName · @_order.Number</span>
+            }
+            <button class="btn btn--ghost btn--icon" title="@Loc.T("Keyboard shortcuts")" @onclick="() => _showHelp = true">⌨</button>
+        </div>
+
+        <div class="product-grid">
+            @foreach (var p in _products)
+            {
+                <button class="productCard @(p.IsAvailable ? "" : "productCard--off")"
+                        style="--pc:@p.Color" disabled="@(!p.IsAvailable)"
+                        @onclick="() => OnProductClick(p)">
+                    <span class="productCard__price">@p.Price.ToString("C")</span>
+                    <span class="productCard__name">@p.Name</span>
+                    @if (!p.IsAvailable)
+                    {
+                        <span class="productCard__off">@Loc.T("Unavailable")</span>
+                    }
+                </button>
+            }
+            @if (_products.Count == 0)
+            {
+                <p class="empty">@Loc.T("No products in this category.")</p>
+            }
+        </div>
+    </div>
+
+    <!-- Right: current order -->
+    <div class="pos__order card">
+        <div class="order__head">
+            <h2>@Loc.T("Order")</h2>
+            @if (_order is not null)
+            {
+                <span class="badge">@OrderStatusLabel(_order.Status)</span>
+            }
+        </div>
+
+        @if (_order is null)
+        {
+            <div class="order__empty">
+                <p class="muted">@Loc.T("No open table.")</p>
+                <button class="btn btn--primary" @onclick="() => _showTables = true">@Loc.T("Select a table")</button>
+            </div>
+        }
+        else
+        {
+            <div class="order__items">
+                @foreach (var it in _order.Items)
+                {
+                    <div class="orderLine">
+                        <div class="orderLine__main">
+                            <span class="orderLine__name">@it.ProductName</span>
+                            <span class="orderLine__price">@it.LineTotal.ToString("C")</span>
+                        </div>
+                        <div class="orderLine__ctrl">
+                            <button class="btn btn--icon btn--ghost" @onclick="() => ChangeQty(it.Id, -1)">−</button>
+                            <span class="orderLine__qty">@it.Quantity</span>
+                            <button class="btn btn--icon btn--ghost" @onclick="() => ChangeQty(it.Id, 1)">+</button>
+                            <span class="badge @ItemStatusClass(it.Status)">@Loc.T(it.Status.ToString())</span>
+                            <span class="spacer"></span>
+                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Comment")" @onclick="() => OpenComment(it)">✎</button>
+                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Remove")" @onclick="() => RemoveItem(it.Id)">🗑</button>
+                        </div>
+                        @if (it.Extras.Count > 0)
+                        {
+                            <div class="orderLine__extras">@string.Join(", ", it.Extras.Select(e => "＋ " + e.Name))</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(it.Comment))
+                        {
+                            <div class="orderLine__comment">“@it.Comment”</div>
+                        }
+                    </div>
+                }
+                @if (_order.Items.Count == 0)
+                {
+                    <p class="empty">@Loc.T("Tap a product to add it.")</p>
+                }
+            </div>
+
+            <div class="order__totals">
+                <div><span>@Loc.T("Subtotal")</span><span>@_order.Subtotal.ToString("C")</span></div>
+                <div><span>@Loc.T("VAT")</span><span>@_order.VatTotal.ToString("C")</span></div>
+                <div class="order__grand"><span>@Loc.T("Total")</span><span>@_order.Total.ToString("C")</span></div>
+            </div>
+
+            <div class="order__actions">
+                <button class="btn btn--ghost btn--block" disabled="@(_order.Items.Count == 0)" @onclick="SendToKitchen">
+                    @Loc.T("Send to kitchen")
+                </button>
+                <div class="order__pay">
+                    <button class="btn btn--success" disabled="@(_order.Items.Count == 0)" @onclick="() => Checkout(PaymentMethod.Cash)">💵 @Loc.T("Cash")</button>
+                    <button class="btn btn--success" disabled="@(_order.Items.Count == 0)" @onclick="() => Checkout(PaymentMethod.Card)">💳 @Loc.T("Card")</button>
+                    <button class="btn btn--primary" disabled="@(_order.Items.Count == 0)" @onclick="OpenPayment">⑃ @Loc.T("Split")</button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Table selector -->
+<Modal Visible="_showTables" Title="@Loc.T("Open a table")" OnClose="() => _showTables = false">
+    <div class="table-picker">
+        @foreach (var t in _tables)
+        {
+            <button class="tablePick tablePick--@t.Status.ToString().ToLower()"
+                    @onclick="() => OpenTable(t.Id)">
+                <span class="tablePick__name">@t.Name</span>
+                <span class="tablePick__seats">@t.Seats @Loc.T("seats")</span>
+                @if (t.ActiveOrderId is not null)
+                {
+                    <span class="tablePick__total">@t.ActiveOrderTotal.ToString("C")</span>
+                }
+            </button>
+        }
+    </div>
+</Modal>
+
+<!-- Product customization (extras / quantity / comment) -->
+<Modal Visible="_customizeProduct is not null" Title="@(_customizeProduct?.Name ?? string.Empty)" OnClose="() => _customizeProduct = null">
+    <ChildContent>
+        @if (_customizeProduct is not null)
+        {
+            <div class="customize">
+                <div class="customize__row">
+                    <span class="muted">@Loc.T("Base price")</span>
+                    <strong>@_customizeProduct.Price.ToString("C")</strong>
+                </div>
+
+                <div class="customize__row">
+                    <span>@Loc.T("Quantity")</span>
+                    <div class="qty-stepper">
+                        <button class="btn btn--icon btn--ghost" @onclick="() => _customizeQty = Math.Max(1, _customizeQty - 1)">−</button>
+                        <span class="qty-stepper__val">@_customizeQty</span>
+                        <button class="btn btn--icon btn--ghost" @onclick="() => _customizeQty++">+</button>
+                    </div>
+                </div>
+
+                @if (_customizeExtras.Count > 0)
+                {
+                    <div class="customize__extras">
+                        <label>@Loc.T("Extras")</label>
+                        <div class="extra-chips">
+                            @foreach (var ex in _customizeExtras)
+                            {
+                                <button class="extra-chip @(_selectedExtraIds.Contains(ex.Id) ? "extra-chip--on" : "")"
+                                        @onclick="() => ToggleExtra(ex.Id)" type="button">
+                                    <span>@ex.Name</span>
+                                    <span class="extra-chip__price">＋@ex.Price.ToString("C")</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="field">
+                    <label>@Loc.T("Comment")</label>
+                    <textarea class="input" rows="2" @bind="_customizeComment" placeholder="@Loc.T("No onion, well done…")"></textarea>
+                </div>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <span class="customize__total">@Loc.T("Total") <strong>@CustomizeLineTotal().ToString("C")</strong></span>
+        <span class="spacer"></span>
+        <button class="btn btn--ghost" @onclick="() => _customizeProduct = null">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="AddCustomized">@Loc.T("Add to order")</button>
+    </Footer>
+</Modal>
+
+<!-- Split payment -->
+<Modal Visible="_paying" Title="@Loc.T("Payment")" OnClose="() => _paying = false">
+    <ChildContent>
+        @if (_order is not null)
+        {
+            <div class="pay">
+                <div class="pay__total">
+                    <span class="muted">@Loc.T("Total due")</span>
+                    <span class="pay__due">@_order.Total.ToString("C")</span>
+                </div>
+
+                <div class="pay__split">
+                    <span>@Loc.T("Split equally")</span>
+                    <div class="qty-stepper">
+                        <button class="btn btn--icon btn--ghost" @onclick="() => _splitCount = Math.Max(2, _splitCount - 1)">−</button>
+                        <span class="qty-stepper__val">@_splitCount</span>
+                        <button class="btn btn--icon btn--ghost" @onclick="() => _splitCount++">+</button>
+                    </div>
+                    <button class="btn btn--ghost" @onclick="SplitEqually">@Loc.T("Apply")</button>
+                </div>
+
+                @if (_payments.Count > 0)
+                {
+                    <div class="pay__list">
+                        @foreach (var p in _payments)
+                        {
+                            <div class="pay__row">
+                                <span class="pay__method">@MethodIcon(p.Method) @Loc.T(p.Method.ToString())</span>
+                                <span class="pay__amount">@p.Amount.ToString("C")</span>
+                                <button class="btn btn--icon btn--ghost" title="@Loc.T("Remove")" @onclick="() => RemovePayment(p)">🗑</button>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="pay__add">
+                    <input type="number" step="0.01" min="0" class="input" @bind="_payAmount" />
+                    <select class="select" @bind="_payMethod">
+                        @foreach (var m in Enum.GetValues<PaymentMethod>())
+                        {
+                            <option value="@m">@Loc.T(m.ToString())</option>
+                        }
+                    </select>
+                    <button class="btn btn--ghost" @onclick="AddPayment">@Loc.T("Add")</button>
+                </div>
+
+                <div class="pay__quick">
+                    <button class="btn btn--ghost" @onclick="() => RestIn(PaymentMethod.Cash)">💵 @Loc.T("Rest in cash")</button>
+                    <button class="btn btn--ghost" @onclick="() => RestIn(PaymentMethod.Card)">💳 @Loc.T("Rest in card")</button>
+                </div>
+
+                <div class="pay__balance @(Remaining > 0 ? "pay__balance--due" : "pay__balance--ok")">
+                    @if (Remaining > 0)
+                    {
+                        <span>@Loc.T("Remaining")</span><span>@Remaining.ToString("C")</span>
+                    }
+                    else if (Remaining < 0)
+                    {
+                        <span>@Loc.T("Change")</span><span>@((-Remaining).ToString("C"))</span>
+                    }
+                    else
+                    {
+                        <span>@Loc.T("Fully paid")</span><span>✓</span>
+                    }
+                </div>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <span class="muted">@Loc.T("Tendered") @PaidSoFar.ToString("C")</span>
+        <span class="spacer"></span>
+        <button class="btn btn--ghost" @onclick="() => _paying = false">@Loc.T("Cancel")</button>
+        <button class="btn btn--success" disabled="@(Remaining > 0)" @onclick="FinalizePayment">@Loc.T("Finalize")</button>
+    </Footer>
+</Modal>
+
+<!-- Keyboard shortcuts help -->
+<Modal Visible="_showHelp" Title="@Loc.T("Keyboard shortcuts")" OnClose="() => _showHelp = false">
+    <div class="shortcuts">
+        <div class="shortcuts__row"><span><kbd>1</kbd>…<kbd>9</kbd></span><span>@Loc.T("Select category")</span></div>
+        <div class="shortcuts__row"><span><kbd>+</kbd> <kbd>−</kbd></span><span>@Loc.T("Quantity of last line")</span></div>
+        <div class="shortcuts__row"><span><kbd>Del</kbd></span><span>@Loc.T("Remove last line")</span></div>
+        <div class="shortcuts__row"><span><kbd>T</kbd></span><span>@Loc.T("Open table selector")</span></div>
+        <div class="shortcuts__row"><span><kbd>K</kbd></span><span>@Loc.T("Send to kitchen")</span></div>
+        <div class="shortcuts__row"><span><kbd>C</kbd></span><span>@Loc.T("Charge (cash)")</span></div>
+        <div class="shortcuts__row"><span><kbd>P</kbd></span><span>@Loc.T("Split payment")</span></div>
+        <div class="shortcuts__row"><span><kbd>Enter</kbd></span><span>@Loc.T("Finalize payment (in dialog)")</span></div>
+        <div class="shortcuts__row"><span><kbd>Esc</kbd></span><span>@Loc.T("Close dialog")</span></div>
+        <div class="shortcuts__row"><span><kbd>?</kbd></span><span>@Loc.T("Toggle this help")</span></div>
+    </div>
+</Modal>
+
+<!-- Comment editor -->
+<Modal Visible="_commentItem is not null" Title="@Loc.T("Line comment")" OnClose="() => _commentItem = null">
+    <ChildContent>
+        <div class="field">
+            <label>@Loc.T("Note for the kitchen")</label>
+            <textarea class="input" rows="3" @bind="_commentText" placeholder="@Loc.T("No onion, well done, extra sauce…")"></textarea>
+        </div>
+        <div class="comment-presets">
+            @foreach (var preset in Presets)
+            {
+                <button class="btn btn--ghost" @onclick="() => _commentText = Loc.T(preset)">@Loc.T(preset)</button>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="() => _commentItem = null">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="SaveComment">@Loc.T("Save")</button>
+    </Footer>
+</Modal>
+
+@code {
+    private static readonly string[] Presets = { "No onion", "Well done", "No cheese", "Extra sauce", "Spicy", "Gluten free" };
+
+    private List<CategoryDto> _categories = new();
+    private List<ProductDto> _products = new();
+    private List<TableDto> _tables = new();
+    private OrderDto? _order;
+    private int _selectedCategoryId;
+    private int _userId;
+
+    private bool _showTables;
+    private OrderItemDto? _commentItem;
+    private string? _commentText;
+
+    private ProductDto? _customizeProduct;
+    private List<ExtraDto> _customizeExtras = new();
+    private readonly HashSet<int> _selectedExtraIds = new();
+    private int _customizeQty = 1;
+    private string? _customizeComment;
+
+    private bool _paying;
+    private readonly List<PaymentInput> _payments = new();
+    private decimal _payAmount;
+    private PaymentMethod _payMethod = PaymentMethod.Cash;
+    private int _splitCount = 2;
+
+    private decimal PaidSoFar => _payments.Sum(p => p.Amount);
+    private decimal Remaining => Math.Round((_order?.Total ?? 0m) - PaidSoFar, 2);
+
+    private HubConnection? _hub;
+
+    private IJSObjectReference? _shortcuts;
+    private DotNetObjectReference<Pos>? _selfRef;
+    private bool _showHelp;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthState!;
+        _userId = int.TryParse(auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var id) ? id : 0;
+
+        _categories = await Categories.GetAllAsync(onlyVisible: true);
+        _selectedCategoryId = _categories.FirstOrDefault()?.Id ?? 0;
+        await LoadProducts();
+        await LoadTables();
+
+        // Only open the real-time channel during the interactive render (not prerender).
+        if (!RendererInfo.IsInteractive) return;
+
+        _hub = new HubConnectionBuilder()
+            .WithUrl(Nav.ToAbsoluteUri(KitchenHub.Path))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hub.On<int, int>(KitchenHub.ItemStatusChanged, async (orderId, _) =>
+        {
+            if (_order?.Id == orderId) { _order = await Orders.GetByIdAsync(orderId); await InvokeAsync(StateHasChanged); }
+        });
+        _hub.On<int>(KitchenHub.OrderReady, async orderId =>
+        {
+            if (_order?.Id == orderId)
+            {
+                _order = await Orders.GetByIdAsync(orderId);
+                await JS.InvokeVoidAsync("posBeep");
+                await InvokeAsync(StateHasChanged);
+            }
+        });
+
+        await _hub.StartAsync();
+
+        // Keyboard shortcuts (see the ? overlay).
+        _selfRef = DotNetObjectReference.Create(this);
+        _shortcuts = await JS.InvokeAsync<IJSObjectReference>("import", "./js/shortcuts.js");
+        await _shortcuts.InvokeVoidAsync("register", _selfRef);
+    }
+
+    [JSInvokable]
+    public async Task OnKey(string key)
+    {
+        if (key == "Escape")
+        {
+            if (_showHelp) _showHelp = false;
+            else if (_paying) _paying = false;
+            else if (_customizeProduct is not null) _customizeProduct = null;
+            else if (_commentItem is not null) _commentItem = null;
+            else if (_showTables) _showTables = false;
+            StateHasChanged();
+            return;
+        }
+
+        if (key == "?") { _showHelp = !_showHelp; StateHasChanged(); return; }
+
+        // While the payment dialog is open, Enter finalises a fully-covered bill.
+        if (_paying)
+        {
+            if (key == "Enter" && Remaining <= 0) await FinalizePayment();
+            return;
+        }
+
+        // Ignore action keys while another modal is open.
+        if (_showHelp || _customizeProduct is not null || _commentItem is not null || _showTables) return;
+
+        switch (key.ToLowerInvariant())
+        {
+            case "k" when _order?.Items.Count > 0: await SendToKitchen(); break;
+            case "p" when _order?.Items.Count > 0: OpenPayment(); break;
+            case "c" when _order?.Items.Count > 0: await Checkout(PaymentMethod.Cash); break;
+            case "t": _showTables = true; break;
+            case "+" or "=": await ChangeLastQty(1); break;
+            case "-": await ChangeLastQty(-1); break;
+            case "backspace" or "delete": await RemoveLastLine(); break;
+            default:
+                if (key.Length == 1 && key[0] is >= '1' and <= '9')
+                {
+                    var idx = key[0] - '1';
+                    if (idx < _categories.Count) await SelectCategory(_categories[idx].Id);
+                }
+                break;
+        }
+        StateHasChanged();
+    }
+
+    private async Task ChangeLastQty(int delta)
+    {
+        var last = _order?.Items.LastOrDefault();
+        if (last is not null) await ChangeQty(last.Id, delta);
+    }
+
+    private async Task RemoveLastLine()
+    {
+        var last = _order?.Items.LastOrDefault();
+        if (last is not null) _order = await Orders.RemoveItemAsync(last.Id);
+    }
+
+    private async Task SelectCategory(int id)
+    {
+        _selectedCategoryId = id;
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts() =>
+        _products = _selectedCategoryId == 0 ? new() : await Products.GetByCategoryAsync(_selectedCategoryId, onlyAvailable: false);
+
+    private async Task LoadTables() => _tables = await Tables.GetAllAsync();
+
+    private async Task OnProductClick(ProductDto p)
+    {
+        if (_order is null) { _showTables = true; return; }
+        if (p.HasExtras) { await OpenCustomize(p); return; }
+        _order = await Orders.AddItemAsync(new AddItemRequest(_order.Id, p.Id));
+    }
+
+    private async Task OpenCustomize(ProductDto p)
+    {
+        _customizeProduct = p;
+        _customizeExtras = await Products.GetExtrasAsync(p.Id);
+        _selectedExtraIds.Clear();
+        _customizeQty = 1;
+        _customizeComment = null;
+    }
+
+    private void ToggleExtra(int id)
+    {
+        if (!_selectedExtraIds.Add(id)) _selectedExtraIds.Remove(id);
+    }
+
+    private decimal CustomizeLineTotal()
+    {
+        if (_customizeProduct is null) return 0m;
+        var extras = _customizeExtras.Where(e => _selectedExtraIds.Contains(e.Id)).Sum(e => e.Price);
+        return (_customizeProduct.Price + extras) * _customizeQty;
+    }
+
+    private async Task AddCustomized()
+    {
+        if (_customizeProduct is null || _order is null) return;
+        _order = await Orders.AddItemAsync(new AddItemRequest(
+            _order.Id, _customizeProduct.Id, _customizeQty, _customizeComment, _selectedExtraIds.ToList()));
+        _customizeProduct = null;
+    }
+
+    private async Task OpenTable(int tableId)
+    {
+        _order = await Orders.OpenOrderAsync(tableId, _userId);
+        _showTables = false;
+        await LoadTables();
+    }
+
+    private async Task ChangeQty(int itemId, int delta) => _order = await Orders.ChangeQuantityAsync(itemId, delta);
+
+    private async Task RemoveItem(int itemId) => _order = await Orders.RemoveItemAsync(itemId);
+
+    private void OpenComment(OrderItemDto item) { _commentItem = item; _commentText = item.Comment; }
+
+    private async Task SaveComment()
+    {
+        if (_commentItem is not null)
+        {
+            await Orders.SetItemCommentAsync(_commentItem.Id, _commentText);
+            _order = await Orders.GetByIdAsync(_order!.Id);
+        }
+        _commentItem = null;
+    }
+
+    private async Task SendToKitchen()
+    {
+        if (_order is null) return;
+        await Orders.SendToKitchenAsync(_order.Id);
+        _order = await Orders.GetByIdAsync(_order.Id);
+    }
+
+    private async Task Checkout(PaymentMethod method)
+    {
+        if (_order is null) return;
+        await Orders.CheckoutAsync(_order.Id, method);
+        _order = null;
+        await LoadTables();
+    }
+
+    // ---- Split payment ----
+    private void OpenPayment()
+    {
+        if (_order is null) return;
+        _payments.Clear();
+        _payMethod = PaymentMethod.Cash;
+        _payAmount = _order.Total;
+        _splitCount = 2;
+        _paying = true;
+    }
+
+    private void AddPayment()
+    {
+        if (_payAmount <= 0) return;
+        _payments.Add(new PaymentInput(_payAmount, _payMethod));
+        _payAmount = Math.Max(0, Remaining);
+    }
+
+    private void RemovePayment(PaymentInput p)
+    {
+        _payments.Remove(p);
+        _payAmount = Math.Max(0, Remaining);
+    }
+
+    private void RestIn(PaymentMethod method)
+    {
+        if (Remaining > 0) { _payments.Add(new PaymentInput(Remaining, method)); _payAmount = 0; }
+    }
+
+    private void SplitEqually()
+    {
+        if (_order is null || _splitCount < 2) return;
+        _payments.Clear();
+        var each = Math.Round(_order.Total / _splitCount, 2);
+        for (var i = 0; i < _splitCount; i++)
+        {
+            var amount = i == _splitCount - 1 ? _order.Total - each * (_splitCount - 1) : each;
+            _payments.Add(new PaymentInput(amount, PaymentMethod.Cash));
+        }
+        _payAmount = 0;
+    }
+
+    private async Task FinalizePayment()
+    {
+        if (_order is null) return;
+        await Orders.CheckoutAsync(_order.Id, _payments.ToList());
+        _paying = false;
+        _order = null;
+        await LoadTables();
+    }
+
+    private static string MethodIcon(PaymentMethod m) => m switch
+    {
+        PaymentMethod.Cash => "💵",
+        PaymentMethod.Card => "💳",
+        _ => "🧾"
+    };
+
+    private static string OrderStatusLabel(OrderStatus s) => Loc.T(s switch
+    {
+        OrderStatus.Open => "Open",
+        OrderStatus.Sent => "Sent",
+        OrderStatus.InPreparation => "Cooking",
+        OrderStatus.Ready => "Ready",
+        OrderStatus.Delivered => "Delivered",
+        _ => s.ToString()
+    });
+
+    private static string ItemStatusClass(OrderItemStatus s) => s switch
+    {
+        OrderItemStatus.Preparing => "badge--warning",
+        OrderItemStatus.Ready => "badge--success",
+        OrderItemStatus.Delivered => "badge--primary",
+        _ => ""
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_shortcuts is not null)
+        {
+            try { await _shortcuts.InvokeVoidAsync("unregister"); await _shortcuts.DisposeAsync(); }
+            catch { /* circuit already gone */ }
+        }
+        _selfRef?.Dispose();
+        if (_hub is not null) await _hub.DisposeAsync();
+    }
+}

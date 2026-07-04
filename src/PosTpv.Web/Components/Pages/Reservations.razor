@@ -1,0 +1,12 @@
+@page "/reservations"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin,Waiter,Cashier")]
+@inject NavigationManager Nav
+
+@* Reservations now live inside the Floor plan page. Keep this route as a redirect
+   so bookmarks and old links still work. *@
+<PageTitle>Reservations · PosTPV</PageTitle>
+
+@code {
+    protected override void OnInitialized() => Nav.NavigateTo("/tables", replace: true);
+}

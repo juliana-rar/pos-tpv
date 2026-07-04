@@ -1,0 +1,523 @@
+@page "/tables"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin,Waiter,Cashier")]
+@using System.Globalization
+@using FluentValidation
+@implements IAsyncDisposable
+@inject ITableService Service
+@inject IReservationService ReservationService
+@inject IValidator<TableFormDto> Validator
+@inject IValidator<ReservationFormDto> ResValidator
+@inject IJSRuntime JS
+
+<PageTitle>Tables · PosTPV</PageTitle>
+
+<div class="toolbar">
+    <h1>@Loc.T("Floor plan")</h1>
+    <span class="spacer"></span>
+    <div class="legend">
+        <span class="legend__item"><i class="dot dot--available"></i>@Loc.T("Free")</span>
+        <span class="legend__item"><i class="dot dot--occupied"></i>@Loc.T("Occupied")</span>
+        <span class="legend__item"><i class="dot dot--reserved"></i>@Loc.T("Reserved")</span>
+    </div>
+    @if (_editing)
+    {
+        <button class="btn btn--ghost" @onclick="CancelEdit">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="SaveLayout">💾 @Loc.T("Save layout")</button>
+    }
+    else if (_selecting)
+    {
+        <span class="badge badge--primary">@_selection.Count @Loc.T("selected")</span>
+        <button class="btn btn--ghost" @onclick="CancelSelect">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" disabled="@(_selection.Count < 2)" @onclick="JoinSelected">🔗 @Loc.T("Join")</button>
+    }
+    else
+    {
+        <button class="btn btn--ghost" @onclick="() => OpenForm(null)">+ @Loc.T("New table")</button>
+        <button class="btn btn--ghost" @onclick="StartSelect">🔗 @Loc.T("Join tables")</button>
+        <button class="btn btn--primary" @onclick="StartEdit">✥ @Loc.T("Edit layout")</button>
+    }
+</div>
+
+@if (_notice is not null)
+{
+    <p class="floor-notice">@_notice</p>
+}
+@if (_editing)
+{
+    <p class="floor-hint muted">@Loc.T("Drag to move · corner handle to resize · top handle to rotate · ◻ to change shape · 🔒 to lock. Changes are saved when you press") <strong>@Loc.T("Save layout")</strong>.</p>
+}
+else if (_selecting)
+{
+    <p class="floor-hint muted">@Loc.T("Tap two or more free tables to join them into one group that shares a single bill.")</p>
+}
+else if (_assignReservationId is not null)
+{
+    <p class="floor-hint floor-hint--assign">@Loc.T("Click a table on the plan to assign the reservation of") <strong>@_assignName</strong>.
+        <button class="btn btn--ghost btn--sm" @onclick="CancelAssign">@Loc.T("Cancel")</button></p>
+}
+
+<div class="floor-layout floor-layout--split">
+    <div class="floor card @(_editing ? "floor--edit" : "") @(_selecting ? "floor--select" : "") @(_assignReservationId is not null ? "floor--assign" : "")" @ref="_floorEl">
+        @foreach (var t in _tables)
+        {
+            <div class="@TableClass(t)"
+                 data-id="@t.Id"
+                 data-x="@N(t.PositionX)" data-y="@N(t.PositionY)"
+                 data-w="@N(t.Width)" data-h="@N(t.Height)" data-rot="@N(t.Rotation)"
+                 data-locked="@(t.IsLocked ? "true" : "false")"
+                 data-shape="@((int)t.Shape)"
+                 style="@TableStyle(t)"
+                 @onclick="() => OnTableClick(t)" title="@t.Name">
+                <span class="tbl__name">@t.Name</span>
+                <span class="tbl__seats">@t.Seats👤</span>
+                @if (t.ActiveOrderId is not null && (t.GroupId is null || IsGroupAnchor(t)))
+                {
+                    <span class="tbl__total">@t.ActiveOrderTotal.ToString("C")</span>
+                }
+                @if (!_editing && _resByTable.TryGetValue(t.Id, out var rv))
+                {
+                    <span class="tbl__resv" title="@rv.CustomerName">📅 @rv.Time.ToString("HH:mm")</span>
+                }
+                @if (t.GroupId is not null && IsGroupAnchor(t))
+                {
+                    <span class="tbl__group" style="--grp:@GroupColor(t.GroupId.Value)">🔗 @Loc.T("Joined") · @GroupSeats(t.GroupId.Value)👤</span>
+                }
+                @if (_editing)
+                {
+                    <button class="tbl__lock" type="button" title="@Loc.T("Lock / unlock")">@(t.IsLocked ? "🔒" : "🔓")</button>
+                    <button class="tbl__shape" type="button" title="@Loc.T("Change shape")">@ShapeIcon(t.Shape)</button>
+                    <span class="tbl__handle tbl__handle--rotate" title="@Loc.T("Rotate")"></span>
+                    <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
+                }
+            </div>
+        }
+        @if (_tables.Count == 0) { <p class="empty">@Loc.T("No tables yet. Create one to start.")</p> }
+    </div>
+
+        <aside class="resv card @(_resCollapsed ? "resv--collapsed" : "")">
+            @if (_resCollapsed)
+            {
+                <button class="resv__rail" @onclick="ToggleCollapse" title="@Loc.T("Show reservations")">
+                    <span class="resv__rail-icon">📅</span>
+                    <span class="resv__rail-label">@Loc.T("Reservations")</span>
+                    @if (_reservations.Count > 0) { <span class="resv__rail-count">@_reservations.Count</span> }
+                </button>
+            }
+            else
+            {
+            <div class="resv__head">
+                <h2>📅 @Loc.T("Reservations")</h2>
+                <span class="spacer"></span>
+                <button class="btn btn--ghost btn--sm" title="@Loc.T("Collapse")" @onclick="ToggleCollapse">»</button>
+            </div>
+
+            <div class="resv__toolbar">
+                <input type="date" class="input" @bind="_reserveDate" @bind:after="LoadReservations" />
+                <button class="btn btn--primary btn--sm" @onclick="() => OpenResForm(null)">+ @Loc.T("New")</button>
+            </div>
+
+            @if (_assignReservationId is not null)
+            {
+                <div class="resv__assigning">
+                    🪑 @Loc.T("Pick a table on the plan…")
+                    <button class="btn btn--ghost btn--sm" @onclick="CancelAssign">@Loc.T("Cancel")</button>
+                </div>
+            }
+
+            <div class="resv__list">
+                @foreach (var r in _reservations)
+                {
+                    <div class="resv-card @(_assignReservationId == r.Id ? "resv-card--active" : "")" style="border-left:4px solid @r.Color">
+                        <div class="resv-card__top">
+                            <strong>@r.Time.ToString("HH:mm")</strong>
+                            <span class="resv-card__name">@r.CustomerName</span>
+                            <span class="spacer"></span>
+                            <span class="badge @StatusClass(r.Status)">@Loc.T(r.Status.ToString())</span>
+                        </div>
+                        <div class="resv-card__meta muted">
+                            👥 @r.PartySize · @(r.TableName is not null ? $"🪑 {r.TableName}" : Loc.T("Unassigned"))
+                        </div>
+                        <div class="resv-card__actions">
+                            <button class="btn btn--ghost btn--sm" @onclick="() => StartAssign(r)">🪑 @(r.TableId is null ? Loc.T("Assign") : Loc.T("Reassign"))</button>
+                            @if (r.TableId is not null)
+                            {
+                                <button class="btn btn--ghost btn--sm" @onclick="() => Unassign(r.Id)">@Loc.T("Unassign")</button>
+                            }
+                            <button class="btn btn--ghost btn--sm" @onclick="() => OpenResForm(r.Id)">@Loc.T("Edit")</button>
+                        </div>
+                    </div>
+                }
+                @if (_reservations.Count == 0) { <p class="empty">@Loc.T("No reservations for this day.")</p> }
+            </div>
+            }
+        </aside>
+</div>
+
+<Modal Visible="_form is not null" Title="@(_form?.Id > 0 ? Loc.T("Edit table") : Loc.T("New table"))" OnClose="Close">
+    <ChildContent>
+        @if (_form is not null)
+        {
+            <div class="field"><label>@Loc.T("Name")</label><input class="input" @bind="_form.Name" /></div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Seats")</label><input type="number" class="input" @bind="_form.Seats" /></div>
+                <div class="field"><label>@Loc.T("Shape")</label>
+                    <select class="select" @bind="_form.Shape">
+                        @foreach (var s in Enum.GetValues<TableShape>())
+                        {
+                            <option value="@s">@Loc.T(s.ToString())</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            @if (_groupMembers.Count > 0)
+            {
+                <div class="join-info">
+                    <span class="badge badge--primary">🔗 @Loc.T("Joined")</span>
+                    @Loc.T("Shares a bill with:") <strong>@string.Join(", ", _groupMembers)</strong>
+                </div>
+            }
+            @if (_error is not null) { <div class="field-error">@_error</div> }
+        }
+    </ChildContent>
+    <Footer>
+        @if (_form?.Id > 0)
+        {
+            <button class="btn btn--danger" @onclick="() => Delete(_form!.Id)">@Loc.T("Delete")</button>
+        }
+        @if (_groupMembers.Count > 0)
+        {
+            <button class="btn btn--ghost" @onclick="() => SeparateGroup(_form!.Id)">🔗 @Loc.T("Separate")</button>
+        }
+        <span class="spacer"></span>
+        <button class="btn btn--ghost" @onclick="Close">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="Save">@Loc.T("Save")</button>
+    </Footer>
+</Modal>
+
+<Modal Visible="_resForm is not null" Title="@(_resForm?.Id > 0 ? Loc.T("Edit reservation") : Loc.T("New reservation"))" OnClose="CloseResForm">
+    <ChildContent>
+        @if (_resForm is not null)
+        {
+            <div class="field"><label>@Loc.T("Customer name")</label><input class="input" @bind="_resForm.CustomerName" /></div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Phone")</label><input class="input" @bind="_resForm.Phone" /></div>
+                <div class="field"><label>@Loc.T("Party size")</label><input type="number" class="input" @bind="_resForm.PartySize" /></div>
+            </div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Date")</label><input type="date" class="input" @bind="_resForm.Date" /></div>
+                <div class="field"><label>@Loc.T("Time")</label><input type="time" class="input" @bind="_resForm.Time" /></div>
+            </div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Duration (min)")</label><input type="number" class="input" @bind="_resForm.DurationMinutes" /></div>
+                <div class="field"><label>@Loc.T("Table")</label>
+                    <select class="select" @bind="_resForm.TableId">
+                        <option value="">@Loc.T("— none —")</option>
+                        @foreach (var t in _tables)
+                        {
+                            <option value="@t.Id">@t.Name (@t.Seats)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Colour")</label><input type="color" class="input" @bind="_resForm.Color" /></div>
+                <div class="field"><label>@Loc.T("Status")</label>
+                    <select class="select" @bind="_resForm.Status">
+                        @foreach (var s in Enum.GetValues<ReservationStatus>())
+                        {
+                            <option value="@s">@Loc.T(s.ToString())</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="field"><label>@Loc.T("Comments")</label><textarea class="input" rows="2" @bind="_resForm.Comments"></textarea></div>
+            @if (_resError is not null) { <div class="field-error">@_resError</div> }
+        }
+    </ChildContent>
+    <Footer>
+        @if (_resForm?.Id > 0)
+        {
+            <button class="btn btn--danger" @onclick="() => DeleteRes(_resForm!.Id)">@Loc.T("Delete")</button>
+        }
+        <span class="spacer"></span>
+        <button class="btn btn--ghost" @onclick="CloseResForm">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="SaveRes">@Loc.T("Save")</button>
+    </Footer>
+</Modal>
+
+@code {
+    private static readonly string[] GroupColors = { "#8b5cf6", "#0ea5e9", "#f59e0b", "#ec4899", "#10b981", "#f43f5e" };
+
+    private List<TableDto> _tables = new();
+    private TableFormDto? _form;
+    private List<string> _groupMembers = new();
+    private string? _error;
+    private string? _notice;
+
+    private bool _editing;
+    private bool _selecting;
+    private readonly HashSet<int> _selection = new();
+
+    // ---- Reservations panel state ----
+    // The panel is always docked on the right; it can be collapsed to a thin rail (open by default).
+    private bool _resCollapsed;
+    private DateTime _reserveDate = DateTime.Today;
+    private List<ReservationDto> _reservations = new();
+    private Dictionary<int, ReservationDto> _resByTable = new();
+    private int? _assignReservationId;
+    private string? _assignName;
+    private ReservationFormDto? _resForm;
+    private string? _resError;
+
+    private bool _suppressRender;   // while true, JS owns the DOM; Blazor must not re-render the floor
+    private ElementReference _floorEl;
+    private IJSObjectReference? _module;
+
+    // Numbers must be invariant so CSS/px values never use a comma decimal separator.
+    private static string N(double d) => d.ToString(CultureInfo.InvariantCulture);
+    private static string GroupColor(int gid) => GroupColors[Math.Abs(gid) % GroupColors.Length];
+
+    // The anchor is the left-most (then top-most) member — it carries the group's badge and total.
+    private bool IsGroupAnchor(TableDto t) =>
+        t.GroupId is not null &&
+        !_tables.Any(o => o.GroupId == t.GroupId &&
+                          (o.PositionX < t.PositionX ||
+                           (o.PositionX == t.PositionX && o.PositionY < t.PositionY)));
+
+    private int GroupSeats(int gid) => _tables.Where(t => t.GroupId == gid).Sum(t => t.Seats);
+
+    private string TableClass(TableDto t)
+    {
+        var c = $"tbl tbl--{t.Shape.ToString().ToLower()} tbl--{t.Status.ToString().ToLower()}";
+        if (t.IsLocked) c += " tbl--locked";
+        if (t.GroupId is not null) c += " tbl--grouped";
+        if (_selecting && _selection.Contains(t.Id)) c += " tbl--selected";
+        return c;
+    }
+
+    // Icons mirror SHAPE_ICONS in floorplan.js so the button looks identical before and after a JS cycle.
+    private static string ShapeIcon(TableShape shape) => shape switch
+    {
+        TableShape.Round => "○",
+        TableShape.Rectangular => "▭",
+        TableShape.Oval => "⬭",
+        _ => "◻"
+    };
+
+    private string TableStyle(TableDto t)
+    {
+        var s = $"left:{N(t.PositionX)}px; top:{N(t.PositionY)}px; width:{N(t.Width)}px; height:{N(t.Height)}px; transform:rotate({N(t.Rotation)}deg)";
+        if (t.GroupId is not null) s += $"; --grp:{GroupColor(t.GroupId.Value)}";
+        return s;
+    }
+
+    protected override bool ShouldRender() => !_suppressRender;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+        await LoadReservations();
+    }
+
+    private async Task Load() => _tables = await Service.GetAllAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_editing && _module is null && RendererInfo.IsInteractive)
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/floorplan.js");
+            await _module.InvokeVoidAsync("init", _floorEl);
+            _suppressRender = true;
+        }
+    }
+
+    // ---- Layout editing (drag / resize / rotate) ----
+    private void StartEdit() { CancelAssign(); _editing = true; }
+
+    private async Task SaveLayout()
+    {
+        _suppressRender = false;
+        if (_module is not null)
+        {
+            var layout = await _module.InvokeAsync<TableLayoutDto[]>("getLayout");
+            await Service.SaveLayoutAsync(layout);
+            await _module.InvokeVoidAsync("dispose");
+            await _module.DisposeAsync();
+            _module = null;
+        }
+        _editing = false;
+        await Load();
+    }
+
+    private async Task CancelEdit()
+    {
+        _suppressRender = false;
+        if (_module is not null)
+        {
+            await _module.InvokeVoidAsync("dispose");
+            await _module.DisposeAsync();
+            _module = null;
+        }
+        _editing = false;
+        await Load();
+    }
+
+    // ---- Join / separate ----
+    private void StartSelect() { CancelAssign(); _selecting = true; _selection.Clear(); _notice = null; }
+    private void CancelSelect() { _selecting = false; _selection.Clear(); }
+
+    private async Task JoinSelected()
+    {
+        try
+        {
+            await Service.JoinTablesAsync(_selection);
+            _notice = $"{_selection.Count} {Loc.T("tables joined.")}";
+        }
+        catch (InvalidOperationException ex) { _notice = ex.Message; }
+        _selecting = false;
+        _selection.Clear();
+        await Load();
+    }
+
+    private async Task SeparateGroup(int tableId)
+    {
+        try { await Service.SeparateGroupAsync(tableId); }
+        catch (InvalidOperationException ex) { _error = ex.Message; return; }
+        _form = null;
+        _groupMembers = new();
+        await Load();
+    }
+
+    // ---- Reservations panel ----
+    private void ToggleCollapse() => _resCollapsed = !_resCollapsed;
+
+    private async Task LoadReservations()
+    {
+        _reservations = await ReservationService.GetByDateAsync(_reserveDate);
+        _resByTable = _reservations
+            .Where(r => r.TableId is not null
+                        && r.Status != ReservationStatus.Cancelled
+                        && r.Status != ReservationStatus.Finished)
+            .GroupBy(r => r.TableId!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderBy(r => r.Time).First());
+    }
+
+    private void StartAssign(ReservationDto r) { _assignReservationId = r.Id; _assignName = r.CustomerName; }
+    private void CancelAssign() { _assignReservationId = null; _assignName = null; }
+
+    private async Task AssignToTable(int tableId)
+    {
+        if (_assignReservationId is null) return;
+        await ReservationService.AssignTableAsync(_assignReservationId.Value, tableId);
+        CancelAssign();
+        await LoadReservations();
+        await Load();
+    }
+
+    private async Task Unassign(int reservationId)
+    {
+        await ReservationService.AssignTableAsync(reservationId, null);
+        await LoadReservations();
+        await Load();
+    }
+
+    private async Task OpenResForm(int? id)
+    {
+        _resError = null;
+        _resForm = id is null
+            ? new ReservationFormDto { Date = _reserveDate }
+            : await ReservationService.GetForEditAsync(id.Value) ?? new ReservationFormDto();
+    }
+
+    private void CloseResForm() => _resForm = null;
+
+    private async Task SaveRes()
+    {
+        if (_resForm is null) return;
+        var result = await ResValidator.ValidateAsync(_resForm);
+        if (!result.IsValid) { _resError = result.Errors[0].ErrorMessage; return; }
+
+        if (_resForm.Id > 0) await ReservationService.UpdateAsync(_resForm);
+        else await ReservationService.CreateAsync(_resForm);
+
+        _resForm = null;
+        await LoadReservations();
+        await Load();
+    }
+
+    private async Task DeleteRes(int id)
+    {
+        await ReservationService.DeleteAsync(id);
+        _resForm = null;
+        await LoadReservations();
+        await Load();
+    }
+
+    private static string StatusClass(ReservationStatus s) => s switch
+    {
+        ReservationStatus.Confirmed => "badge--primary",
+        ReservationStatus.Seated => "badge--warning",
+        ReservationStatus.Finished => "badge--success",
+        ReservationStatus.Cancelled => "badge--danger",
+        _ => ""
+    };
+
+    // ---- Table click routing ----
+    private async Task OnTableClick(TableDto t)
+    {
+        if (_editing) return;   // in edit mode a click is a drag (JS owns it)
+        if (_selecting)
+        {
+            if (!_selection.Add(t.Id)) _selection.Remove(t.Id);
+            return;
+        }
+        if (_assignReservationId is not null) { await AssignToTable(t.Id); return; }
+        OpenForm(t.Id);
+    }
+
+    private void OpenForm(int? id)
+    {
+        _error = null;
+        if (id is null) { _form = new TableFormDto(); _groupMembers = new(); return; }
+
+        var t = _tables.First(x => x.Id == id);
+        _form = new TableFormDto { Id = t.Id, Name = t.Name, Seats = t.Seats, Shape = t.Shape };
+        _groupMembers = t.GroupId is null
+            ? new()
+            : _tables.Where(x => x.GroupId == t.GroupId && x.Id != t.Id).Select(x => x.Name).ToList();
+    }
+
+    private void Close() { _form = null; _groupMembers = new(); }
+
+    private async Task Save()
+    {
+        if (_form is null) return;
+        var result = await Validator.ValidateAsync(_form);
+        if (!result.IsValid) { _error = result.Errors[0].ErrorMessage; return; }
+
+        if (_form.Id > 0) await Service.UpdateInfoAsync(_form);
+        else await Service.CreateAsync(_form);
+
+        _form = null;
+        _groupMembers = new();
+        await Load();
+    }
+
+    private async Task Delete(int id)
+    {
+        try { await Service.DeleteAsync(id); }
+        catch (InvalidOperationException ex) { _error = ex.Message; return; }
+        _form = null;
+        _groupMembers = new();
+        await Load();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is not null)
+        {
+            try { await _module.DisposeAsync(); } catch { /* circuit already gone */ }
+        }
+    }
+}
