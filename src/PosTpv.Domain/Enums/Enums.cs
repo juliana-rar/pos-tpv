@@ -68,6 +68,20 @@ public enum CategoryKind
     Drink = 1
 }
 
+/// <summary>
+/// Meal course a food category belongs to. Drives the block a line is shown under on the
+/// order screen (drinks are grouped separately via <see cref="CategoryKind.Drink"/>).
+/// </summary>
+public enum CourseType
+{
+    /// <summary>First course — starters/entrantes.</summary>
+    Starter = 0,
+    /// <summary>Second course — mains/segundos (the default for food).</summary>
+    Main = 1,
+    /// <summary>Desserts/postres.</summary>
+    Dessert = 2
+}
+
 /// <summary>Supported payment methods.</summary>
 public enum PaymentMethod
 {

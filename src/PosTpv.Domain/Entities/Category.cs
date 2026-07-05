@@ -11,6 +11,9 @@ public class Category : BaseEntity
     /// <summary>Whether this category is prepared in the kitchen (food) or at the bar (drink).</summary>
     public CategoryKind Kind { get; set; } = CategoryKind.Food;
 
+    /// <summary>Meal course this category maps to on the order screen (ignored for drinks).</summary>
+    public CourseType Course { get; set; } = CourseType.Main;
+
     public string? Icon { get; set; }
     public string Color { get; set; } = "#6366f1";
     public string? ImageUrl { get; set; }

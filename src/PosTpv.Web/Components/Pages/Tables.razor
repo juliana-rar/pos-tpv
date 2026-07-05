@@ -23,19 +23,19 @@
     @if (_editing)
     {
         <button class="btn btn--ghost" @onclick="CancelEdit">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" @onclick="SaveLayout">💾 @Loc.T("Save layout")</button>
+        <button class="btn btn--primary" @onclick="SaveLayout"><LucideIcon Name="save" Size="16" />@Loc.T("Save layout")</button>
     }
     else if (_selecting)
     {
         <span class="badge badge--primary">@_selection.Count @Loc.T("selected")</span>
         <button class="btn btn--ghost" @onclick="CancelSelect">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" disabled="@(_selection.Count < 2)" @onclick="JoinSelected">🔗 @Loc.T("Join")</button>
+        <button class="btn btn--primary" disabled="@(_selection.Count < 2)" @onclick="JoinSelected"><LucideIcon Name="link" Size="16" />@Loc.T("Join")</button>
     }
     else
     {
         <button class="btn btn--ghost" @onclick="() => OpenForm(null)">+ @Loc.T("New table")</button>
-        <button class="btn btn--ghost" @onclick="StartSelect">🔗 @Loc.T("Join tables")</button>
-        <button class="btn btn--primary" @onclick="StartEdit">✥ @Loc.T("Edit layout")</button>
+        <button class="btn btn--ghost" @onclick="StartSelect"><LucideIcon Name="link" Size="16" />@Loc.T("Join tables")</button>
+        <button class="btn btn--primary" @onclick="StartEdit"><LucideIcon Name="move" Size="16" />@Loc.T("Edit layout")</button>
     }
 </div>
 
@@ -69,23 +69,25 @@ else if (_assignReservationId is not null)
                  data-shape="@((int)t.Shape)"
                  style="@TableStyle(t)"
                  @onclick="() => OnTableClick(t)" title="@t.Name">
-                <span class="tbl__name">@t.Name</span>
-                <span class="tbl__seats">@t.Seats👤</span>
-                @if (t.ActiveOrderId is not null && (t.GroupId is null || IsGroupAnchor(t)))
-                {
-                    <span class="tbl__total">@t.ActiveOrderTotal.ToString("C")</span>
-                }
+                <div class="tbl__content">
+                    <span class="tbl__name">@t.Name</span>
+                    <span class="tbl__seats">@t.Seats<LucideIcon Name="user" Size="12" /></span>
+                    @if (t.ActiveOrderId is not null && (t.GroupId is null || IsGroupAnchor(t)))
+                    {
+                        <span class="tbl__total">@t.ActiveOrderTotal.ToString("C")</span>
+                    }
+                </div>
                 @if (!_editing && _resByTable.TryGetValue(t.Id, out var rv))
                 {
-                    <span class="tbl__resv" title="@rv.CustomerName">📅 @rv.Time.ToString("HH:mm")</span>
+                    <span class="tbl__resv" title="@rv.CustomerName"><LucideIcon Name="calendar" Size="14" /> @rv.Time.ToString("HH:mm")</span>
                 }
                 @if (t.GroupId is not null && IsGroupAnchor(t))
                 {
-                    <span class="tbl__group" style="--grp:@GroupColor(t.GroupId.Value)">🔗 @Loc.T("Joined") · @GroupSeats(t.GroupId.Value)👤</span>
+                    <span class="tbl__group" style="--grp:@GroupColor(t.GroupId.Value)"><LucideIcon Name="link" Size="14" /> @Loc.T("Joined") · @GroupSeats(t.GroupId.Value)<LucideIcon Name="user" Size="12" /></span>
                 }
                 @if (_editing)
                 {
-                    <button class="tbl__lock" type="button" title="@Loc.T("Lock / unlock")">@(t.IsLocked ? "🔒" : "🔓")</button>
+                    <button class="tbl__lock" type="button" title="@Loc.T("Lock / unlock")"><LucideIcon Name="@(t.IsLocked ? "lock" : "lock-open")" Size="14" /></button>
                     <button class="tbl__shape" type="button" title="@Loc.T("Change shape")">@ShapeIcon(t.Shape)</button>
                     <span class="tbl__handle tbl__handle--rotate" title="@Loc.T("Rotate")"></span>
                     <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
@@ -99,7 +101,7 @@ else if (_assignReservationId is not null)
             @if (_resCollapsed)
             {
                 <button class="resv__rail" @onclick="ToggleCollapse" title="@Loc.T("Show reservations")">
-                    <span class="resv__rail-icon">📅</span>
+                    <span class="resv__rail-icon"><LucideIcon Name="calendar" Size="18" /></span>
                     <span class="resv__rail-label">@Loc.T("Reservations")</span>
                     @if (_reservations.Count > 0) { <span class="resv__rail-count">@_reservations.Count</span> }
                 </button>
@@ -107,7 +109,7 @@ else if (_assignReservationId is not null)
             else
             {
             <div class="resv__head">
-                <h2>📅 @Loc.T("Reservations")</h2>
+                <h2><LucideIcon Name="calendar" Size="14" /> @Loc.T("Reservations")</h2>
                 <span class="spacer"></span>
                 <button class="btn btn--ghost btn--sm" title="@Loc.T("Collapse")" @onclick="ToggleCollapse">»</button>
             </div>
@@ -120,7 +122,7 @@ else if (_assignReservationId is not null)
             @if (_assignReservationId is not null)
             {
                 <div class="resv__assigning">
-                    🪑 @Loc.T("Pick a table on the plan…")
+                    <LucideIcon Name="armchair" Size="14" /> @Loc.T("Pick a table on the plan…")
                     <button class="btn btn--ghost btn--sm" @onclick="CancelAssign">@Loc.T("Cancel")</button>
                 </div>
             }
@@ -136,10 +138,17 @@ else if (_assignReservationId is not null)
                             <span class="badge @StatusClass(r.Status)">@Loc.T(r.Status.ToString())</span>
                         </div>
                         <div class="resv-card__meta muted">
-                            👥 @r.PartySize · @(r.TableName is not null ? $"🪑 {r.TableName}" : Loc.T("Unassigned"))
+                            <LucideIcon Name="users" Size="14" /> @r.PartySize · @if (r.TableName is not null)
+                            {
+                                <LucideIcon Name="armchair" Size="14" /><text> @r.TableName</text>
+                            }
+                            else
+                            {
+                                @Loc.T("Unassigned")
+                            }
                         </div>
                         <div class="resv-card__actions">
-                            <button class="btn btn--ghost btn--sm" @onclick="() => StartAssign(r)">🪑 @(r.TableId is null ? Loc.T("Assign") : Loc.T("Reassign"))</button>
+                            <button class="btn btn--ghost btn--sm" @onclick="() => StartAssign(r)"><LucideIcon Name="armchair" Size="16" />@(r.TableId is null ? Loc.T("Assign") : Loc.T("Reassign"))</button>
                             @if (r.TableId is not null)
                             {
                                 <button class="btn btn--ghost btn--sm" @onclick="() => Unassign(r.Id)">@Loc.T("Unassign")</button>
@@ -173,7 +182,7 @@ else if (_assignReservationId is not null)
             @if (_groupMembers.Count > 0)
             {
                 <div class="join-info">
-                    <span class="badge badge--primary">🔗 @Loc.T("Joined")</span>
+                    <span class="badge badge--primary"><LucideIcon Name="link" Size="14" /> @Loc.T("Joined")</span>
                     @Loc.T("Shares a bill with:") <strong>@string.Join(", ", _groupMembers)</strong>
                 </div>
             }
@@ -187,7 +196,7 @@ else if (_assignReservationId is not null)
         }
         @if (_groupMembers.Count > 0)
         {
-            <button class="btn btn--ghost" @onclick="() => SeparateGroup(_form!.Id)">🔗 @Loc.T("Separate")</button>
+            <button class="btn btn--ghost" @onclick="() => SeparateGroup(_form!.Id)"><LucideIcon Name="link" Size="16" />@Loc.T("Separate")</button>
         }
         <span class="spacer"></span>
         <button class="btn btn--ghost" @onclick="Close">@Loc.T("Cancel")</button>
@@ -307,7 +316,7 @@ else if (_assignReservationId is not null)
 
     private string TableStyle(TableDto t)
     {
-        var s = $"left:{N(t.PositionX)}px; top:{N(t.PositionY)}px; width:{N(t.Width)}px; height:{N(t.Height)}px; transform:rotate({N(t.Rotation)}deg)";
+        var s = $"left:{N(t.PositionX)}px; top:{N(t.PositionY)}px; width:{N(t.Width)}px; height:{N(t.Height)}px; transform:rotate({N(t.Rotation)}deg); --rot:{N(t.Rotation)}deg";
         if (t.GroupId is not null) s += $"; --grp:{GroupColor(t.GroupId.Value)}";
         return s;
     }

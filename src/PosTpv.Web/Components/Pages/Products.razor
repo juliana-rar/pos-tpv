@@ -19,7 +19,7 @@
 
         @if (_notice is not null)
         {
-            <div class="catalog__notice" @onclick="() => _notice = null">@_notice ✕</div>
+            <div class="catalog__notice" @onclick="() => _notice = null">@_notice <LucideIcon Name="x" Size="14" /></div>
         }
 
         <div class="catalog__cats-list">
@@ -39,15 +39,15 @@
                     </div>
                     <div class="catRow__actions" @onclick:stopPropagation="true">
                         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
-                                disabled="@(i == 0)" @onclick="() => MoveCategory(c.Id, -1)">▲</button>
+                                disabled="@(i == 0)" @onclick="() => MoveCategory(c.Id, -1)"><LucideIcon Name="chevron-up" Size="16" /></button>
                         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
-                                disabled="@(i == _categories.Count - 1)" @onclick="() => MoveCategory(c.Id, 1)">▼</button>
+                                disabled="@(i == _categories.Count - 1)" @onclick="() => MoveCategory(c.Id, 1)"><LucideIcon Name="chevron-down" Size="16" /></button>
                         <button class="btn btn--icon btn--ghost btn--sm" title="@(c.IsVisible ? Loc.T("Hide") : Loc.T("Show"))"
-                                @onclick="() => ToggleCategoryVisibility(c)">@(c.IsVisible ? "🙈" : "👁")</button>
+                                @onclick="() => ToggleCategoryVisibility(c)"><LucideIcon Name="@(c.IsVisible ? "eye-off" : "eye")" Size="16" /></button>
                         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")"
-                                @onclick="() => OpenCategoryForm(c.Id)">✏️</button>
+                                @onclick="() => OpenCategoryForm(c.Id)"><LucideIcon Name="pencil" Size="16" /></button>
                         <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")"
-                                @onclick="() => DeleteCategory(c)">🗑</button>
+                                @onclick="() => DeleteCategory(c)"><LucideIcon Name="trash-2" Size="16" /></button>
                     </div>
                 </div>
             }
@@ -91,9 +91,9 @@
                             </label>
                             <span class="spacer"></span>
                             <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
-                                    disabled="@(!string.IsNullOrWhiteSpace(_search) || i == 0)" @onclick="() => MoveProduct(p.Id, -1)">▲</button>
+                                    disabled="@(!string.IsNullOrWhiteSpace(_search) || i == 0)" @onclick="() => MoveProduct(p.Id, -1)"><LucideIcon Name="chevron-up" Size="16" /></button>
                             <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
-                                    disabled="@(!string.IsNullOrWhiteSpace(_search) || i == Filtered.Count - 1)" @onclick="() => MoveProduct(p.Id, 1)">▼</button>
+                                    disabled="@(!string.IsNullOrWhiteSpace(_search) || i == Filtered.Count - 1)" @onclick="() => MoveProduct(p.Id, 1)"><LucideIcon Name="chevron-down" Size="16" /></button>
                         </div>
                         <div class="mgmt-card__actions">
                             <button class="btn btn--ghost btn--sm" @onclick="() => OpenProductForm(p.Id)">@Loc.T("Edit")</button>
@@ -160,6 +160,15 @@
             <div class="row-2">
                 <div class="field"><label>@Loc.T("Icon (emoji)")</label><input class="input" @bind="_category.Icon" /></div>
                 <div class="field"><label>@Loc.T("Colour")</label><input type="color" class="input" @bind="_category.Color" /></div>
+            </div>
+            <div class="field">
+                <label>@Loc.T("Course")</label>
+                <select class="input" @bind="_category.Course">
+                    @foreach (var course in Enum.GetValues<CourseType>())
+                    {
+                        <option value="@course">@Loc.T(CourseLabel(course))</option>
+                    }
+                </select>
             </div>
             <div class="row-2">
                 <div class="field"><label>@Loc.T("Display order")</label><input type="number" class="input" @bind="_category.DisplayOrder" /></div>
@@ -255,6 +264,14 @@
     }
 
     private void CloseCategory() => _category = null;
+
+    // Localisation key for a course, shared with the /orders block headers.
+    private static string CourseLabel(CourseType course) => course switch
+    {
+        CourseType.Starter => "First course",
+        CourseType.Dessert => "Desserts",
+        _ => "Second course"
+    };
 
     private async Task SaveCategory()
     {

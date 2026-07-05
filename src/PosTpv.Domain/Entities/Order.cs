@@ -12,6 +12,12 @@ public class Order : BaseEntity
     public DateTime? ClosedAt { get; set; }
 
     /// <summary>
+    /// Set when the waiter "fires the first courses" for this table, signalling the kitchen to
+    /// start the starters. Cleared (back to null) once the kitchen acknowledges it.
+    /// </summary>
+    public DateTime? FirstsFiredAt { get; set; }
+
+    /// <summary>
     /// Set when the waiter "fires the second courses" for this table, signalling the kitchen to
     /// start the mains. Cleared (back to null) once the kitchen acknowledges it.
     /// </summary>

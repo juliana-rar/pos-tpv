@@ -1,42 +1,42 @@
 @* Role-aware side navigation. Links appear only for roles that may use them. *@
 <aside class="nav">
     <div class="nav__brand">
-        <span class="nav__logo">🍕</span>
+        <span class="nav__logo"><LucideIcon Name="pizza" Size="22" /></span>
         <span class="nav__title">Pos<strong>TPV</strong></span>
     </div>
 
     <nav class="nav__links">
         <NavLink class="nav__link" href="/" Match="NavLinkMatch.All">
-            <span class="nav__icon">🏠</span> <span class="nav__text">@Loc.T("Home")</span>
+            <span class="nav__icon"><LucideIcon Name="home" Size="18" /></span> <span class="nav__text">@Loc.T("Home")</span>
         </NavLink>
 
         <NavLink class="nav__link" href="/dashboard">
-            <span class="nav__icon">📊</span> <span class="nav__text">@Loc.T("Dashboard")</span>
+            <span class="nav__icon"><LucideIcon Name="layout-dashboard" Size="18" /></span> <span class="nav__text">@Loc.T("Dashboard")</span>
         </NavLink>
 
         <AuthorizeView Roles="Admin,Waiter,Cashier" Context="a">
-            <NavLink class="nav__link" href="/pos"><span class="nav__icon">🧾</span> <span class="nav__text">@Loc.T("Point of Sale")</span></NavLink>
+            <NavLink class="nav__link" href="/pos"><span class="nav__icon"><LucideIcon Name="shopping-cart" Size="18" /></span> <span class="nav__text">@Loc.T("Point of Sale")</span></NavLink>
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin,Waiter,Cashier" Context="a">
-            <NavLink class="nav__link" href="/orders"><span class="nav__icon">📋</span> <span class="nav__text">@Loc.T("Orders")</span></NavLink>
+            <NavLink class="nav__link" href="/orders"><span class="nav__icon"><LucideIcon Name="clipboard-list" Size="18" /></span> <span class="nav__text">@Loc.T("Orders")</span></NavLink>
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin,Waiter,Cashier" Context="a">
-            <NavLink class="nav__link" href="/tables"><span class="nav__icon">🪑</span> <span class="nav__text">@Loc.T("Tables")</span></NavLink>
+            <NavLink class="nav__link" href="/tables"><span class="nav__icon"><LucideIcon Name="armchair" Size="18" /></span> <span class="nav__text">@Loc.T("Tables")</span></NavLink>
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin,Kitchen" Context="a">
-            <NavLink class="nav__link" href="/kitchen"><span class="nav__icon">👨‍🍳</span> <span class="nav__text">@Loc.T("Kitchen")</span></NavLink>
+            <NavLink class="nav__link" href="/kitchen"><span class="nav__icon"><LucideIcon Name="chef-hat" Size="18" /></span> <span class="nav__text">@Loc.T("Kitchen")</span></NavLink>
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin,Cashier" Context="a">
-            <NavLink class="nav__link" href="/billing"><span class="nav__icon">💶</span> <span class="nav__text">@Loc.T("Billing")</span></NavLink>
+            <NavLink class="nav__link" href="/billing"><span class="nav__icon"><LucideIcon Name="banknote" Size="18" /></span> <span class="nav__text">@Loc.T("Billing")</span></NavLink>
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin" Context="a">
             <div class="nav__section">@Loc.T("Management")</div>
-            <NavLink class="nav__link" href="/products"><span class="nav__icon">🍔</span> <span class="nav__text">@Loc.T("Products")</span></NavLink>
+            <NavLink class="nav__link" href="/products"><span class="nav__icon"><LucideIcon Name="utensils-crossed" Size="18" /></span> <span class="nav__text">@Loc.T("Products")</span></NavLink>
         </AuthorizeView>
     </nav>
 </aside>

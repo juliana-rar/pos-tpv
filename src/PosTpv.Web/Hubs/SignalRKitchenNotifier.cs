@@ -19,6 +19,12 @@ public class SignalRKitchenNotifier : IKitchenNotifier
     public Task OrderReadyAsync(int orderId) =>
         _hub.Clients.All.SendAsync(KitchenHub.OrderReady, orderId);
 
+    public Task FirstCoursesFiredAsync(int orderId) =>
+        _hub.Clients.All.SendAsync(KitchenHub.FirstsFired, orderId);
+
     public Task SecondCoursesFiredAsync(int orderId) =>
         _hub.Clients.All.SendAsync(KitchenHub.SecondsFired, orderId);
+
+    public Task DrinksServedAsync(int orderId) =>
+        _hub.Clients.All.SendAsync(KitchenHub.DrinksServed, orderId);
 }

@@ -40,7 +40,7 @@ public class CategoryService : ICategoryService
         return await query
             .OrderBy(c => c.DisplayOrder).ThenBy(c => c.Name)
             .Select(c => new CategoryDto(
-                c.Id, c.Name, c.Icon, c.Color, c.ImageUrl, c.DisplayOrder, c.IsVisible, c.Products.Count))
+                c.Id, c.Name, c.Icon, c.Color, c.ImageUrl, c.DisplayOrder, c.IsVisible, c.Kind, c.Products.Count))
             .ToListAsync(ct);
     }
 

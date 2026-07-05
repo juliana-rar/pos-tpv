@@ -1,6 +1,6 @@
 @* A large launcher tile used on the home hub. *@
 <a class="hub-card" href="@Href" style="--accent:@Accent">
-    <span class="hub-card__icon">@Icon</span>
+    <span class="hub-card__icon"><LucideIcon Name="@Icon" Size="26" /></span>
     <span class="hub-card__body">
         <span class="hub-card__title">@Title</span>
         <span class="hub-card__desc">@Description</span>
@@ -10,6 +10,7 @@
 
 @code {
     [Parameter, EditorRequired] public string Href { get; set; } = "";
+    /// <summary>Lucide icon name (see <see cref="LucideIcon" />).</summary>
     [Parameter, EditorRequired] public string Icon { get; set; } = "";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter] public string Description { get; set; } = "";

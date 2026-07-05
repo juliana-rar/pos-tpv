@@ -1,0 +1,165 @@
+@* One order (comanda) on the /orders screen, grouped into Drinks / First / Second / Desserts.
+   Kept as its own component so a single-order refresh re-renders only the affected card:
+   ShouldRender short-circuits unless the Order reference actually changed, and the block
+   partition is computed once per change (in OnParametersSet) rather than on every render. *@
+
+<div class="card order-card">
+    <div class="order-card__head">
+        <div>
+            <strong><LucideIcon Name="armchair" Size="16" /> @Order.TableName</strong>
+            <span class="muted"> · @Order.Number</span>
+        </div>
+        <span class="badge @StatusClass(Order.Status)">@Loc.T(Order.Status.ToString())</span>
+    </div>
+    <div class="order-card__meta muted">@Order.WaiterName · @_itemCount @Loc.T("items") · @Order.CreatedAt.ToLocalTime().ToString("HH:mm")</div>
+
+    @* ---- Drinks: a single "Serve drinks" button for the whole block ---- *@
+    @if (_drinks.Count > 0)
+    {
+        <div class="order-card__group muted"><LucideIcon Name="cup-soda" Size="15" /> @Loc.T("Drinks")</div>
+        <div class="order-card__lines">
+            @foreach (var it in _drinks)
+            {
+                <div class="order-card__line">
+                    <span>@it.Quantity× @it.ProductName</span>
+                    @if (it.Status == OrderItemStatus.Delivered)
+                    {
+                        <span class="badge badge--success">@Loc.T("Served")</span>
+                    }
+                </div>
+            }
+        </div>
+        @if (_hasPendingDrinks)
+        {
+            <button class="btn btn--ghost btn--sm order-card__serve" @onclick="OnServeDrinksClick"><LucideIcon Name="cup-soda" Size="15" />@Loc.T("Serve drinks")</button>
+        }
+    }
+
+    @* ---- Food, one block per course (only non-empty blocks are shown) ---- *@
+    @foreach (var block in _foodBlocks)
+    {
+        <div class="order-card__group muted"><LucideIcon Name="@block.Icon" Size="15" /> @Loc.T(block.Label)</div>
+        <div class="order-card__lines">
+            @foreach (var it in block.Items)
+            {
+                <div class="order-card__line">
+                    <span>@it.Quantity× @it.ProductName</span>
+                    <span>@it.LineTotal.ToString("C")</span>
+                </div>
+            }
+        </div>
+    }
+
+    @* Fire the courses to the kitchen — one button each for firsts and seconds.
+       Only shown when the order actually has that course (an all-drinks order shows neither). *@
+    @if (_hasFirsts || _hasSeconds)
+    {
+        <div class="order-card__fire">
+            @if (_hasFirsts)
+            {
+                <button class="btn btn--sm @(Order.FirstsFiredAt is null ? "btn--primary" : "btn--ghost")"
+                        disabled="@(Order.FirstsFiredAt is not null)"
+                        title="@Loc.T("Tell the kitchen to start the first courses")"
+                        @onclick="OnFireFirstsClick">
+                    <LucideIcon Name="bell" Size="14" />@(Order.FirstsFiredAt is null ? Loc.T("Fire firsts") : Loc.T("Firsts fired"))
+                </button>
+            }
+            @if (_hasSeconds)
+            {
+                <button class="btn btn--sm @(Order.SecondsFiredAt is null ? "btn--primary" : "btn--ghost")"
+                        disabled="@(Order.SecondsFiredAt is not null)"
+                        title="@Loc.T("Tell the kitchen to start the second courses")"
+                        @onclick="OnFireSecondsClick">
+                    <LucideIcon Name="bell" Size="14" />@(Order.SecondsFiredAt is null ? Loc.T("Fire seconds") : Loc.T("Seconds fired"))
+                </button>
+            }
+        </div>
+    }
+
+    <div class="order-card__foot">
+        <button class="btn btn--ghost btn--sm" @onclick="OnEditClick"><LucideIcon Name="pencil" Size="15" />@Loc.T("Edit")</button>
+        <span class="spacer"></span>
+        <strong>@Order.Total.ToString("C")</strong>
+        <button class="btn btn--success" @onclick="OnPayClick"><LucideIcon Name="credit-card" Size="16" />@Loc.T("Charge")</button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public OrderDto Order { get; set; } = default!;
+
+    /// <summary>Serve every pending drink of this order (carries the order id).</summary>
+    [Parameter] public EventCallback<int> OnServeDrinks { get; set; }
+    /// <summary>Fire the first courses for this order (carries the order id).</summary>
+    [Parameter] public EventCallback<int> OnFireFirsts { get; set; }
+    /// <summary>Fire the second courses for this order (carries the order id).</summary>
+    [Parameter] public EventCallback<int> OnFireSeconds { get; set; }
+    /// <summary>Open the editor for this order (carries the order id).</summary>
+    [Parameter] public EventCallback<int> OnEdit { get; set; }
+    /// <summary>Open the payment dialog for this order (carries the order id).</summary>
+    [Parameter] public EventCallback<int> OnPay { get; set; }
+
+    private OrderDto? _rendered;                       // last Order reference we partitioned/rendered
+    private List<OrderItemDto> _drinks = new();
+    private bool _hasPendingDrinks;
+    private bool _hasFirsts;                            // has first courses (drives the "Fire firsts" button)
+    private bool _hasSeconds;                           // has second courses (drives the "Fire seconds" button)
+    private List<FoodBlock> _foodBlocks = new();
+    private int _itemCount;
+
+    protected override void OnParametersSet()
+    {
+        // Repartition only when the order instance actually changed, not on every parent render.
+        if (!ReferenceEquals(_rendered, Order)) Repartition();
+    }
+
+    protected override bool ShouldRender()
+    {
+        if (ReferenceEquals(_rendered, Order)) return false;
+        _rendered = Order;
+        return true;
+    }
+
+    private void Repartition()
+    {
+        _itemCount = 0;
+        List<OrderItemDto> drinks = new(), starters = new(), mains = new(), desserts = new();
+        foreach (var it in Order.Items)
+        {
+            _itemCount += it.Quantity;
+            if (it.IsDrink) { drinks.Add(it); continue; }
+            switch (it.Course)
+            {
+                case CourseType.Starter: starters.Add(it); break;
+                case CourseType.Dessert: desserts.Add(it); break;
+                default: mains.Add(it); break;   // CourseType.Main
+            }
+        }
+
+        _drinks = drinks;
+        _hasPendingDrinks = drinks.Any(d => d.Status != OrderItemStatus.Delivered);
+        _hasFirsts = starters.Count > 0;
+        _hasSeconds = mains.Count > 0;
+
+        // Fixed order: First course → Second course → Desserts. Empty blocks are omitted.
+        _foodBlocks = new(3);
+        if (starters.Count > 0) _foodBlocks.Add(new("salad", "First course", starters));
+        if (mains.Count > 0) _foodBlocks.Add(new("utensils", "Second course", mains));
+        if (desserts.Count > 0) _foodBlocks.Add(new("cake-slice", "Desserts", desserts));
+    }
+
+    private Task OnServeDrinksClick() => OnServeDrinks.InvokeAsync(Order.Id);
+    private Task OnFireFirstsClick() => OnFireFirsts.InvokeAsync(Order.Id);
+    private Task OnFireSecondsClick() => OnFireSeconds.InvokeAsync(Order.Id);
+    private Task OnEditClick() => OnEdit.InvokeAsync(Order.Id);
+    private Task OnPayClick() => OnPay.InvokeAsync(Order.Id);
+
+    private static string StatusClass(OrderStatus s) => s switch
+    {
+        OrderStatus.Ready => "badge--success",
+        OrderStatus.InPreparation => "badge--warning",
+        OrderStatus.Sent => "badge--primary",
+        _ => ""
+    };
+
+    private sealed record FoodBlock(string Icon, string Label, List<OrderItemDto> Items);
+}

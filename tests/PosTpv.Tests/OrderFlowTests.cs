@@ -291,11 +291,69 @@ public class OrderFlowTests
         Assert.Equal(OrderStatus.Paid, paid.Status);
     }
 
+    [Fact]
+    public async Task Serve_drinks_delivers_whole_block_and_lines_carry_their_course()
+    {
+        await using var provider = BuildProvider();
+
+        using (var reset = provider.CreateScope())
+            await reset.ServiceProvider.GetRequiredService<PosDbContext>().Database.EnsureDeletedAsync();
+        using (var seedScope = provider.CreateScope())
+            await seedScope.ServiceProvider.GetRequiredService<IDbSeeder>().SeedAsync();
+
+        using var scope = provider.CreateScope();
+        var sp = scope.ServiceProvider;
+        var orders = sp.GetRequiredService<IOrderService>();
+        var db = sp.GetRequiredService<PosDbContext>();
+
+        var waiter = await db.Users.FirstAsync(u => u.Role == UserRole.Waiter);
+        var table = await db.Tables.FirstAsync();
+        var water = await db.Products.FirstAsync(p => p.Name == "Water");        // Drinks
+        var beer = await db.Products.FirstAsync(p => p.Name == "Beer");          // Drinks
+        var salad = await db.Products.FirstAsync(p => p.Name == "Caesar Salad"); // Starters  -> First course
+        var pizza = await db.Products.FirstAsync(p => p.Name == "Margherita");   // Pizzas    -> Second course
+        var tiramisu = await db.Products.FirstAsync(p => p.Name == "Tiramisu");  // Desserts
+
+        var order = await orders.OpenOrderAsync(table.Id, waiter.Id);
+        await orders.AddItemAsync(new(order.Id, water.Id, 2));
+        await orders.AddItemAsync(new(order.Id, beer.Id));
+        await orders.AddItemAsync(new(order.Id, salad.Id));
+        await orders.AddItemAsync(new(order.Id, pizza.Id));
+        await orders.AddItemAsync(new(order.Id, tiramisu.Id));
+
+        // Each line carries the drink flag / course that drives its block on /orders.
+        var open = (await orders.GetOpenOrdersAsync()).First(o => o.Id == order.Id);
+        Assert.True(open.Items.Single(i => i.ProductName == "Water").IsDrink);
+        Assert.Equal(CourseType.Starter, open.Items.Single(i => i.ProductName == "Caesar Salad").Course);
+        Assert.Equal(CourseType.Main, open.Items.Single(i => i.ProductName == "Margherita").Course);
+        Assert.Equal(CourseType.Dessert, open.Items.Single(i => i.ProductName == "Tiramisu").Course);
+
+        // One call serves every drink; the food block is left exactly as it was.
+        await orders.ServeDrinksAsync(order.Id);
+        var served = (await orders.GetOpenOrdersAsync()).First(o => o.Id == order.Id);
+        Assert.All(served.Items.Where(i => i.IsDrink), i => Assert.Equal(OrderItemStatus.Delivered, i.Status));
+        Assert.All(served.Items.Where(i => !i.IsDrink), i => Assert.NotEqual(OrderItemStatus.Delivered, i.Status));
+
+        // Firing firsts / seconds flags the order (independently); acknowledging clears just that one.
+        await orders.FireFirstCoursesAsync(order.Id);
+        await orders.FireSecondCoursesAsync(order.Id);
+        var fired = (await orders.GetOpenOrdersAsync()).First(o => o.Id == order.Id);
+        Assert.NotNull(fired.FirstsFiredAt);
+        Assert.NotNull(fired.SecondsFiredAt);
+
+        await orders.AcknowledgeFirstCoursesAsync(order.Id);
+        var acked = (await orders.GetOpenOrdersAsync()).First(o => o.Id == order.Id);
+        Assert.Null(acked.FirstsFiredAt);
+        Assert.NotNull(acked.SecondsFiredAt);
+    }
+
     private sealed class NullNotifier : IKitchenNotifier
     {
         public Task OrderSentToKitchenAsync(int orderId) => Task.CompletedTask;
         public Task OrderItemStatusChangedAsync(int orderId, int orderItemId) => Task.CompletedTask;
         public Task OrderReadyAsync(int orderId) => Task.CompletedTask;
+        public Task FirstCoursesFiredAsync(int orderId) => Task.CompletedTask;
         public Task SecondCoursesFiredAsync(int orderId) => Task.CompletedTask;
+        public Task DrinksServedAsync(int orderId) => Task.CompletedTask;
     }
 }

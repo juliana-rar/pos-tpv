@@ -7,7 +7,7 @@
 
     <div class="shell__main">
         <header class="topbar">
-            <button class="topbar__burger btn btn--icon btn--ghost" @onclick="ToggleSidebar" title="@Loc.T("Menu")">☰</button>
+            <button class="topbar__burger btn btn--icon btn--ghost" @onclick="ToggleSidebar" title="@Loc.T("Menu")"><LucideIcon Name="menu" Size="20" /></button>
             <span class="spacer"></span>
 
             <div class="lang" role="group" aria-label="@Loc.T("Language")">
@@ -16,7 +16,7 @@
             </div>
 
             <button class="btn btn--icon btn--ghost" @onclick="ToggleTheme" title="@Loc.T("Toggle theme")">
-                @(_theme == "dark" ? "☀️" : "🌙")
+                <LucideIcon Name="@(_theme == "dark" ? "sun" : "moon")" Size="18" />
             </button>
 
             <AuthorizeView>
@@ -26,7 +26,7 @@
                         <span class="badge badge--primary">@context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</span>
                     </div>
                     <form method="post" action="/account/logout">
-                        <button class="btn btn--ghost btn--icon" type="submit" title="@Loc.T("Sign out")">⏻</button>
+                        <button class="btn btn--ghost btn--icon" type="submit" title="@Loc.T("Sign out")"><LucideIcon Name="log-out" Size="18" /></button>
                     </form>
                 </Authorized>
             </AuthorizeView>
@@ -41,7 +41,7 @@
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
+    <span class="dismiss"><LucideIcon Name="x" Size="16" /></span>
 </div>
 
 @code {

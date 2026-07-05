@@ -14,9 +14,9 @@
     <label class="muted">@Loc.T("To")</label>
     <input type="date" class="input" style="max-width:170px" @bind="_to" @bind:after="Load" />
     <span class="export-group">
-        <a class="btn btn--ghost" href="@ExportUrl("csv")" target="_blank" rel="noopener">⬇ CSV</a>
-        <a class="btn btn--ghost" href="@ExportUrl("xlsx")" target="_blank" rel="noopener">⬇ Excel</a>
-        <a class="btn btn--primary" href="@ExportUrl("pdf")" target="_blank" rel="noopener">⬇ PDF</a>
+        <a class="btn btn--ghost" href="@ExportUrl("csv")" target="_blank" rel="noopener"><LucideIcon Name="download" Size="16" />CSV</a>
+        <a class="btn btn--ghost" href="@ExportUrl("xlsx")" target="_blank" rel="noopener"><LucideIcon Name="download" Size="16" />Excel</a>
+        <a class="btn btn--primary" href="@ExportUrl("pdf")" target="_blank" rel="noopener"><LucideIcon Name="download" Size="16" />PDF</a>
     </span>
 </div>
 

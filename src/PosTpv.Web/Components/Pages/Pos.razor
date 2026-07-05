@@ -14,6 +14,14 @@
 
 <PageTitle>POS · PosTPV</PageTitle>
 
+@if (_error is not null)
+{
+    <div class="pos-toast" role="alert">
+        <span><LucideIcon Name="triangle-alert" Size="16" /> @_error</span>
+        <button class="btn btn--icon btn--ghost" @onclick="() => _error = null" type="button"><LucideIcon Name="x" Size="18" /></button>
+    </div>
+}
+
 <div class="pos">
     <!-- Left: categories -->
     <div class="pos__cats">
@@ -36,14 +44,14 @@
             {
                 <span class="badge badge--primary">@Loc.T("Table") @_order.TableName · @_order.Number</span>
             }
-            <button class="btn btn--ghost btn--icon" title="@Loc.T("Keyboard shortcuts")" @onclick="() => _showHelp = true">⌨</button>
+            <button class="btn btn--ghost btn--icon" title="@Loc.T("Keyboard shortcuts")" @onclick="() => _showHelp = true"><LucideIcon Name="keyboard" Size="18" /></button>
         </div>
 
         <div class="product-grid">
             @foreach (var p in _products)
             {
                 <button class="productCard @(p.IsAvailable ? "" : "productCard--off")"
-                        style="--pc:@p.Color" disabled="@(!p.IsAvailable)"
+                        style="--pc:@p.Color" disabled="@(!p.IsAvailable || _busy)"
                         @onclick="() => OnProductClick(p)">
                     <span class="productCard__price">@p.Price.ToString("C")</span>
                     <span class="productCard__name">@p.Name</span>
@@ -93,8 +101,8 @@
                             <button class="btn btn--icon btn--ghost" @onclick="() => ChangeQty(it.Id, 1)">+</button>
                             <span class="badge @ItemStatusClass(it.Status)">@Loc.T(it.Status.ToString())</span>
                             <span class="spacer"></span>
-                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Comment")" @onclick="() => OpenComment(it)">✎</button>
-                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Remove")" @onclick="() => RemoveItem(it.Id)">🗑</button>
+                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Comment")" @onclick="() => OpenComment(it)"><LucideIcon Name="pencil" Size="16" /></button>
+                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Remove")" @onclick="() => RemoveItem(it.Id)"><LucideIcon Name="trash-2" Size="16" /></button>
                         </div>
                         @if (it.Extras.Count > 0)
                         {
@@ -119,13 +127,13 @@
             </div>
 
             <div class="order__actions">
-                <button class="btn btn--ghost btn--block" disabled="@(_order.Items.Count == 0)" @onclick="SendToKitchen">
+                <button class="btn btn--ghost btn--block" disabled="@(_order.Items.Count == 0 || _busy)" @onclick="SendToKitchen">
                     @Loc.T("Send to kitchen")
                 </button>
                 <div class="order__pay">
-                    <button class="btn btn--success" disabled="@(_order.Items.Count == 0)" @onclick="() => Checkout(PaymentMethod.Cash)">💵 @Loc.T("Cash")</button>
-                    <button class="btn btn--success" disabled="@(_order.Items.Count == 0)" @onclick="() => Checkout(PaymentMethod.Card)">💳 @Loc.T("Card")</button>
-                    <button class="btn btn--primary" disabled="@(_order.Items.Count == 0)" @onclick="OpenPayment">⑃ @Loc.T("Split")</button>
+                    <button class="btn btn--success" disabled="@(_order.Items.Count == 0 || _busy)" @onclick="() => Checkout(PaymentMethod.Cash)"><LucideIcon Name="banknote" Size="16" />@Loc.T("Cash")</button>
+                    <button class="btn btn--success" disabled="@(_order.Items.Count == 0 || _busy)" @onclick="() => Checkout(PaymentMethod.Card)"><LucideIcon Name="credit-card" Size="16" />@Loc.T("Card")</button>
+                    <button class="btn btn--primary" disabled="@(_order.Items.Count == 0 || _busy)" @onclick="OpenPayment"><LucideIcon Name="split" Size="16" />@Loc.T("Split")</button>
                 </div>
             </div>
         }
@@ -170,7 +178,14 @@
                     </div>
                 </div>
 
-                @if (_customizeExtras.Count > 0)
+                @if (_extrasLoading)
+                {
+                    <div class="customize__extras">
+                        <label>@Loc.T("Extras")</label>
+                        <span class="muted">@Loc.T("Loading extras…")</span>
+                    </div>
+                }
+                else if (_customizeExtras.Count > 0)
                 {
                     <div class="customize__extras">
                         <label>@Loc.T("Extras")</label>
@@ -198,7 +213,7 @@
         <span class="customize__total">@Loc.T("Total") <strong>@CustomizeLineTotal().ToString("C")</strong></span>
         <span class="spacer"></span>
         <button class="btn btn--ghost" @onclick="() => _customizeProduct = null">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" @onclick="AddCustomized">@Loc.T("Add to order")</button>
+        <button class="btn btn--primary" disabled="@(_busy || _extrasLoading)" @onclick="AddCustomized">@Loc.T("Add to order")</button>
     </Footer>
 </Modal>
 
@@ -229,9 +244,9 @@
                         @foreach (var p in _payments)
                         {
                             <div class="pay__row">
-                                <span class="pay__method">@MethodIcon(p.Method) @Loc.T(p.Method.ToString())</span>
+                                <span class="pay__method"><LucideIcon Name="@MethodIcon(p.Method)" Size="15" /> @Loc.T(p.Method.ToString())</span>
                                 <span class="pay__amount">@p.Amount.ToString("C")</span>
-                                <button class="btn btn--icon btn--ghost" title="@Loc.T("Remove")" @onclick="() => RemovePayment(p)">🗑</button>
+                                <button class="btn btn--icon btn--ghost" title="@Loc.T("Remove")" @onclick="() => RemovePayment(p)"><LucideIcon Name="trash-2" Size="16" /></button>
                             </div>
                         }
                     </div>
@@ -249,8 +264,8 @@
                 </div>
 
                 <div class="pay__quick">
-                    <button class="btn btn--ghost" @onclick="() => RestIn(PaymentMethod.Cash)">💵 @Loc.T("Rest in cash")</button>
-                    <button class="btn btn--ghost" @onclick="() => RestIn(PaymentMethod.Card)">💳 @Loc.T("Rest in card")</button>
+                    <button class="btn btn--ghost" @onclick="() => RestIn(PaymentMethod.Cash)"><LucideIcon Name="banknote" Size="16" />@Loc.T("Rest in cash")</button>
+                    <button class="btn btn--ghost" @onclick="() => RestIn(PaymentMethod.Card)"><LucideIcon Name="credit-card" Size="16" />@Loc.T("Rest in card")</button>
                 </div>
 
                 <div class="pay__balance @(Remaining > 0 ? "pay__balance--due" : "pay__balance--ok")">
@@ -264,7 +279,7 @@
                     }
                     else
                     {
-                        <span>@Loc.T("Fully paid")</span><span>✓</span>
+                        <span>@Loc.T("Fully paid")</span><span><LucideIcon Name="check" Size="16" /></span>
                     }
                 </div>
             </div>
@@ -333,6 +348,12 @@
     private readonly HashSet<int> _selectedExtraIds = new();
     private int _customizeQty = 1;
     private string? _customizeComment;
+    private bool _extrasLoading;
+
+    // Guards every server round-trip: prevents stacked clicks and keeps a failed
+    // DB call from tearing down the circuit (which would freeze the whole screen).
+    private bool _busy;
+    private string? _error;
 
     private bool _paying;
     private readonly List<PaymentInput> _payments = new();
@@ -437,16 +458,38 @@
         StateHasChanged();
     }
 
-    private async Task ChangeLastQty(int delta)
+    // Runs a server operation with a single in-flight guard. Stacked clicks are
+    // ignored (returns immediately) and any failure surfaces as a dismissible toast
+    // instead of crashing the SignalR circuit and freezing the page.
+    private async Task RunAsync(Func<Task> op)
     {
-        var last = _order?.Items.LastOrDefault();
-        if (last is not null) await ChangeQty(last.Id, delta);
+        if (_busy) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            await op();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
-    private async Task RemoveLastLine()
+    private Task ChangeLastQty(int delta)
     {
         var last = _order?.Items.LastOrDefault();
-        if (last is not null) _order = await Orders.RemoveItemAsync(last.Id);
+        return last is null ? Task.CompletedTask : ChangeQty(last.Id, delta);
+    }
+
+    private Task RemoveLastLine()
+    {
+        var last = _order?.Items.LastOrDefault();
+        return last is null ? Task.CompletedTask : RemoveItem(last.Id);
     }
 
     private async Task SelectCategory(int id)
@@ -460,20 +503,29 @@
 
     private async Task LoadTables() => _tables = await Tables.GetAllAsync();
 
-    private async Task OnProductClick(ProductDto p)
+    private Task OnProductClick(ProductDto p)
     {
-        if (_order is null) { _showTables = true; return; }
-        if (p.HasExtras) { await OpenCustomize(p); return; }
-        _order = await Orders.AddItemAsync(new AddItemRequest(_order.Id, p.Id));
+        if (_order is null) { _showTables = true; return Task.CompletedTask; }
+        if (p.HasExtras) return OpenCustomize(p);
+        var orderId = _order.Id;
+        return RunAsync(async () => _order = await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id)));
     }
 
     private async Task OpenCustomize(ProductDto p)
     {
+        // Show the dialog immediately, then fetch the extras. Awaiting the DB call
+        // before rendering made the button feel frozen on slow round-trips.
         _customizeProduct = p;
-        _customizeExtras = await Products.GetExtrasAsync(p.Id);
+        _customizeExtras = new();
         _selectedExtraIds.Clear();
         _customizeQty = 1;
         _customizeComment = null;
+        _extrasLoading = true;
+        StateHasChanged();
+
+        try { _customizeExtras = await Products.GetExtrasAsync(p.Id); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _extrasLoading = false; }
     }
 
     private void ToggleExtra(int id)
@@ -488,28 +540,34 @@
         return (_customizeProduct.Price + extras) * _customizeQty;
     }
 
-    private async Task AddCustomized()
+    private Task AddCustomized()
     {
-        if (_customizeProduct is null || _order is null) return;
-        _order = await Orders.AddItemAsync(new AddItemRequest(
-            _order.Id, _customizeProduct.Id, _customizeQty, _customizeComment, _selectedExtraIds.ToList()));
-        _customizeProduct = null;
+        if (_customizeProduct is null || _order is null) return Task.CompletedTask;
+        var request = new AddItemRequest(
+            _order.Id, _customizeProduct.Id, _customizeQty, _customizeComment, _selectedExtraIds.ToList());
+        return RunAsync(async () =>
+        {
+            _order = await Orders.AddItemAsync(request);
+            _customizeProduct = null;
+        });
     }
 
-    private async Task OpenTable(int tableId)
+    private Task OpenTable(int tableId) => RunAsync(async () =>
     {
         _order = await Orders.OpenOrderAsync(tableId, _userId);
         _showTables = false;
         await LoadTables();
-    }
+    });
 
-    private async Task ChangeQty(int itemId, int delta) => _order = await Orders.ChangeQuantityAsync(itemId, delta);
+    private Task ChangeQty(int itemId, int delta) =>
+        RunAsync(async () => _order = await Orders.ChangeQuantityAsync(itemId, delta));
 
-    private async Task RemoveItem(int itemId) => _order = await Orders.RemoveItemAsync(itemId);
+    private Task RemoveItem(int itemId) =>
+        RunAsync(async () => _order = await Orders.RemoveItemAsync(itemId));
 
     private void OpenComment(OrderItemDto item) { _commentItem = item; _commentText = item.Comment; }
 
-    private async Task SaveComment()
+    private Task SaveComment() => RunAsync(async () =>
     {
         if (_commentItem is not null)
         {
@@ -517,21 +575,29 @@
             _order = await Orders.GetByIdAsync(_order!.Id);
         }
         _commentItem = null;
+    });
+
+    private Task SendToKitchen()
+    {
+        if (_order is null) return Task.CompletedTask;
+        var orderId = _order.Id;
+        return RunAsync(async () =>
+        {
+            await Orders.SendToKitchenAsync(orderId);
+            _order = await Orders.GetByIdAsync(orderId);
+        });
     }
 
-    private async Task SendToKitchen()
+    private Task Checkout(PaymentMethod method)
     {
-        if (_order is null) return;
-        await Orders.SendToKitchenAsync(_order.Id);
-        _order = await Orders.GetByIdAsync(_order.Id);
-    }
-
-    private async Task Checkout(PaymentMethod method)
-    {
-        if (_order is null) return;
-        await Orders.CheckoutAsync(_order.Id, method);
-        _order = null;
-        await LoadTables();
+        if (_order is null) return Task.CompletedTask;
+        var orderId = _order.Id;
+        return RunAsync(async () =>
+        {
+            await Orders.CheckoutAsync(orderId, method);
+            _order = null;
+            await LoadTables();
+        });
     }
 
     // ---- Split payment ----
@@ -576,20 +642,26 @@
         _payAmount = 0;
     }
 
-    private async Task FinalizePayment()
+    private Task FinalizePayment()
     {
-        if (_order is null) return;
-        await Orders.CheckoutAsync(_order.Id, _payments.ToList());
-        _paying = false;
-        _order = null;
-        await LoadTables();
+        if (_order is null) return Task.CompletedTask;
+        var orderId = _order.Id;
+        var payments = _payments.ToList();
+        return RunAsync(async () =>
+        {
+            await Orders.CheckoutAsync(orderId, payments);
+            _paying = false;
+            _order = null;
+            await LoadTables();
+        });
     }
 
+    // Lucide icon name per payment method (rendered via <LucideIcon>).
     private static string MethodIcon(PaymentMethod m) => m switch
     {
-        PaymentMethod.Cash => "💵",
-        PaymentMethod.Card => "💳",
-        _ => "🧾"
+        PaymentMethod.Cash => "banknote",
+        PaymentMethod.Card => "credit-card",
+        _ => "receipt"
     };
 
     private static string OrderStatusLabel(OrderStatus s) => Loc.T(s switch

@@ -111,6 +111,10 @@ a { color: var(--primary); text-decoration: none; }
 .btn--sm { padding: .35rem .6rem; font-size: .8rem; }
 .btn--icon { padding: .5rem; width: 38px; height: 38px; }
 
+/* ---- Inline Lucide icons -------------------------------------------------- */
+/* Baseline-align icons sitting next to text, and never let flex squeeze them. */
+.lucide { vertical-align: -.125em; flex-shrink: 0; }
+
 /* ---- Cards & surfaces ----------------------------------------------------- */
 .card {
     background: var(--card);
@@ -181,6 +185,22 @@ a { color: var(--primary); text-decoration: none; }
 
 @keyframes fade { from { opacity: 0; } }
 @keyframes pop { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+
+/* ---- POS error toast ------------------------------------------------------ */
+.pos-toast {
+    position: fixed; top: 1rem; left: 50%; transform: translateX(-50%);
+    z-index: 80;
+    display: flex; align-items: center; gap: .75rem;
+    max-width: min(560px, calc(100% - 2rem));
+    padding: .6rem .75rem .6rem 1rem;
+    background: color-mix(in srgb, var(--danger) 16%, var(--card));
+    color: var(--danger);
+    border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    animation: pop var(--transition);
+}
+.pos-toast span { font-weight: 600; }
 
 /* ---- Misc helpers --------------------------------------------------------- */
 .page-loading, .access-denied { display: grid; place-content: center; gap: .5rem; min-height: 60vh; text-align: center; }

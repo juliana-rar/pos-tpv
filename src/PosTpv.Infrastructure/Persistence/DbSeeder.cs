@@ -39,10 +39,10 @@ public class DbSeeder : IDbSeeder
         {
             _log.LogInformation("Seeding demo catalogue.");
             var drinks = new Category { Name = "Drinks", Icon = "🥤", Color = "#0ea5e9", DisplayOrder = 1, Kind = CategoryKind.Drink };
-            var starters = new Category { Name = "Starters", Icon = "🥗", Color = "#22c55e", DisplayOrder = 2 };
-            var pizzas = new Category { Name = "Pizzas", Icon = "🍕", Color = "#ef4444", DisplayOrder = 3 };
-            var pasta = new Category { Name = "Pasta", Icon = "🍝", Color = "#f59e0b", DisplayOrder = 4 };
-            var desserts = new Category { Name = "Desserts", Icon = "🍰", Color = "#ec4899", DisplayOrder = 5 };
+            var starters = new Category { Name = "Starters", Icon = "🥗", Color = "#22c55e", DisplayOrder = 2, Course = CourseType.Starter };
+            var pizzas = new Category { Name = "Pizzas", Icon = "🍕", Color = "#ef4444", DisplayOrder = 3, Course = CourseType.Main };
+            var pasta = new Category { Name = "Pasta", Icon = "🍝", Color = "#f59e0b", DisplayOrder = 4, Course = CourseType.Main };
+            var desserts = new Category { Name = "Desserts", Icon = "🍰", Color = "#ec4899", DisplayOrder = 5, Course = CourseType.Dessert };
             _db.Categories.AddRange(drinks, starters, pizzas, pasta, desserts);
 
             _db.Products.AddRange(

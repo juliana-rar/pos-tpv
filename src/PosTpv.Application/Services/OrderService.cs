@@ -18,7 +18,20 @@ public interface IOrderService
     Task SetItemCommentAsync(int orderItemId, string? comment, CancellationToken ct = default);
     Task SendToKitchenAsync(int orderId, CancellationToken ct = default);
     Task SetItemStatusAsync(int orderItemId, OrderItemStatus status, CancellationToken ct = default);
+
+    /// <summary>
+    /// Marks every still-pending drink line of an order as served in a single round-trip and
+    /// broadcasts one real-time update, so the waiter serves the whole drinks block at once.
+    /// </summary>
+    Task ServeDrinksAsync(int orderId, CancellationToken ct = default);
+
     Task<List<OrderDto>> GetKitchenOrdersAsync(CancellationToken ct = default);
+
+    /// <summary>Waiter fires the first courses for a table, alerting the kitchen in real time.</summary>
+    Task FireFirstCoursesAsync(int orderId, CancellationToken ct = default);
+
+    /// <summary>Kitchen acknowledges the fired first courses, clearing the alert on both screens.</summary>
+    Task AcknowledgeFirstCoursesAsync(int orderId, CancellationToken ct = default);
 
     /// <summary>Waiter fires the second courses for a table, alerting the kitchen in real time.</summary>
     Task FireSecondCoursesAsync(int orderId, CancellationToken ct = default);
@@ -128,8 +141,9 @@ public class OrderService : IOrderService
         var hasExtras = request.ExtraIds is { Count: > 0 };
 
         // Merge into an existing pending line for the same product + comment, but only when neither
-        // the new line nor the existing one carries extras (lines with extras stay distinct).
-        var existing = hasExtras ? null : order.Items.FirstOrDefault(i =>
+        // the new line nor the existing one carries extras (lines with extras stay distinct), and only
+        // when the caller allows merging (drinks are added unmerged so each keeps its own comment).
+        var existing = (hasExtras || !request.Merge) ? null : order.Items.FirstOrDefault(i =>
             i.ProductId == product.Id && i.Status == OrderItemStatus.Pending
             && i.Comment == request.Comment && i.Extras.Count == 0);
 
@@ -227,15 +241,7 @@ public class OrderService : IOrderService
         item.Status = status;
 
         var order = item.Order;
-        if (order.Items.All(i => i.Status == OrderItemStatus.Ready || i.Status == OrderItemStatus.Delivered)
-            && order.Items.Any(i => i.Status == OrderItemStatus.Ready))
-        {
-            order.Status = OrderStatus.Ready;
-        }
-        else if (order.Items.Any(i => i.Status == OrderItemStatus.Preparing))
-        {
-            order.Status = OrderStatus.InPreparation;
-        }
+        ApplyDerivedStatus(order);
 
         _uow.Repository<OrderItem>().Update(item);
         _uow.Repository<Order>().Update(order);
@@ -246,6 +252,49 @@ public class OrderService : IOrderService
             await _notifier.OrderReadyAsync(order.Id);
     }
 
+    public async Task ServeDrinksAsync(int orderId, CancellationToken ct = default)
+    {
+        // Load the order with its lines' categories once, so serving the whole block is a single
+        // DB round-trip and a single real-time notification (no per-line queries or events).
+        var order = await _uow.Repository<Order>().Query()
+            .Include(o => o.Items).ThenInclude(i => i.Product).ThenInclude(p => p.Category)
+            .FirstOrDefaultAsync(o => o.Id == orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        var pendingDrinks = order.Items
+            .Where(i => i.Product?.Category?.Kind == CategoryKind.Drink && i.Status != OrderItemStatus.Delivered)
+            .ToList();
+        if (pendingDrinks.Count == 0) return;
+
+        foreach (var drink in pendingDrinks)
+        {
+            drink.Status = OrderItemStatus.Delivered;
+            _uow.Repository<OrderItem>().Update(drink);
+        }
+
+        ApplyDerivedStatus(order);
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.DrinksServedAsync(order.Id);
+        if (order.Status == OrderStatus.Ready)
+            await _notifier.OrderReadyAsync(order.Id);
+    }
+
+    /// <summary>Recomputes an order's rolled-up status from its lines (shared by the serve paths).</summary>
+    private static void ApplyDerivedStatus(Order order)
+    {
+        if (order.Items.All(i => i.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered)
+            && order.Items.Any(i => i.Status == OrderItemStatus.Ready))
+        {
+            order.Status = OrderStatus.Ready;
+        }
+        else if (order.Items.Any(i => i.Status == OrderItemStatus.Preparing))
+        {
+            order.Status = OrderStatus.InPreparation;
+        }
+    }
+
     public async Task<List<OrderDto>> GetKitchenOrdersAsync(CancellationToken ct = default)
     {
         var orders = await FullOrders()
@@ -254,6 +303,30 @@ public class OrderService : IOrderService
         // Drinks are served from the bar, so an order made up solely of drinks never reaches the
         // kitchen display. Orders that mix food and drinks are kept; the KDS hides the drink lines.
         return orders.Select(Map).Where(o => o.Items.Any(i => !i.IsDrink)).ToList();
+    }
+
+    public async Task FireFirstCoursesAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().GetByIdAsync(orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        order.FirstsFiredAt = DateTime.UtcNow;
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.FirstCoursesFiredAsync(orderId);
+    }
+
+    public async Task AcknowledgeFirstCoursesAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().GetByIdAsync(orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        order.FirstsFiredAt = null;
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.FirstCoursesFiredAsync(orderId);
     }
 
     public async Task FireSecondCoursesAsync(int orderId, CancellationToken ct = default)
@@ -361,12 +434,13 @@ public class OrderService : IOrderService
                 i.Comment, i.Status,
                 i.Extras.Select(e => new OrderItemExtraDto(e.Id, e.Name, e.Price)).ToList(),
                 i.LineGross,
-                i.Product?.Category?.Kind == CategoryKind.Drink))
+                i.Product?.Category?.Kind == CategoryKind.Drink,
+                i.Product?.Category?.Course ?? CourseType.Main))
             .ToList();
 
         return new OrderDto(
             o.Id, o.Number, o.Status, o.TableId, o.Table?.Name ?? "?",
             o.WaiterId, o.Waiter?.FullName ?? "?", o.CreatedAt, o.Notes,
-            items, o.Subtotal, o.VatTotal, o.Total, o.SecondsFiredAt);
+            items, o.Subtotal, o.VatTotal, o.Total, o.FirstsFiredAt, o.SecondsFiredAt);
     }
 }

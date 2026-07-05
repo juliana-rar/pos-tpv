@@ -38,6 +38,14 @@
 .tbl--reserved { border-color: var(--secondary); background: color-mix(in srgb, var(--secondary) 14%, var(--card-2)); }
 .tbl--locked { opacity: .6; }
 
+/* Text content is counter-rotated so labels stay upright/centred even when the
+   table is rotated (--rot mirrors the table's transform:rotate). */
+.tbl__content {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: .1rem;
+    transform: rotate(calc(-1 * var(--rot, 0deg)));
+}
+
 .tbl__name { font-weight: 800; }
 .tbl__seats { font-size: .72rem; color: var(--text-soft); }
 .tbl__total { font-size: .74rem; font-weight: 700; color: var(--primary); }

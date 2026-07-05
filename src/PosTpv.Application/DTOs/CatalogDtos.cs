@@ -6,7 +6,7 @@ public record UserDto(int Id, string Username, string FullName, UserRole Role);
 
 public record ExtraDto(int Id, string Name, decimal Price);
 
-public record CategoryDto(int Id, string Name, string? Icon, string Color, string? ImageUrl, int DisplayOrder, bool IsVisible, int ProductCount = 0);
+public record CategoryDto(int Id, string Name, string? Icon, string Color, string? ImageUrl, int DisplayOrder, bool IsVisible, CategoryKind Kind = CategoryKind.Food, int ProductCount = 0);
 
 public class CategoryFormDto
 {
@@ -17,6 +17,7 @@ public class CategoryFormDto
     public string? ImageUrl { get; set; }
     public int DisplayOrder { get; set; }
     public bool IsVisible { get; set; } = true;
+    public CourseType Course { get; set; } = CourseType.Main;
 }
 
 public record ProductDto(

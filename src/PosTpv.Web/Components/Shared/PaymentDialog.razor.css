@@ -1,0 +1,41 @@
+.pay { display: flex; flex-direction: column; gap: .9rem; }
+.pay__total { display: flex; align-items: center; justify-content: space-between; }
+.pay__due { font-size: 1.5rem; font-weight: 800; }
+
+.pay__quickpay { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.pay__quickpay .btn { padding: .7rem .5rem; font-size: 1.05rem; }
+
+.pay__sep { display: flex; align-items: center; text-align: center; color: var(--text-soft); font-size: .8rem; }
+.pay__sep::before, .pay__sep::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.pay__sep span { padding: 0 .6rem; }
+
+.pay__split { display: flex; align-items: center; gap: .6rem; }
+.pay__split > span:first-child { flex: 1; font-weight: 600; }
+
+.pay__list { display: flex; flex-direction: column; gap: .4rem; }
+.pay__row {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .45rem .6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card-2);
+}
+.pay__method { font-weight: 600; }
+.pay__amount { margin-left: auto; font-weight: 700; }
+.pay__row .btn--icon { width: 30px; height: 30px; padding: 0; }
+
+.pay__add { display: grid; grid-template-columns: 1fr auto auto; gap: .5rem; }
+.pay__quick { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+
+.pay__balance {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .6rem .8rem;
+    border-radius: var(--radius-sm);
+    font-weight: 800; font-size: 1.1rem;
+}
+.pay__balance--due { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning); }
+.pay__balance--ok { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); }
+
+.qty-stepper { display: flex; align-items: center; gap: .5rem; }
+.qty-stepper .btn--icon { width: 34px; height: 34px; padding: 0; }
+.qty-stepper__val { min-width: 2rem; text-align: center; font-weight: 800; font-size: 1.1rem; }

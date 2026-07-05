@@ -27,7 +27,7 @@
     place-items: center;
     width: 2.4rem;
     height: 2.4rem;
-    font-size: 1.4rem;
+    color: var(--on-primary);
     border-radius: 12px;
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     box-shadow: 0 6px 14px color-mix(in srgb, var(--primary) 40%, transparent);
@@ -66,10 +66,9 @@
     place-items: center;
     width: 2rem;
     height: 2rem;
-    font-size: 1.05rem;
     border-radius: 9px;
     background: var(--card-2);
-    transition: background var(--transition), box-shadow var(--transition);
+    transition: background var(--transition), box-shadow var(--transition), color var(--transition);
 }
 .nav__link:hover .nav__icon { background: var(--card); }
 .nav__text { line-height: 1; }

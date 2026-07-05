@@ -28,21 +28,30 @@ else
     <div class="kds">
         @foreach (var o in _orders)
         {
-            <div class="ticket @TicketClass(o.Status) @(o.SecondsFiredAt is null ? "" : "ticket--seconds")">
+            <div class="ticket @TicketClass(o.Status) @(o.FirstsFiredAt is null && o.SecondsFiredAt is null ? "" : "ticket--seconds")">
                 <div class="ticket__head">
-                    <span class="ticket__table">🪑 @o.TableName</span>
+                    <span class="ticket__table"><LucideIcon Name="armchair" Size="16" /> @o.TableName</span>
                     <span class="ticket__time">@Elapsed(o.CreatedAt)</span>
                 </div>
                 <div class="ticket__sub">
                     <span>@o.Number</span><span>· @o.WaiterName</span>
                 </div>
 
+                @if (o.FirstsFiredAt is not null)
+                {
+                    <div class="ticket__fire">
+                        <span class="ticket__fire-label"><LucideIcon Name="bell" Size="15" /> @Loc.T("Fire first courses")</span>
+                        <button class="btn btn--icon" title="@Loc.T("Got it")"
+                                @onclick="() => AcknowledgeFirsts(o)"><LucideIcon Name="check" Size="18" /></button>
+                    </div>
+                }
+
                 @if (o.SecondsFiredAt is not null)
                 {
                     <div class="ticket__fire">
-                        <span class="ticket__fire-label">🔔 @Loc.T("Fire second courses")</span>
+                        <span class="ticket__fire-label"><LucideIcon Name="bell" Size="15" /> @Loc.T("Fire second courses")</span>
                         <button class="btn btn--icon" title="@Loc.T("Got it")"
-                                @onclick="() => AcknowledgeSeconds(o)">✓</button>
+                                @onclick="() => AcknowledgeSeconds(o)"><LucideIcon Name="check" Size="18" /></button>
                     </div>
                 }
 
@@ -57,12 +66,12 @@ else
                                 @if (it.Status == OrderItemStatus.Preparing)
                                 {
                                     <button class="btn btn--icon btn--success" title="@Loc.T("Ready")"
-                                            @onclick="() => SetItem(it.Id, OrderItemStatus.Ready)">✓</button>
+                                            @onclick="() => SetItem(it.Id, OrderItemStatus.Ready)"><LucideIcon Name="check" Size="18" /></button>
                                 }
                                 else if (it.Status == OrderItemStatus.Ready)
                                 {
                                     <button class="btn btn--icon btn--primary" title="@Loc.T("Delivered")"
-                                            @onclick="() => SetItem(it.Id, OrderItemStatus.Delivered)">➜</button>
+                                            @onclick="() => SetItem(it.Id, OrderItemStatus.Delivered)"><LucideIcon Name="arrow-right" Size="18" /></button>
                                 }
                             </div>
                             @if (it.Extras.Count > 0)
@@ -71,7 +80,7 @@ else
                             }
                             @if (!string.IsNullOrWhiteSpace(it.Comment))
                             {
-                                <div class="kitem__comment">⚠ @it.Comment</div>
+                                <div class="kitem__comment"><LucideIcon Name="triangle-alert" Size="14" /> @it.Comment</div>
                             }
                         </div>
                     }
@@ -104,6 +113,11 @@ else
         _hub.On<int>(KitchenHub.OrderSent, async _ => await Reload());
         _hub.On<int, int>(KitchenHub.ItemStatusChanged, async (_, _) => await Reload());
         _hub.On<int>(KitchenHub.OrderReady, async _ => await Reload());
+        _hub.On<int>(KitchenHub.FirstsFired, async _ =>
+        {
+            await Reload();
+            await JS.InvokeVoidAsync("posBeep");
+        });
         _hub.On<int>(KitchenHub.SecondsFired, async _ =>
         {
             await Reload();
@@ -135,6 +149,12 @@ else
     {
         foreach (var it in o.Items.Where(i => !i.IsDrink && i.Status == OrderItemStatus.Preparing))
             await Orders.SetItemStatusAsync(it.Id, OrderItemStatus.Ready);
+        await Load();
+    }
+
+    private async Task AcknowledgeFirsts(OrderDto o)
+    {
+        await Orders.AcknowledgeFirstCoursesAsync(o.Id);
         await Load();
     }
 

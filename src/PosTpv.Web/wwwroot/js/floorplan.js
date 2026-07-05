@@ -121,6 +121,7 @@ function onMove(e) {
         if (ang < 0) ang += 360;
         el.dataset.rot = ang;
         el.style.transform = 'rotate(' + ang + 'deg)';
+        el.style.setProperty('--rot', ang + 'deg');   // keep the label upright (see .tbl__content)
     }
 }
 

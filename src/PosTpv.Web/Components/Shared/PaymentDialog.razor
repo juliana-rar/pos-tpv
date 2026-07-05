@@ -1,0 +1,174 @@
+@* Single payment entry point: quick full cash/card, or a split (equal parts, manual tenders,
+   rest-in-cash/card) with live remaining/change. Self-contained — it owns the tender state and
+   hands the final list to the parent via OnConfirm, which performs the actual checkout. *@
+
+<Modal Visible="Visible" Title="@Loc.T("Charge")" OnClose="OnClose">
+    <ChildContent>
+        @if (Order is not null)
+        {
+            <div class="pay">
+                <div class="pay__total">
+                    <span class="muted">@Loc.T("Total due")</span>
+                    <span class="pay__due">@Order.Total.ToString("C")</span>
+                </div>
+
+                @* Quick full payment — one tender for the whole bill. *@
+                <div class="pay__quickpay">
+                    <button class="btn btn--success" disabled="@_busy" @onclick="() => PayAll(PaymentMethod.Cash)"><LucideIcon Name="banknote" Size="16" />@Loc.T("Cash")</button>
+                    <button class="btn btn--success" disabled="@_busy" @onclick="() => PayAll(PaymentMethod.Card)"><LucideIcon Name="credit-card" Size="16" />@Loc.T("Card")</button>
+                </div>
+
+                <div class="pay__sep"><span>@Loc.T("or split")</span></div>
+
+                <div class="pay__split">
+                    <span>@Loc.T("Split equally")</span>
+                    <div class="qty-stepper">
+                        <button class="btn btn--icon btn--ghost" @onclick="() => _splitCount = Math.Max(2, _splitCount - 1)">−</button>
+                        <span class="qty-stepper__val">@_splitCount</span>
+                        <button class="btn btn--icon btn--ghost" @onclick="() => _splitCount++">+</button>
+                    </div>
+                    <button class="btn btn--ghost" @onclick="SplitEqually">@Loc.T("Apply")</button>
+                </div>
+
+                @if (_payments.Count > 0)
+                {
+                    <div class="pay__list">
+                        @foreach (var p in _payments)
+                        {
+                            <div class="pay__row">
+                                <span class="pay__method"><LucideIcon Name="@MethodIcon(p.Method)" Size="15" /> @Loc.T(p.Method.ToString())</span>
+                                <span class="pay__amount">@p.Amount.ToString("C")</span>
+                                <button class="btn btn--icon btn--ghost" title="@Loc.T("Remove")" @onclick="() => RemovePayment(p)"><LucideIcon Name="trash-2" Size="16" /></button>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="pay__add">
+                    <input type="number" step="0.01" min="0" class="input" @bind="_payAmount" />
+                    <select class="select" @bind="_payMethod">
+                        @foreach (var m in Enum.GetValues<PaymentMethod>())
+                        {
+                            <option value="@m">@Loc.T(m.ToString())</option>
+                        }
+                    </select>
+                    <button class="btn btn--ghost" @onclick="AddPayment">@Loc.T("Add")</button>
+                </div>
+
+                <div class="pay__quick">
+                    <button class="btn btn--ghost" @onclick="() => RestIn(PaymentMethod.Cash)"><LucideIcon Name="banknote" Size="16" />@Loc.T("Rest in cash")</button>
+                    <button class="btn btn--ghost" @onclick="() => RestIn(PaymentMethod.Card)"><LucideIcon Name="credit-card" Size="16" />@Loc.T("Rest in card")</button>
+                </div>
+
+                <div class="pay__balance @(Remaining > 0 ? "pay__balance--due" : "pay__balance--ok")">
+                    @if (Remaining > 0)
+                    {
+                        <span>@Loc.T("Remaining")</span><span>@Remaining.ToString("C")</span>
+                    }
+                    else if (Remaining < 0)
+                    {
+                        <span>@Loc.T("Change")</span><span>@((-Remaining).ToString("C"))</span>
+                    }
+                    else
+                    {
+                        <span>@Loc.T("Fully paid")</span><span><LucideIcon Name="check" Size="16" /></span>
+                    }
+                </div>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <span class="muted">@Loc.T("Tendered") @PaidSoFar.ToString("C")</span>
+        <span class="spacer"></span>
+        <button class="btn btn--ghost" @onclick="OnClose">@Loc.T("Cancel")</button>
+        <button class="btn btn--success" disabled="@(Remaining > 0 || _payments.Count == 0 || _busy)" @onclick="ConfirmSplit">@Loc.T("Finalize")</button>
+    </Footer>
+</Modal>
+
+@code {
+    [Parameter] public OrderDto? Order { get; set; }
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    /// <summary>Raised with the chosen tenders once the bill is fully covered; the parent checks out.</summary>
+    [Parameter] public EventCallback<IReadOnlyList<PaymentInput>> OnConfirm { get; set; }
+
+    private readonly List<PaymentInput> _payments = new();
+    private decimal _payAmount;
+    private PaymentMethod _payMethod = PaymentMethod.Cash;
+    private int _splitCount = 2;
+    private bool _wasVisible;
+    private bool _busy;
+
+    private decimal PaidSoFar => _payments.Sum(p => p.Amount);
+    private decimal Remaining => Math.Round((Order?.Total ?? 0m) - PaidSoFar, 2);
+
+    protected override void OnParametersSet()
+    {
+        // Reset the tender state each time the dialog is (re)opened for a bill.
+        if (Visible && !_wasVisible) Reset();
+        _wasVisible = Visible;
+    }
+
+    private void Reset()
+    {
+        _payments.Clear();
+        _payMethod = PaymentMethod.Cash;
+        _payAmount = Order?.Total ?? 0m;
+        _splitCount = 2;
+        _busy = false;
+    }
+
+    private async Task PayAll(PaymentMethod method)
+    {
+        if (Order is null || _busy) return;
+        _busy = true;
+        await OnConfirm.InvokeAsync(new List<PaymentInput> { new(Order.Total, method) });
+    }
+
+    private async Task ConfirmSplit()
+    {
+        if (Order is null || _busy || Remaining > 0 || _payments.Count == 0) return;
+        _busy = true;
+        await OnConfirm.InvokeAsync(_payments.ToList());
+    }
+
+    private void AddPayment()
+    {
+        if (_payAmount <= 0) return;
+        _payments.Add(new PaymentInput(_payAmount, _payMethod));
+        _payAmount = Math.Max(0, Remaining);
+    }
+
+    private void RemovePayment(PaymentInput p)
+    {
+        _payments.Remove(p);
+        _payAmount = Math.Max(0, Remaining);
+    }
+
+    private void RestIn(PaymentMethod method)
+    {
+        if (Remaining > 0) { _payments.Add(new PaymentInput(Remaining, method)); _payAmount = 0; }
+    }
+
+    private void SplitEqually()
+    {
+        if (Order is null || _splitCount < 2) return;
+        _payments.Clear();
+        var each = Math.Round(Order.Total / _splitCount, 2);
+        for (var i = 0; i < _splitCount; i++)
+        {
+            var amount = i == _splitCount - 1 ? Order.Total - each * (_splitCount - 1) : each;
+            _payments.Add(new PaymentInput(amount, PaymentMethod.Cash));
+        }
+        _payAmount = 0;
+    }
+
+    // Lucide icon name per payment method (rendered via <LucideIcon>).
+    private static string MethodIcon(PaymentMethod m) => m switch
+    {
+        PaymentMethod.Cash => "banknote",
+        PaymentMethod.Card => "credit-card",
+        _ => "receipt"
+    };
+}
