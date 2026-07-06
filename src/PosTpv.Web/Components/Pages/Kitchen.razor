@@ -66,12 +66,7 @@ else
                                 @if (it.Status == OrderItemStatus.Preparing)
                                 {
                                     <button class="btn btn--icon btn--success" title="@Loc.T("Ready")"
-                                            @onclick="() => SetItem(it.Id, OrderItemStatus.Ready)"><LucideIcon Name="check" Size="18" /></button>
-                                }
-                                else if (it.Status == OrderItemStatus.Ready)
-                                {
-                                    <button class="btn btn--icon btn--primary" title="@Loc.T("Delivered")"
-                                            @onclick="() => SetItem(it.Id, OrderItemStatus.Delivered)"><LucideIcon Name="arrow-right" Size="18" /></button>
+                                            @onclick="() => SetItem(it.Id, OrderItemStatus.Ready)"><LucideIcon Name="arrow-right" Size="18" /></button>
                                 }
                             </div>
                             @if (it.Extras.Count > 0)
