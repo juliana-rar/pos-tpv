@@ -22,7 +22,12 @@ public class DbSeeder : IDbSeeder
 
     public async Task SeedAsync(CancellationToken ct = default)
     {
-        await _db.Database.MigrateAsync(ct);
+        // Sqlite dev fallback: apply the live model directly instead of the SQL-Server-authored
+        // migrations, since their column type strings (nvarchar(max), datetime2, ...) aren't Sqlite-native.
+        if (_db.Database.IsSqlite())
+            await _db.Database.EnsureCreatedAsync(ct);
+        else
+            await _db.Database.MigrateAsync(ct);
 
         if (!await _db.Users.AnyAsync(ct))
         {

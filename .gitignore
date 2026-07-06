@@ -9,6 +9,11 @@ obj/
 ## Secrets / local config
 .env
 
+## Local Sqlite dev database (see Database:Provider=Sqlite)
+*.db
+*.db-shm
+*.db-wal
+
 ## Rider / VS Code
 .idea/
 .vscode/

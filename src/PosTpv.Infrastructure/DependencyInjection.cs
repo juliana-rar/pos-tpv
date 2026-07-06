@@ -16,8 +16,17 @@ public static class DependencyInjection
         var connectionString = config.GetConnectionString("Default")
             ?? throw new InvalidOperationException("Connection string 'Default' is not configured.");
 
+        // "Database:Provider" defaults to SqlServer; set it to "Sqlite" for environments
+        // without a SQL Server instance available (e.g. no container runtime).
+        var provider = config["Database:Provider"] ?? "SqlServer";
+
         services.AddDbContext<PosDbContext>(options =>
-            options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure()));
+        {
+            if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+                options.UseSqlite(connectionString);
+            else
+                options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure());
+        });
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
