@@ -16,6 +16,7 @@ public interface IOrderService
     Task<OrderDto> ChangeQuantityAsync(int orderItemId, int delta, CancellationToken ct = default);
     Task<OrderDto?> RemoveItemAsync(int orderItemId, CancellationToken ct = default);
     Task SetItemCommentAsync(int orderItemId, string? comment, CancellationToken ct = default);
+    Task<OrderDto?> SetItemExtrasAsync(int orderItemId, IReadOnlyList<int> extraIds, CancellationToken ct = default);
     Task SendToKitchenAsync(int orderId, CancellationToken ct = default);
     Task SetItemStatusAsync(int orderItemId, OrderItemStatus status, CancellationToken ct = default);
 
@@ -212,6 +213,27 @@ public class OrderService : IOrderService
         item.Comment = comment;
         _uow.Repository<OrderItem>().Update(item);
         await _uow.SaveChangesAsync(ct);
+    }
+
+    public async Task<OrderDto?> SetItemExtrasAsync(int orderItemId, IReadOnlyList<int> extraIds, CancellationToken ct = default)
+    {
+        var item = await _uow.Repository<OrderItem>().Query()
+            .Include(i => i.Extras)
+            .FirstOrDefaultAsync(i => i.Id == orderItemId, ct);
+        if (item is null) return null;
+
+        foreach (var old in item.Extras.ToList())
+            _uow.Repository<OrderItemExtra>().Remove(old);
+        item.Extras.Clear();
+
+        var extras = await _uow.Repository<Extra>().Query()
+            .Where(e => extraIds.Contains(e.Id)).ToListAsync(ct);
+        foreach (var ex in extras)
+            item.Extras.Add(new OrderItemExtra { Name = ex.Name, Price = ex.Price, ExtraId = ex.Id });
+
+        _uow.Repository<OrderItem>().Update(item);
+        await _uow.SaveChangesAsync(ct);
+        return await GetByIdAsync(item.OrderId, ct);
     }
 
     public async Task SendToKitchenAsync(int orderId, CancellationToken ct = default)
@@ -432,7 +454,7 @@ public class OrderService : IOrderService
             .Select(i => new OrderItemDto(
                 i.Id, i.ProductId, i.Product?.Name ?? "?", i.Quantity, i.UnitPrice, i.VatRate,
                 i.Comment, i.Status,
-                i.Extras.Select(e => new OrderItemExtraDto(e.Id, e.Name, e.Price)).ToList(),
+                i.Extras.Select(e => new OrderItemExtraDto(e.Id, e.ExtraId, e.Name, e.Price)).ToList(),
                 i.LineGross,
                 i.Product?.Category?.Kind == CategoryKind.Drink,
                 i.Product?.Category?.Course ?? CourseType.Main))

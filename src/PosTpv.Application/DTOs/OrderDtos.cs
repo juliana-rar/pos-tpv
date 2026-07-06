@@ -2,7 +2,7 @@ using PosTpv.Domain.Enums;
 
 namespace PosTpv.Application.DTOs;
 
-public record OrderItemExtraDto(int Id, string Name, decimal Price);
+public record OrderItemExtraDto(int Id, int? ExtraId, string Name, decimal Price);
 
 public record OrderItemDto(
     int Id, int ProductId, string ProductName, int Quantity, decimal UnitPrice,

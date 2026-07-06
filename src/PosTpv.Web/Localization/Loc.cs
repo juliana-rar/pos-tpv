@@ -109,6 +109,7 @@ public static class Loc
         ["Quantity"] = "Cantidad",
         ["Extras"] = "Extras",
         ["Loading extras…"] = "Cargando extras…",
+        ["No extras available for this product."] = "Este producto no tiene extras disponibles.",
         ["Comment"] = "Comentario",
         ["No onion, well done…"] = "Sin cebolla, muy hecho…",
         ["No onion, well done, extra sauce…"] = "Sin cebolla, muy hecho, salsa extra…",

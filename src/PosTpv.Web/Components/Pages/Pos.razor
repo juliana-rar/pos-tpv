@@ -101,6 +101,7 @@
                             <button class="btn btn--icon btn--ghost" @onclick="() => ChangeQty(it.Id, 1)">+</button>
                             <span class="badge @ItemStatusClass(it.Status)">@Loc.T(it.Status.ToString())</span>
                             <span class="spacer"></span>
+                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Extras")" @onclick="() => OpenEditExtras(it)"><LucideIcon Name="list-plus" Size="16" /></button>
                             <button class="btn btn--icon btn--ghost" title="@Loc.T("Comment")" @onclick="() => OpenComment(it)"><LucideIcon Name="pencil" Size="16" /></button>
                             <button class="btn btn--icon btn--ghost" title="@Loc.T("Remove")" @onclick="() => RemoveItem(it.Id)"><LucideIcon Name="trash-2" Size="16" /></button>
                         </div>
@@ -158,26 +159,12 @@
     </div>
 </Modal>
 
-<!-- Product customization (extras / quantity / comment) -->
-<Modal Visible="_customizeProduct is not null" Title="@(_customizeProduct?.Name ?? string.Empty)" OnClose="() => _customizeProduct = null">
+<!-- Edit extras on an existing order line -->
+<Modal Visible="_editingItem is not null" Title="@(_editingItem?.ProductName ?? string.Empty)" OnClose="() => _editingItem = null">
     <ChildContent>
-        @if (_customizeProduct is not null)
+        @if (_editingItem is not null)
         {
             <div class="customize">
-                <div class="customize__row">
-                    <span class="muted">@Loc.T("Base price")</span>
-                    <strong>@_customizeProduct.Price.ToString("C")</strong>
-                </div>
-
-                <div class="customize__row">
-                    <span>@Loc.T("Quantity")</span>
-                    <div class="qty-stepper">
-                        <button class="btn btn--icon btn--ghost" @onclick="() => _customizeQty = Math.Max(1, _customizeQty - 1)">−</button>
-                        <span class="qty-stepper__val">@_customizeQty</span>
-                        <button class="btn btn--icon btn--ghost" @onclick="() => _customizeQty++">+</button>
-                    </div>
-                </div>
-
                 @if (_extrasLoading)
                 {
                     <div class="customize__extras">
@@ -201,19 +188,16 @@
                         </div>
                     </div>
                 }
-
-                <div class="field">
-                    <label>@Loc.T("Comment")</label>
-                    <textarea class="input" rows="2" @bind="_customizeComment" placeholder="@Loc.T("No onion, well done…")"></textarea>
-                </div>
+                else
+                {
+                    <p class="muted">@Loc.T("No extras available for this product.")</p>
+                }
             </div>
         }
     </ChildContent>
     <Footer>
-        <span class="customize__total">@Loc.T("Total") <strong>@CustomizeLineTotal().ToString("C")</strong></span>
-        <span class="spacer"></span>
-        <button class="btn btn--ghost" @onclick="() => _customizeProduct = null">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" disabled="@(_busy || _extrasLoading)" @onclick="AddCustomized">@Loc.T("Add to order")</button>
+        <button class="btn btn--ghost" @onclick="() => _editingItem = null">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" disabled="@(_busy || _extrasLoading)" @onclick="SaveExtras">@Loc.T("Save")</button>
     </Footer>
 </Modal>
 
@@ -343,11 +327,9 @@
     private OrderItemDto? _commentItem;
     private string? _commentText;
 
-    private ProductDto? _customizeProduct;
+    private OrderItemDto? _editingItem;
     private List<ExtraDto> _customizeExtras = new();
     private readonly HashSet<int> _selectedExtraIds = new();
-    private int _customizeQty = 1;
-    private string? _customizeComment;
     private bool _extrasLoading;
 
     // Guards every server round-trip: prevents stacked clicks and keeps a failed
@@ -419,7 +401,7 @@
         {
             if (_showHelp) _showHelp = false;
             else if (_paying) _paying = false;
-            else if (_customizeProduct is not null) _customizeProduct = null;
+            else if (_editingItem is not null) _editingItem = null;
             else if (_commentItem is not null) _commentItem = null;
             else if (_showTables) _showTables = false;
             StateHasChanged();
@@ -436,7 +418,7 @@
         }
 
         // Ignore action keys while another modal is open.
-        if (_showHelp || _customizeProduct is not null || _commentItem is not null || _showTables) return;
+        if (_showHelp || _editingItem is not null || _commentItem is not null || _showTables) return;
 
         switch (key.ToLowerInvariant())
         {
@@ -506,24 +488,23 @@
     private Task OnProductClick(ProductDto p)
     {
         if (_order is null) { _showTables = true; return Task.CompletedTask; }
-        if (p.HasExtras) return OpenCustomize(p);
         var orderId = _order.Id;
-        return RunAsync(async () => _order = await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id)));
+        return RunAsync(async () => _order = await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id, Merge: false)));
     }
 
-    private async Task OpenCustomize(ProductDto p)
+    private async Task OpenEditExtras(OrderItemDto item)
     {
         // Show the dialog immediately, then fetch the extras. Awaiting the DB call
         // before rendering made the button feel frozen on slow round-trips.
-        _customizeProduct = p;
+        _editingItem = item;
         _customizeExtras = new();
         _selectedExtraIds.Clear();
-        _customizeQty = 1;
-        _customizeComment = null;
+        foreach (var e in item.Extras.Where(e => e.ExtraId.HasValue))
+            _selectedExtraIds.Add(e.ExtraId!.Value);
         _extrasLoading = true;
         StateHasChanged();
 
-        try { _customizeExtras = await Products.GetExtrasAsync(p.Id); }
+        try { _customizeExtras = await Products.GetExtrasAsync(item.ProductId); }
         catch (Exception ex) { _error = ex.Message; }
         finally { _extrasLoading = false; }
     }
@@ -533,22 +514,16 @@
         if (!_selectedExtraIds.Add(id)) _selectedExtraIds.Remove(id);
     }
 
-    private decimal CustomizeLineTotal()
+    private Task SaveExtras()
     {
-        if (_customizeProduct is null) return 0m;
-        var extras = _customizeExtras.Where(e => _selectedExtraIds.Contains(e.Id)).Sum(e => e.Price);
-        return (_customizeProduct.Price + extras) * _customizeQty;
-    }
+        if (_editingItem is null) return Task.CompletedTask;
+        var itemId = _editingItem.Id;
+        var extraIds = _selectedExtraIds.ToList();
 
-    private Task AddCustomized()
-    {
-        if (_customizeProduct is null || _order is null) return Task.CompletedTask;
-        var request = new AddItemRequest(
-            _order.Id, _customizeProduct.Id, _customizeQty, _customizeComment, _selectedExtraIds.ToList());
         return RunAsync(async () =>
         {
-            _order = await Orders.AddItemAsync(request);
-            _customizeProduct = null;
+            _order = await Orders.SetItemExtrasAsync(itemId, extraIds) ?? _order;
+            _editingItem = null;
         });
     }
 
