@@ -14,6 +14,11 @@ window.posTheme = {
     }
 };
 
+// Keep the order panel scrolled to its newest line as items are added.
+window.posScrollBottom = function (el) {
+    if (el) el.scrollTop = el.scrollHeight;
+};
+
 // Play a short chime when the kitchen marks an order ready (best-effort; ignored if blocked).
 window.posBeep = function () {
     try {

@@ -16,7 +16,7 @@
     @* ---- Drinks: a single "Serve drinks" button for the whole block ---- *@
     @if (_drinks.Count > 0)
     {
-        <div class="order-card__group muted"><LucideIcon Name="cup-soda" Size="15" /> @Loc.T("Drinks")</div>
+        <div class="order-card__group"><LucideIcon Name="cup-soda" Size="16" /> @Loc.T("Drinks")</div>
         <div class="order-card__lines">
             @foreach (var it in _drinks)
             {
@@ -38,13 +38,13 @@
     @* ---- Food, one block per course (only non-empty blocks are shown) ---- *@
     @foreach (var block in _foodBlocks)
     {
-        <div class="order-card__group muted"><LucideIcon Name="@block.Icon" Size="15" /> @Loc.T(block.Label)</div>
+        <div class="order-card__group"><LucideIcon Name="@block.Icon" Size="16" /> @Loc.T(block.Label)</div>
         <div class="order-card__lines">
             @foreach (var it in block.Items)
             {
                 <div class="order-card__line">
                     <span>@it.Quantity× @it.ProductName</span>
-                    <span>@it.LineTotal.ToString("C")</span>
+                    <span>@it.LineTotal.ToString("N2")</span>
                 </div>
             }
         </div>
@@ -79,7 +79,7 @@
     <div class="order-card__foot">
         <button class="btn btn--ghost btn--sm" @onclick="OnEditClick"><LucideIcon Name="pencil" Size="15" />@Loc.T("Edit")</button>
         <span class="spacer"></span>
-        <strong>@Order.Total.ToString("C")</strong>
+        <strong>@Order.Total.ToString("N2")</strong>
         <button class="btn btn--success" @onclick="OnPayClick"><LucideIcon Name="credit-card" Size="16" />@Loc.T("Charge")</button>
     </div>
 </div>

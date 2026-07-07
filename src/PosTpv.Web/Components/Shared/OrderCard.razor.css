@@ -1,8 +1,15 @@
 .order-card { padding: 1rem; display: flex; flex-direction: column; gap: .5rem; }
 .order-card__head { display: flex; align-items: center; justify-content: space-between; }
 .order-card__meta { font-size: .8rem; }
-.order-card__group { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; margin-top: .25rem; }
-.order-card__lines { display: flex; flex-direction: column; gap: .2rem; padding-top: .1rem; }
+.order-card__group {
+    display: flex; align-items: center; gap: .4rem;
+    font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--primary);
+    margin-top: 1rem; padding-top: .7rem;
+    border-top: 1px solid var(--border);
+}
+.order-card__meta + .order-card__group { margin-top: .6rem; padding-top: 0; border-top: none; }
+.order-card__lines { display: flex; flex-direction: column; gap: .3rem; padding-top: .15rem; padding-bottom: .1rem; }
 .order-card__line { min-height: 1.6rem; display: flex; justify-content: space-between; font-size: .9rem; }
 .order-card__serve { align-self: flex-start; margin-top: .15rem; }
 .order-card__fire { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; margin-top: .2rem; }

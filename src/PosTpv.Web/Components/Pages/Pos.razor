@@ -87,7 +87,7 @@
         }
         else
         {
-            <div class="order__items">
+            <div class="order__items" @ref="_orderItemsEl">
                 @foreach (var it in _order.Items)
                 {
                     <div class="orderLine">
@@ -352,6 +352,9 @@
     private DotNetObjectReference<Pos>? _selfRef;
     private bool _showHelp;
 
+    private ElementReference _orderItemsEl;
+    private bool _scrollPending;
+
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
     protected override async Task OnInitializedAsync()
@@ -392,6 +395,13 @@
         _selfRef = DotNetObjectReference.Create(this);
         _shortcuts = await JS.InvokeAsync<IJSObjectReference>("import", "./js/shortcuts.js");
         await _shortcuts.InvokeVoidAsync("register", _selfRef);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_scrollPending) return;
+        _scrollPending = false;
+        await JS.InvokeVoidAsync("posScrollBottom", _orderItemsEl);
     }
 
     [JSInvokable]
@@ -489,7 +499,11 @@
     {
         if (_order is null) { _showTables = true; return Task.CompletedTask; }
         var orderId = _order.Id;
-        return RunAsync(async () => _order = await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id, Merge: false)));
+        return RunAsync(async () =>
+        {
+            _order = await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id, Merge: false));
+            _scrollPending = true;
+        });
     }
 
     private async Task OpenEditExtras(OrderItemDto item)

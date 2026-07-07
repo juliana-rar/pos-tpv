@@ -9,7 +9,7 @@
             <div class="pay">
                 <div class="pay__total">
                     <span class="muted">@Loc.T("Total due")</span>
-                    <span class="pay__due">@Order.Total.ToString("C")</span>
+                    <span class="pay__due">@Order.Total.ToString("N2")</span>
                 </div>
 
                 @* Quick full payment — one tender for the whole bill. *@
@@ -37,7 +37,7 @@
                         {
                             <div class="pay__row">
                                 <span class="pay__method"><LucideIcon Name="@MethodIcon(p.Method)" Size="15" /> @Loc.T(p.Method.ToString())</span>
-                                <span class="pay__amount">@p.Amount.ToString("C")</span>
+                                <span class="pay__amount">@p.Amount.ToString("N2")</span>
                                 <button class="btn btn--icon btn--ghost" title="@Loc.T("Remove")" @onclick="() => RemovePayment(p)"><LucideIcon Name="trash-2" Size="16" /></button>
                             </div>
                         }
@@ -63,11 +63,11 @@
                 <div class="pay__balance @(Remaining > 0 ? "pay__balance--due" : "pay__balance--ok")">
                     @if (Remaining > 0)
                     {
-                        <span>@Loc.T("Remaining")</span><span>@Remaining.ToString("C")</span>
+                        <span>@Loc.T("Remaining")</span><span>@Remaining.ToString("N2")</span>
                     }
                     else if (Remaining < 0)
                     {
-                        <span>@Loc.T("Change")</span><span>@((-Remaining).ToString("C"))</span>
+                        <span>@Loc.T("Change")</span><span>@((-Remaining).ToString("N2"))</span>
                     }
                     else
                     {
@@ -78,7 +78,7 @@
         }
     </ChildContent>
     <Footer>
-        <span class="muted">@Loc.T("Tendered") @PaidSoFar.ToString("C")</span>
+        <span class="muted">@Loc.T("Tendered") @PaidSoFar.ToString("N2")</span>
         <span class="spacer"></span>
         <button class="btn btn--ghost" @onclick="OnClose">@Loc.T("Cancel")</button>
         <button class="btn btn--success" disabled="@(Remaining > 0 || _payments.Count == 0 || _busy)" @onclick="ConfirmSplit">@Loc.T("Finalize")</button>
