@@ -1,0 +1,207 @@
+@page "/settings"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using FluentValidation
+@inject ISettingsService SettingsService
+@inject IUserService UserService
+@inject IValidator<AppSettingsFormDto> SettingsValidator
+@inject IValidator<UserFormDto> UserValidator
+@inject AppSettingsCache Branding
+
+<PageTitle>@Loc.T("Settings") · @Branding.Current.Title</PageTitle>
+
+<div class="toolbar">
+    <h1>@Loc.T("Settings")</h1>
+</div>
+<p class="muted settings__intro">@Loc.T("Configure the app title, staff accounts and service hours.")</p>
+
+<div class="tabs" role="tablist">
+    <button class="tabs__opt @(_tab == "general" ? "tabs__opt--on" : "")" @onclick='() => _tab = "general"'><LucideIcon Name="settings" Size="16" /> @Loc.T("General")</button>
+    <button class="tabs__opt @(_tab == "schedule" ? "tabs__opt--on" : "")" @onclick='() => _tab = "schedule"'><LucideIcon Name="calendar" Size="16" /> @Loc.T("Schedule")</button>
+    <button class="tabs__opt @(_tab == "users" ? "tabs__opt--on" : "")" @onclick='() => _tab = "users"'><LucideIcon Name="users" Size="16" /> @Loc.T("Users")</button>
+</div>
+
+@if (_settings is null)
+{
+    <div class="page-loading">@Loc.T("Loading…")</div>
+}
+else if (_tab == "general")
+{
+    <div class="card settings__panel">
+        <div class="field">
+            <label>@Loc.T("App title")</label>
+            <input class="input" @bind="_settings.Title" maxlength="80" />
+            <span class="muted settings__hint">@Loc.T("This name appears in the sidebar, the login page and the browser tab.")</span>
+        </div>
+        @if (_settingsError is not null) { <div class="field-error">@_settingsError</div> }
+        <div class="settings__save">
+            <button class="btn btn--primary" @onclick="SaveSettings">@Loc.T("Save")</button>
+            @if (_settingsSaved) { <span class="badge badge--success"><LucideIcon Name="check" Size="14" /> @Loc.T("Saved")</span> }
+        </div>
+    </div>
+}
+else if (_tab == "schedule")
+{
+    <div class="card settings__panel">
+        <div class="modal-section">@Loc.T("Lunch")</div>
+        <div class="row-2">
+            <div class="field"><label>@Loc.T("Start")</label><input type="time" class="input" @bind="_settings.LunchStart" /></div>
+            <div class="field"><label>@Loc.T("End")</label><input type="time" class="input" @bind="_settings.LunchEnd" /></div>
+        </div>
+
+        <div class="modal-section">@Loc.T("Dinner")</div>
+        <div class="row-2">
+            <div class="field"><label>@Loc.T("Start")</label><input type="time" class="input" @bind="_settings.DinnerStart" /></div>
+            <div class="field"><label>@Loc.T("End")</label><input type="time" class="input" @bind="_settings.DinnerEnd" /></div>
+        </div>
+
+        <p class="muted settings__hint">@Loc.T("Service hours affect the dashboard's current-service badge and flag reservations booked outside them.")</p>
+        @if (_settingsError is not null) { <div class="field-error">@_settingsError</div> }
+        <div class="settings__save">
+            <button class="btn btn--primary" @onclick="SaveSettings">@Loc.T("Save")</button>
+            @if (_settingsSaved) { <span class="badge badge--success"><LucideIcon Name="check" Size="14" /> @Loc.T("Saved")</span> }
+        </div>
+    </div>
+}
+else if (_tab == "users")
+{
+    <div class="toolbar">
+        <span class="spacer"></span>
+        <button class="btn btn--primary" @onclick="() => OpenUserForm(null)">+ @Loc.T("New user")</button>
+    </div>
+    @if (_listError is not null) { <div class="field-error">@_listError</div> }
+    <div class="grid-cards">
+        @foreach (var u in _users)
+        {
+            <div class="card mgmt-card">
+                <div class="mgmt-card__head">
+                    <strong>@u.FullName</strong>
+                    <span class="spacer"></span>
+                    <span class="badge badge--primary">@Loc.T(u.Role.ToString())</span>
+                </div>
+                <div class="mgmt-card__meta muted">@u.Username</div>
+                @if (!u.IsActive || u.IsLocked)
+                {
+                    <div class="mgmt-card__meta">
+                        @if (!u.IsActive) { <span class="badge badge--danger">@Loc.T("Off")</span> }
+                        @if (u.IsLocked) { <span class="badge badge--warning">@Loc.T("Locked")</span> }
+                    </div>
+                }
+                <div class="mgmt-card__actions">
+                    <button class="btn btn--ghost btn--sm" @onclick="() => OpenUserForm(u.Id)">@Loc.T("Edit")</button>
+                    @if (u.IsLocked)
+                    {
+                        <button class="btn btn--ghost btn--sm" @onclick="() => Unlock(u.Id)">@Loc.T("Unlock")</button>
+                    }
+                    <span class="spacer"></span>
+                    <button class="btn btn--danger btn--sm" @onclick="() => DeleteUser(u.Id)">@Loc.T("Delete")</button>
+                </div>
+            </div>
+        }
+        @if (_users.Count == 0) { <p class="empty">@Loc.T("No users yet.")</p> }
+    </div>
+}
+
+<Modal Visible="_userForm is not null" Title="@(_userForm?.Id > 0 ? Loc.T("Edit user") : Loc.T("New user"))" OnClose="CloseUserForm">
+    <ChildContent>
+        @if (_userForm is not null)
+        {
+            <div class="field"><label>@Loc.T("Username")</label><input class="input" @bind="_userForm.Username" /></div>
+            <div class="field"><label>@Loc.T("Full name")</label><input class="input" @bind="_userForm.FullName" /></div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Role")</label>
+                    <select class="select" @bind="_userForm.Role">
+                        @foreach (var r in Enum.GetValues<UserRole>())
+                        {
+                            <option value="@r">@Loc.T(r.ToString())</option>
+                        }
+                    </select>
+                </div>
+                <div class="field"><label>@Loc.T("PIN")</label>
+                    <input type="password" class="input" @bind="_userForm.Pin"
+                           placeholder="@(_userForm.Id > 0 ? Loc.T("Leave blank to keep the current PIN") : "")" />
+                </div>
+            </div>
+            <label class="switch"><input type="checkbox" @bind="_userForm.IsActive" /> @Loc.T("Active")</label>
+            @if (_userError is not null) { <div class="field-error">@_userError</div> }
+        }
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="CloseUserForm">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="SaveUser">@Loc.T("Save")</button>
+    </Footer>
+</Modal>
+
+@code {
+    private string _tab = "general";
+
+    private AppSettingsFormDto? _settings;
+    private string? _settingsError;
+    private bool _settingsSaved;
+
+    private List<UserDto> _users = new();
+    private UserFormDto? _userForm;
+    private string? _userError;
+    private string? _listError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _settings = await SettingsService.GetForEditAsync();
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers() => _users = await UserService.GetAllAsync();
+
+    private async Task SaveSettings()
+    {
+        if (_settings is null) return;
+        _settingsSaved = false;
+        var result = await SettingsValidator.ValidateAsync(_settings);
+        if (!result.IsValid) { _settingsError = result.Errors[0].ErrorMessage; return; }
+
+        _settingsError = null;
+        await SettingsService.UpdateAsync(_settings);
+        _settingsSaved = true;
+    }
+
+    private void OpenUserForm(int? id) => _ = OpenUserFormAsync(id);
+
+    private async Task OpenUserFormAsync(int? id)
+    {
+        _userError = null;
+        _userForm = id is null ? new UserFormDto() : await UserService.GetForEditAsync(id.Value) ?? new UserFormDto();
+    }
+
+    private void CloseUserForm() => _userForm = null;
+
+    private async Task SaveUser()
+    {
+        if (_userForm is null) return;
+        var result = await UserValidator.ValidateAsync(_userForm);
+        if (!result.IsValid) { _userError = result.Errors[0].ErrorMessage; return; }
+
+        try
+        {
+            if (_userForm.Id > 0) await UserService.UpdateAsync(_userForm);
+            else await UserService.CreateAsync(_userForm);
+        }
+        catch (InvalidOperationException ex) { _userError = ex.Message; return; }
+
+        _userForm = null;
+        await LoadUsers();
+    }
+
+    private async Task DeleteUser(int id)
+    {
+        _listError = null;
+        try { await UserService.DeleteAsync(id); }
+        catch (InvalidOperationException ex) { _listError = ex.Message; return; }
+        await LoadUsers();
+    }
+
+    private async Task Unlock(int id)
+    {
+        await UserService.UnlockAsync(id);
+        await LoadUsers();
+    }
+}

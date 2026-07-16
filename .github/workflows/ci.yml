@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    # Ephemeral, CI-only SQL Server for the integration tests in tests/PosTpv.Tests. This
+    # container and its password live only for the duration of this job — not a reusable
+    # secret, so it's fine to keep inline here (unlike the dev/prod connection strings, which
+    # are never committed — see README "Getting started" / "Before going to production").
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "CiOnly_${{ github.run_id }}!"
+          MSSQL_PID: "Developer"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'CiOnly_${{ github.run_id }}!' -Q 'SELECT 1' || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      POSTPV_TEST_CONNECTION: "Server=127.0.0.1,1433;Database=PosTpv_Test;User Id=sa;Password=CiOnly_${{ github.run_id }}!;TrustServerCertificate=True;Encrypt=False"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release --logger "console;verbosity=normal"

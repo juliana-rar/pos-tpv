@@ -1,11 +1,14 @@
 @* Lightweight modal dialog. Render conditionally with @if(Visible). *@
 @if (Visible)
 {
-    <div class="modal-backdrop" @onclick="OnBackdrop">
-        <div class="modal" @onclick:stopPropagation="true">
+    <div class="modal-backdrop @(FullScreen ? "modal-backdrop--full" : "")" @onclick="OnBackdrop">
+        <div class="modal @(Wide ? "modal--wide" : "") @(FullScreen ? "modal--full" : "")" @onclick:stopPropagation="true">
             <div class="modal__head">
                 <h2>@Title</h2>
-                <button class="btn btn--icon btn--ghost" @onclick="Close" type="button"><LucideIcon Name="x" Size="18" /></button>
+                <div class="modal__head-actions">
+                    @HeaderActions
+                    <button class="btn btn--icon btn--ghost" @onclick="Close" type="button"><LucideIcon Name="x" Size="18" /></button>
+                </div>
             </div>
             <div class="modal__body">
                 @ChildContent
@@ -23,8 +26,11 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Footer { get; set; }
+    [Parameter] public RenderFragment? HeaderActions { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public bool CloseOnBackdrop { get; set; } = true;
+    [Parameter] public bool Wide { get; set; }
+    [Parameter] public bool FullScreen { get; set; }
 
     private Task Close() => OnClose.InvokeAsync();
     private Task OnBackdrop() => CloseOnBackdrop ? OnClose.InvokeAsync() : Task.CompletedTask;

@@ -6,8 +6,9 @@
 @inject ICategoryService CategoryService
 @inject IValidator<ProductFormDto> Validator
 @inject IValidator<CategoryFormDto> CategoryValidator
+@inject AppSettingsCache Branding
 
-<PageTitle>Products · PosTPV</PageTitle>
+<PageTitle>Products · @Branding.Current.Title</PageTitle>
 
 <div class="catalog">
     @* ---- Left rail: categories ---------------------------------------------- *@
@@ -27,6 +28,16 @@
             {
                 <div class="catRow" data-active="@(c.Id == _selectedId ? "true" : null)" @onclick="() => Select(c.Id)"
                      style="--cat:@c.Color">
+                    <div class="catRow__thumb">
+                        @if (!string.IsNullOrWhiteSpace(c.ImageUrl))
+                        {
+                            <img src="@c.ImageUrl" alt="" />
+                        }
+                        else
+                        {
+                            <span>@c.Icon</span>
+                        }
+                    </div>
                     <div class="catRow__main">
                         <span class="catRow__name">@c.Name</span>
                         <span class="catRow__meta muted">
@@ -76,12 +87,16 @@
             <div class="grid-cards">
                 @foreach (var (p, i) in Filtered.Select((p, i) => (p, i)))
                 {
-                    <div class="card mgmt-card" style="border-top:4px solid @p.Color" data-off="@(!p.IsAvailable ? "true" : null)">
+                    <div class="card mgmt-card" data-off="@(!p.IsAvailable ? "true" : null)">
+                        @if (!string.IsNullOrWhiteSpace(p.ImageUrl))
+                        {
+                            <div class="mgmt-card__thumb"><img src="@p.ImageUrl" alt="" /></div>
+                        }
                         <div class="mgmt-card__head">
                             <strong>@p.Name</strong>
                             @if (!p.IsVisible) { <span class="badge badge--danger">@Loc.T("hidden")</span> }
                             <span class="spacer"></span>
-                            <span class="badge badge--primary">@p.Price.ToString("C")</span>
+                            <span class="badge badge--primary">@p.Price.ToString("N2")</span>
                         </div>
                         <div class="mgmt-card__meta muted">@Loc.T("VAT") @p.VatRate% · @Loc.T("Order:") @p.DisplayOrder</div>
                         <div class="mgmt-card__actions">
@@ -129,6 +144,10 @@
                 </div>
                 <div class="field"><label>@Loc.T("Colour")</label><input type="color" class="input" @bind="_product.Color" /></div>
             </div>
+            <div class="field">
+                <label>@Loc.T("Image")</label>
+                <ImageUpload Value="_product.ImageUrl" ValueChanged="v => _product.ImageUrl = v" Folder="products" />
+            </div>
             <div class="row-2">
                 <div class="field"><label>@Loc.T("Price")</label><input type="number" step="0.01" class="input" @bind="_product.Price" /></div>
                 <div class="field"><label>@Loc.T("VAT %")</label><input type="number" step="0.5" class="input" @bind="_product.VatRate" /></div>
@@ -162,6 +181,10 @@
                 <div class="field"><label>@Loc.T("Colour")</label><input type="color" class="input" @bind="_category.Color" /></div>
             </div>
             <div class="field">
+                <label>@Loc.T("Image")</label>
+                <ImageUpload Value="_category.ImageUrl" ValueChanged="v => _category.ImageUrl = v" Folder="categories" />
+            </div>
+            <div class="field">
                 <label>@Loc.T("Course")</label>
                 <select class="input" @bind="_category.Course">
                     @foreach (var course in Enum.GetValues<CourseType>())
@@ -173,6 +196,35 @@
             <div class="row-2">
                 <div class="field"><label>@Loc.T("Display order")</label><input type="number" class="input" @bind="_category.DisplayOrder" /></div>
                 <label class="switch"><input type="checkbox" @bind="_category.IsVisible" /><span>@Loc.T("Visible")</span></label>
+            </div>
+            <div class="field">
+                <label>@Loc.T("Quick comments")</label>
+                @if (_category.Id > 0)
+                {
+                    <div class="commentEditor">
+                        @foreach (var (cm, i) in _categoryComments.Select((cm, i) => (cm, i)))
+                        {
+                            <div class="commentEditor__row">
+                                <input class="input" @bind="cm.Text" @bind:event="onchange" @bind:after="() => SaveCommentText(cm)" />
+                                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
+                                        disabled="@(i == 0)" @onclick="() => MoveComment(cm.Id, -1)"><LucideIcon Name="chevron-up" Size="14" /></button>
+                                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
+                                        disabled="@(i == _categoryComments.Count - 1)" @onclick="() => MoveComment(cm.Id, 1)"><LucideIcon Name="chevron-down" Size="14" /></button>
+                                <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")"
+                                        @onclick="() => DeleteComment(cm.Id)"><LucideIcon Name="trash-2" Size="14" /></button>
+                            </div>
+                        }
+                        @if (_categoryComments.Count == 0) { <p class="empty">@Loc.T("No quick comments yet.")</p> }
+                    </div>
+                    <div class="commentEditor__add">
+                        <input class="input" @bind="_newCommentText" @bind:event="oninput" placeholder="@Loc.T("e.g. Well done, No cheese…")" />
+                        <button class="btn btn--ghost btn--sm" type="button" disabled="@string.IsNullOrWhiteSpace(_newCommentText)" @onclick="AddComment">+ @Loc.T("Add")</button>
+                    </div>
+                }
+                else
+                {
+                    <p class="muted">@Loc.T("Save the category first to add quick comments.")</p>
+                }
             </div>
             @if (_categoryError is not null) { <div class="field-error">@_categoryError</div> }
         }
@@ -216,6 +268,8 @@
 
     private CategoryFormDto? _category;
     private string? _categoryError;
+    private List<CategoryCommentDto> _categoryComments = new();
+    private string _newCommentText = "";
 
     private ProductDto? _moving;
     private int _moveTargetId;
@@ -261,9 +315,43 @@
         _category = id is null
             ? new CategoryFormDto { DisplayOrder = _categories.Count }
             : await CategoryService.GetForEditAsync(id.Value) ?? new CategoryFormDto();
+        _newCommentText = "";
+        _categoryComments = _category.Id > 0 ? await CategoryService.GetCommentsAsync(_category.Id) : new();
     }
 
-    private void CloseCategory() => _category = null;
+    private void CloseCategory()
+    {
+        _category = null;
+        _categoryComments = new();
+        _newCommentText = "";
+    }
+
+    private async Task LoadComments()
+    {
+        if (_category is not null) _categoryComments = await CategoryService.GetCommentsAsync(_category.Id);
+    }
+
+    private async Task AddComment()
+    {
+        if (_category is null || string.IsNullOrWhiteSpace(_newCommentText)) return;
+        await CategoryService.AddCommentAsync(_category.Id, _newCommentText.Trim());
+        _newCommentText = "";
+        await LoadComments();
+    }
+
+    private Task SaveCommentText(CategoryCommentDto cm) => CategoryService.UpdateCommentAsync(cm.Id, cm.Text);
+
+    private async Task MoveComment(int id, int direction)
+    {
+        await CategoryService.MoveCommentAsync(id, direction);
+        await LoadComments();
+    }
+
+    private async Task DeleteComment(int id)
+    {
+        await CategoryService.DeleteCommentAsync(id);
+        await LoadComments();
+    }
 
     // Localisation key for a course, shared with the /orders block headers.
     private static string CourseLabel(CourseType course) => course switch

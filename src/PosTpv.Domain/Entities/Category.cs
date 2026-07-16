@@ -21,4 +21,7 @@ public class Category : BaseEntity
     public bool IsVisible { get; set; } = true;
 
     public ICollection<Product> Products { get; set; } = new List<Product>();
+
+    /// <summary>Quick-pick order-line notes offered for products in this category.</summary>
+    public ICollection<CategoryComment> Comments { get; set; } = new List<CategoryComment>();
 }

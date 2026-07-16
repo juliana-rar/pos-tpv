@@ -6,6 +6,12 @@ namespace PosTpv.Web.Hubs;
 /// Real-time channel shared by the POS, waiter and kitchen screens. The server broadcasts
 /// order events; clients refresh the affected view without polling.
 /// </summary>
+/// <remarks>
+/// Deliberately not [Authorize]: the Blazor Server components open this connection
+/// server-side (no browser auth cookie to forward), and every page that connects here
+/// (Pos, Orders, Kitchen) already requires a role via its own [Authorize] attribute, so
+/// gating the hub too would only block the legitimate callers, not unauthenticated ones.
+/// </remarks>
 public class KitchenHub : Hub
 {
     public const string Path = "/hubs/kitchen";
@@ -17,4 +23,5 @@ public class KitchenHub : Hub
     public const string FirstsFired = "FirstsFired";
     public const string SecondsFired = "SecondsFired";
     public const string DrinksServed = "DrinksServed";
+    public const string FirstCoursesServed = "FirstCoursesServed";
 }

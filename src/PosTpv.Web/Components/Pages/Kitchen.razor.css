@@ -1,5 +1,4 @@
-.kds__head { margin-bottom: 1rem; }
-.kds__head h1 { margin: 0; }
+.kds__head { margin-bottom: .5rem; }
 
 .kds {
     display: grid;
@@ -18,19 +17,16 @@
     border-top: 5px solid var(--border);
     animation: pop var(--transition);
 }
-.ticket--new { border-top-color: var(--secondary); }
-.ticket--cooking { border-top-color: var(--warning); }
-.ticket--ready { border-top-color: var(--success); }
+.ticket__status { font-size: .68rem; letter-spacing: .04em; text-transform: uppercase; }
 
-/* A ticket whose second courses have been fired jumps out with a coloured frame and a pulse. */
+/* A ticket whose second courses have been fired jumps out with a frame and a pulse. */
 .ticket--seconds {
-    border-color: var(--danger);
-    box-shadow: 0 0 0 2px var(--danger), var(--shadow-sm);
+    box-shadow: 0 0 0 2px var(--text), var(--shadow-sm);
     animation: secondsPulse 1.1s ease-in-out infinite;
 }
 @keyframes secondsPulse {
-    0%, 100% { box-shadow: 0 0 0 2px var(--danger), var(--shadow-sm); }
-    50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--danger) 45%, transparent), var(--shadow-sm); }
+    0%, 100% { box-shadow: 0 0 0 2px var(--text), var(--shadow-sm); }
+    50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--text) 45%, transparent), var(--shadow-sm); }
 }
 
 .ticket__fire {
@@ -56,12 +52,13 @@
 .ticket__items { display: flex; flex-direction: column; gap: .3rem; padding: .5rem .7rem; border-top: 1px dashed var(--border); }
 
 .kitem { border-radius: var(--radius-sm); padding: .4rem .5rem; background: var(--card-2); }
-.kitem--ready { background: color-mix(in srgb, var(--success) 15%, transparent); }
+.kitem--ready { color: var(--text-soft); }
+.kitem--ready .kitem__name { text-decoration: line-through; }
 .kitem__row { display: flex; align-items: center; gap: .5rem; }
-.kitem__qty { font-weight: 800; color: var(--primary); }
+.kitem__qty { font-weight: 800; }
 .kitem__name { font-weight: 600; }
-.kitem__extras { margin-top: .25rem; font-size: .8rem; font-weight: 600; color: var(--secondary); }
-.kitem__comment { margin-top: .25rem; font-size: .8rem; font-weight: 700; color: var(--warning); }
+.kitem__extras { margin-top: .25rem; font-size: .8rem; font-weight: 600; }
+.kitem__comment { margin-top: .25rem; font-size: .8rem; font-weight: 700; }
 .kitem .btn--icon { width: 30px; height: 30px; padding: 0; }
 
 .ticket__foot { padding: .6rem .7rem; border-top: 1px solid var(--border); margin-top: auto; }

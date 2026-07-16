@@ -4,3 +4,52 @@
     gap: 1rem;
     align-items: start;
 }
+
+/* Header row: table quick-jump chips on the left, status/sort/refresh controls on the right,
+   pulled up close to the topbar and split by a divider so the two groups read as separate. */
+.orders-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 1rem;
+    margin-top: -.8rem;
+    margin-bottom: .8rem;
+}
+
+@media (max-width: 640px) {
+    .orders-header { flex-wrap: wrap; }
+}
+
+.toolbar { margin: 0; flex-wrap: nowrap; flex-shrink: 0; }
+.toolbar .select, .toolbar .btn { font-size: .78rem; padding: .35rem .6rem; }
+
+/* ---- Quick-jump strip: one small chip per open order, straight to its detail ---- */
+/* Never wraps to a second line — scrolls horizontally instead, so it always sits at the
+   same height as the status/sort/refresh controls. */
+.orders-quicknav {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: .4rem;
+    padding-right: 1rem;
+    margin-right: -.2rem;
+    border-right: 1px solid var(--border);
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+}
+.orders-quicknav__chip { flex-shrink: 0; }
+.orders-quicknav__chip {
+    display: inline-flex; align-items: center; gap: .3rem;
+    min-width: 2.6rem;
+    padding: .35rem .55rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card-2);
+    color: var(--text-soft);
+    font: inherit; font-weight: 700; font-size: .78rem;
+    cursor: pointer;
+    transition: transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition);
+}
+.orders-quicknav__chip:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); color: var(--text); }

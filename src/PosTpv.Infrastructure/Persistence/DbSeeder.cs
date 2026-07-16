@@ -40,6 +40,13 @@ public class DbSeeder : IDbSeeder
             await _db.SaveChangesAsync(ct);
         }
 
+        if (!await _db.AppSettings.AnyAsync(ct))
+        {
+            _log.LogInformation("Seeding default app settings.");
+            _db.AppSettings.Add(new AppSetting());
+            await _db.SaveChangesAsync(ct);
+        }
+
         if (!await _db.Categories.AnyAsync(ct))
         {
             _log.LogInformation("Seeding demo catalogue.");
@@ -48,6 +55,16 @@ public class DbSeeder : IDbSeeder
             var pizzas = new Category { Name = "Pizzas", Icon = "🍕", Color = "#ef4444", DisplayOrder = 3, Course = CourseType.Main };
             var pasta = new Category { Name = "Pasta", Icon = "🍝", Color = "#f59e0b", DisplayOrder = 4, Course = CourseType.Main };
             var desserts = new Category { Name = "Desserts", Icon = "🍰", Color = "#ec4899", DisplayOrder = 5, Course = CourseType.Dessert };
+
+            starters.Comments.Add(Cmt("No onion", 0));
+            pizzas.Comments.Add(Cmt("Well done", 0));
+            pizzas.Comments.Add(Cmt("No cheese", 1));
+            pizzas.Comments.Add(Cmt("Extra sauce", 2));
+            pizzas.Comments.Add(Cmt("Gluten free", 3));
+            pasta.Comments.Add(Cmt("Spicy", 0));
+            pasta.Comments.Add(Cmt("No cheese", 1));
+            pasta.Comments.Add(Cmt("Gluten free", 2));
+
             _db.Categories.AddRange(drinks, starters, pizzas, pasta, desserts);
 
             _db.Products.AddRange(
@@ -84,6 +101,7 @@ public class DbSeeder : IDbSeeder
                     Shape = i % 4 == 0 ? TableShape.Round : TableShape.Square,
                     PositionX = 40 + col * 170,
                     PositionY = 40 + row * 170,
+                    Zone = i >= 7 ? "Bar" : "Main hall",
                 });
             }
             await _db.SaveChangesAsync(ct);
@@ -198,6 +216,8 @@ public class DbSeeder : IDbSeeder
         Role = role,
         PasswordHash = _hasher.Hash("1234") // demo PIN; change in production
     };
+
+    private static CategoryComment Cmt(string text, int order) => new() { Text = text, DisplayOrder = order };
 
     private static Product P(string name, decimal price, Category cat, string color, decimal vat, int prep = 0) => new()
     {

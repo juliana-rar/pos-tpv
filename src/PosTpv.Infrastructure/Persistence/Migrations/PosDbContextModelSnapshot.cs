@@ -37,6 +37,42 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
                     b.ToTable("ExtraProduct");
                 });
 
+            modelBuilder.Entity("PosTpv.Domain.Entities.AppSetting", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<TimeOnly>("DinnerEnd")
+                        .HasColumnType("time");
+
+                    b.Property<TimeOnly>("DinnerStart")
+                        .HasColumnType("time");
+
+                    b.Property<TimeOnly>("LunchEnd")
+                        .HasColumnType("time");
+
+                    b.Property<TimeOnly>("LunchStart")
+                        .HasColumnType("time");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AppSettings");
+                });
+
             modelBuilder.Entity("PosTpv.Domain.Entities.Category", b =>
                 {
                     b.Property<int>("Id")
@@ -85,6 +121,38 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
                     b.HasIndex("DisplayOrder");
 
                     b.ToTable("Categories");
+                });
+
+            modelBuilder.Entity("PosTpv.Domain.Entities.CategoryComment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.ToTable("CategoryComments");
                 });
 
             modelBuilder.Entity("PosTpv.Domain.Entities.Customer", b =>
@@ -207,6 +275,9 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DrinksServedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("FirstsFiredAt")
@@ -472,9 +543,6 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
-                    b.Property<int?>("TableId")
-                        .HasColumnType("int");
-
                     b.Property<TimeOnly>("Time")
                         .HasColumnType("time");
 
@@ -486,8 +554,6 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("Date");
-
-                    b.HasIndex("TableId");
 
                     b.ToTable("Reservations");
                 });
@@ -505,6 +571,9 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
 
                     b.Property<int?>("GroupId")
                         .HasColumnType("int");
+
+                    b.Property<string>("GroupName")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<double>("Height")
                         .HasColumnType("float");
@@ -556,6 +625,9 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
                     b.Property<double>("Width")
                         .HasColumnType("float");
 
+                    b.Property<string>("Zone")
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("GroupId");
@@ -577,6 +649,9 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("FailedLoginAttempts")
+                        .HasColumnType("int");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -584,6 +659,9 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LockedUntil")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -609,6 +687,21 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("ReservationRestaurantTable", b =>
+                {
+                    b.Property<int>("ReservationsId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TablesId")
+                        .HasColumnType("int");
+
+                    b.HasKey("ReservationsId", "TablesId");
+
+                    b.HasIndex("TablesId");
+
+                    b.ToTable("ReservationTables", (string)null);
+                });
+
             modelBuilder.Entity("ExtraProduct", b =>
                 {
                     b.HasOne("PosTpv.Domain.Entities.Extra", null)
@@ -622,6 +715,17 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ProductsId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("PosTpv.Domain.Entities.CategoryComment", b =>
+                {
+                    b.HasOne("PosTpv.Domain.Entities.Category", "Category")
+                        .WithMany("Comments")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
                 });
 
             modelBuilder.Entity("PosTpv.Domain.Entities.Invoice", b =>
@@ -719,18 +823,28 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("PosTpv.Domain.Entities.RestaurantTable", "Table")
-                        .WithMany("Reservations")
-                        .HasForeignKey("TableId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Customer");
+                });
 
-                    b.Navigation("Table");
+            modelBuilder.Entity("ReservationRestaurantTable", b =>
+                {
+                    b.HasOne("PosTpv.Domain.Entities.Reservation", null)
+                        .WithMany()
+                        .HasForeignKey("ReservationsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PosTpv.Domain.Entities.RestaurantTable", null)
+                        .WithMany()
+                        .HasForeignKey("TablesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("PosTpv.Domain.Entities.Category", b =>
                 {
+                    b.Navigation("Comments");
+
                     b.Navigation("Products");
                 });
 
@@ -759,8 +873,6 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("PosTpv.Domain.Entities.RestaurantTable", b =>
                 {
                     b.Navigation("Orders");
-
-                    b.Navigation("Reservations");
                 });
 
             modelBuilder.Entity("PosTpv.Domain.Entities.User", b =>

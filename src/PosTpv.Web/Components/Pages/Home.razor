@@ -1,8 +1,9 @@
 @page "/dashboard"
 @rendermode InteractiveServer
 @inject IDashboardService Dashboard
+@inject AppSettingsCache Branding
 
-<PageTitle>@Loc.T("Dashboard") · PosTPV</PageTitle>
+<PageTitle>@Loc.T("Dashboard") · @Branding.Current.Title</PageTitle>
 
 <h1>@Loc.T("Dashboard")</h1>
 
@@ -16,11 +17,11 @@ else
         <div class="dash__metrics">
             <div class="metric card">
                 <span class="metric__label">@Loc.T("Sales today")</span>
-                <span class="metric__value">@_data.SalesToday.ToString("C")</span>
+                <span class="metric__value">@_data.SalesToday.ToString("N2")</span>
             </div>
             <div class="metric card">
                 <span class="metric__label">@Loc.T("Sales this month")</span>
-                <span class="metric__value">@_data.SalesMonth.ToString("C")</span>
+                <span class="metric__value">@_data.SalesMonth.ToString("N2")</span>
             </div>
             <div class="metric card">
                 <span class="metric__label">@Loc.T("Orders today")</span>
@@ -37,6 +38,10 @@ else
             <div class="metric card">
                 <span class="metric__label">@Loc.T("Reservations today")</span>
                 <span class="metric__value">@_data.ReservationsToday</span>
+            </div>
+            <div class="metric card">
+                <span class="metric__label">@Loc.T("Current service")</span>
+                <span class="metric__value">@CurrentPeriodLabel()</span>
             </div>
         </div>
 
@@ -58,7 +63,7 @@ else
                             <tr>
                                 <td>@p.Name</td>
                                 <td>@p.Quantity</td>
-                                <td>@p.Revenue.ToString("C")</td>
+                                <td>@p.Revenue.ToString("N2")</td>
                             </tr>
                         }
                     </tbody>
@@ -72,4 +77,15 @@ else
     private DashboardDto? _data;
 
     protected override async Task OnInitializedAsync() => _data = await Dashboard.GetAsync();
+
+    private string CurrentPeriodLabel()
+    {
+        var period = Branding.Current.GetPeriod(TimeOnly.FromDateTime(DateTime.Now));
+        return period switch
+        {
+            ServicePeriod.Lunch => Loc.T("Lunch"),
+            ServicePeriod.Dinner => Loc.T("Dinner"),
+            _ => Loc.T("Closed")
+        };
+    }
 }

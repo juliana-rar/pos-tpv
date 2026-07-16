@@ -7,13 +7,14 @@ public record OrderItemExtraDto(int Id, int? ExtraId, string Name, decimal Price
 public record OrderItemDto(
     int Id, int ProductId, string ProductName, int Quantity, decimal UnitPrice,
     decimal VatRate, string? Comment, OrderItemStatus Status,
-    IReadOnlyList<OrderItemExtraDto> Extras, decimal LineTotal, bool IsDrink, CourseType Course);
+    IReadOnlyList<OrderItemExtraDto> Extras, decimal LineTotal, bool IsDrink, CourseType Course,
+    DateTime CreatedAt, int CategoryId, DateTime? UpdatedAt);
 
 public record OrderDto(
     int Id, string Number, OrderStatus Status, int TableId, string TableName,
     int WaiterId, string WaiterName, DateTime CreatedAt, string? Notes,
     IReadOnlyList<OrderItemDto> Items, decimal Subtotal, decimal VatTotal, decimal Total,
-    DateTime? FirstsFiredAt, DateTime? SecondsFiredAt);
+    DateTime? FirstsFiredAt, DateTime? SecondsFiredAt, DateTime? DrinksServedAt);
 
 /// <summary>Request to add a product line to an order, optionally with selected extras.</summary>
 /// <remarks>

@@ -19,6 +19,15 @@ public interface ICategoryService
 
     /// <summary>Delete a category. Throws <see cref="InvalidOperationException"/> if it still holds products.</summary>
     Task DeleteAsync(int id, CancellationToken ct = default);
+
+    /// <summary>Quick-pick order-line notes configured for a category (e.g. "Well done", "No cheese"), in display order.</summary>
+    Task<List<CategoryCommentDto>> GetCommentsAsync(int categoryId, CancellationToken ct = default);
+    Task<int> AddCommentAsync(int categoryId, string text, CancellationToken ct = default);
+    Task UpdateCommentAsync(int id, string text, CancellationToken ct = default);
+    Task DeleteCommentAsync(int id, CancellationToken ct = default);
+
+    /// <summary>Swap a comment's display order with its neighbour within the same category. direction: -1 = up, +1 = down.</summary>
+    Task MoveCommentAsync(int id, int direction, CancellationToken ct = default);
 }
 
 public class CategoryService : ICategoryService
@@ -106,6 +115,65 @@ public class CategoryService : ICategoryService
             throw new InvalidOperationException("Cannot delete a category that still has products.");
 
         repo.Remove(entity);
+        await _uow.SaveChangesAsync(ct);
+    }
+
+    public async Task<List<CategoryCommentDto>> GetCommentsAsync(int categoryId, CancellationToken ct = default) =>
+        await _uow.Repository<CategoryComment>().Query()
+            .Where(c => c.CategoryId == categoryId)
+            .OrderBy(c => c.DisplayOrder).ThenBy(c => c.Id)
+            .Select(c => new CategoryCommentDto { Id = c.Id, CategoryId = c.CategoryId, Text = c.Text, DisplayOrder = c.DisplayOrder })
+            .ToListAsync(ct);
+
+    public async Task<int> AddCommentAsync(int categoryId, string text, CancellationToken ct = default)
+    {
+        var repo = _uow.Repository<CategoryComment>();
+        var count = await repo.Query().CountAsync(c => c.CategoryId == categoryId, ct);
+        var entity = new CategoryComment { CategoryId = categoryId, Text = text, DisplayOrder = count };
+        await repo.AddAsync(entity, ct);
+        await _uow.SaveChangesAsync(ct);
+        return entity.Id;
+    }
+
+    public async Task UpdateCommentAsync(int id, string text, CancellationToken ct = default)
+    {
+        var repo = _uow.Repository<CategoryComment>();
+        var entity = await repo.GetByIdAsync(id, ct);
+        if (entity is null) return;
+        entity.Text = text;
+        repo.Update(entity);
+        await _uow.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteCommentAsync(int id, CancellationToken ct = default)
+    {
+        var repo = _uow.Repository<CategoryComment>();
+        var entity = await repo.GetByIdAsync(id, ct);
+        if (entity is null) return;
+        repo.Remove(entity);
+        await _uow.SaveChangesAsync(ct);
+    }
+
+    public async Task MoveCommentAsync(int id, int direction, CancellationToken ct = default)
+    {
+        if (direction == 0) return;
+        var repo = _uow.Repository<CategoryComment>();
+        var entity = await repo.GetByIdAsync(id, ct);
+        if (entity is null) return;
+
+        var ordered = await repo.Query()
+            .Where(c => c.CategoryId == entity.CategoryId)
+            .OrderBy(c => c.DisplayOrder).ThenBy(c => c.Id)
+            .ToListAsync(ct);
+
+        var index = ordered.FindIndex(c => c.Id == id);
+        var target = index + Math.Sign(direction);
+        if (index < 0 || target < 0 || target >= ordered.Count) return;
+
+        for (var i = 0; i < ordered.Count; i++) ordered[i].DisplayOrder = i;
+        (ordered[index].DisplayOrder, ordered[target].DisplayOrder) = (target, index);
+        repo.Update(ordered[index]);
+        repo.Update(ordered[target]);
         await _uow.SaveChangesAsync(ct);
     }
 }

@@ -30,10 +30,18 @@ tests/
 ## Getting started
 
 ```bash
-# 1. Start SQL Server (published on host port 14333)
+# 1. Copy the env template and pick a SA password
+cp .env.example .env        # edit SA_PASSWORD if you want something other than the default
+
+# 2. Start SQL Server (published on host port 14333)
 podman compose up -d        # or: docker compose up -d
 
-# 2. Run the app (applies migrations and seeds demo data on first start)
+# 3. Point the app at the same password (never commit real credentials to appsettings.json)
+dotnet user-secrets set "ConnectionStrings:Default" \
+  "Server=127.0.0.1,14333;Database=PosTpv;User Id=sa;Password=<value from .env>;TrustServerCertificate=True;Encrypt=False" \
+  --project src/PosTpv.Web
+
+# 4. Run the app (applies migrations and seeds demo data on first start)
 dotnet run --project src/PosTpv.Web --launch-profile http
 ```
 
@@ -41,6 +49,19 @@ Then open **http://localhost:5209** (HTTPS: https://localhost:7200).
 
 > The connection string uses `127.0.0.1,14333` rather than `localhost` on purpose: on Windows
 > `localhost` resolves to IPv6 `::1` first, which the Podman/WSL port-forward does not answer.
+
+### Running without Podman/Docker (Sqlite dev fallback)
+
+If no container runtime is available, run against a local Sqlite file instead of SQL Server:
+
+```bash
+export Database__Provider=Sqlite
+export ConnectionStrings__Default="Data Source=postpv-dev.db"
+dotnet run --project src/PosTpv.Web --launch-profile http
+```
+
+This applies the EF Core model directly (`EnsureCreated`, not the SQL-Server-authored migrations)
+and seeds the same demo data. Not intended for production use.
 
 ### Demo accounts (PIN `1234`)
 
@@ -104,6 +125,18 @@ show data immediately.
 All modules from the original specification are implemented. Natural next steps for a real
 deployment: multi-tenant/site support, printer/receipt integration, stock control, and a hardened
 production auth setup (stronger PIN policy, per-user accounts).
+
+## Before going to production
+
+This repo ships as a demo with deliberately weak defaults. At minimum, before any real deployment:
+
+- Replace every demo account's PIN (`1234`) and enforce a real password/PIN policy.
+- Never reuse the `.env.example` / dev `appsettings.json` credentials — set real secrets via
+  `dotnet user-secrets`, environment variables, or a secrets manager.
+- Put SQL Server (or the app) behind TLS with a real certificate; `UseHsts()` is already wired up
+  for non-Development environments.
+- Review `Program.cs`'s cookie options (`SecurePolicy`, `SameSite`) for your deployment topology
+  (e.g. behind a reverse proxy).
 
 ## Notes
 

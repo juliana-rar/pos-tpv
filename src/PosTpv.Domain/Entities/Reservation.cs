@@ -19,8 +19,7 @@ public class Reservation : BaseEntity
     public string Color { get; set; } = "#6366f1";
     public ReservationStatus Status { get; set; } = ReservationStatus.Pending;
 
-    public int? TableId { get; set; }
-    public RestaurantTable? Table { get; set; }
+    public ICollection<RestaurantTable> Tables { get; set; } = new List<RestaurantTable>();
 
     public int? CustomerId { get; set; }
     public Customer? Customer { get; set; }

@@ -5,7 +5,7 @@ namespace PosTpv.Application.DTOs;
 public record TableDto(
     int Id, string Name, int Seats, TableShape Shape, TableStatus Status,
     double PositionX, double PositionY, double Width, double Height, double Rotation, bool IsLocked,
-    int? ActiveOrderId, decimal ActiveOrderTotal, int? GroupId);
+    int? ActiveOrderId, decimal ActiveOrderTotal, int? GroupId, string? Zone, string? GroupName);
 
 public class TableFormDto
 {
@@ -13,6 +13,7 @@ public class TableFormDto
     public string Name { get; set; } = string.Empty;
     public int Seats { get; set; } = 4;
     public TableShape Shape { get; set; } = TableShape.Square;
+    public string? Zone { get; set; }
 }
 
 /// <summary>Geometry (and shape) patch pushed when the floor map is saved.</summary>

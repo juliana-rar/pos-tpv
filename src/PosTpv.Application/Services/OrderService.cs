@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using PosTpv.Application.Common.Interfaces;
 using PosTpv.Application.DTOs;
@@ -26,6 +27,18 @@ public interface IOrderService
     /// </summary>
     Task ServeDrinksAsync(int orderId, CancellationToken ct = default);
 
+    /// <summary>Undoes <see cref="ServeDrinksAsync"/>: puts every served drink line back to pending.</summary>
+    Task UnserveDrinksAsync(int orderId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Marks every ready-to-serve first-course line of an order as delivered in a single
+    /// round-trip, mirroring <see cref="ServeDrinksAsync"/> for the first-course block.
+    /// </summary>
+    Task ServeFirstCoursesAsync(int orderId, CancellationToken ct = default);
+
+    /// <summary>Undoes <see cref="ServeFirstCoursesAsync"/>: puts every served first-course line back to ready.</summary>
+    Task UnserveFirstCoursesAsync(int orderId, CancellationToken ct = default);
+
     Task<List<OrderDto>> GetKitchenOrdersAsync(CancellationToken ct = default);
 
     /// <summary>Waiter fires the first courses for a table, alerting the kitchen in real time.</summary>
@@ -53,11 +66,13 @@ public class OrderService : IOrderService
 
     private readonly IUnitOfWork _uow;
     private readonly IKitchenNotifier _notifier;
+    private readonly IValidator<AddItemRequest> _addItemValidator;
 
-    public OrderService(IUnitOfWork uow, IKitchenNotifier notifier)
+    public OrderService(IUnitOfWork uow, IKitchenNotifier notifier, IValidator<AddItemRequest> addItemValidator)
     {
         _uow = uow;
         _notifier = notifier;
+        _addItemValidator = addItemValidator;
     }
 
     private IQueryable<Order> FullOrders() => _uow.Repository<Order>().Query()
@@ -89,32 +104,36 @@ public class OrderService : IOrderService
         return order is null ? null : Map(order);
     }
 
-    public async Task<OrderDto> OpenOrderAsync(int tableId, int waiterId, CancellationToken ct = default)
-    {
-        var existing = await GetActiveByTableAsync(tableId, ct);
-        if (existing is not null) return existing;
-
-        var table = await _uow.Repository<RestaurantTable>().GetByIdAsync(tableId, ct)
-            ?? throw new KeyNotFoundException($"Table {tableId} not found.");
-
-        var members = await GroupMembersAsync(table, ct);
-        var primaryId = members.Min(m => m.Id);   // the group's order lives on its lowest-Id table
-
-        var order = new Order { TableId = primaryId, WaiterId = waiterId, Status = OrderStatus.Open, Number = "…" };
-        await _uow.Repository<Order>().AddAsync(order, ct);
-        await _uow.SaveChangesAsync(ct);
-
-        order.Number = $"O-{order.Id:D5}";
-        _uow.Repository<Order>().Update(order);
-        foreach (var m in members)
+    public Task<OrderDto> OpenOrderAsync(int tableId, int waiterId, CancellationToken ct = default) =>
+        // The "is there already an active order for this table?" check and the order creation
+        // that follows are two round-trips; without a transaction, two waiters opening the same
+        // table at the same instant can both pass the check and create duplicate orders.
+        _uow.ExecuteInTransactionAsync(async innerCt =>
         {
-            m.Status = TableStatus.Occupied;
-            _uow.Repository<RestaurantTable>().Update(m);
-        }
-        await _uow.SaveChangesAsync(ct);
+            var existing = await GetActiveByTableAsync(tableId, innerCt);
+            if (existing is not null) return existing;
 
-        return (await GetByIdAsync(order.Id, ct))!;
-    }
+            var table = await _uow.Repository<RestaurantTable>().GetByIdAsync(tableId, innerCt)
+                ?? throw new KeyNotFoundException($"Table {tableId} not found.");
+
+            var members = await GroupMembersAsync(table, innerCt);
+            var primaryId = members.Min(m => m.Id);   // the group's order lives on its lowest-Id table
+
+            var order = new Order { TableId = primaryId, WaiterId = waiterId, Status = OrderStatus.Open, Number = "…" };
+            await _uow.Repository<Order>().AddAsync(order, innerCt);
+            await _uow.SaveChangesAsync(innerCt);
+
+            order.Number = $"O-{order.Id:D5}";
+            _uow.Repository<Order>().Update(order);
+            foreach (var m in members)
+            {
+                m.Status = TableStatus.Occupied;
+                _uow.Repository<RestaurantTable>().Update(m);
+            }
+            await _uow.SaveChangesAsync(innerCt);
+
+            return (await GetByIdAsync(order.Id, innerCt))!;
+        }, ct);
 
     private async Task<List<int>> GroupMemberIdsAsync(int tableId, CancellationToken ct)
     {
@@ -131,6 +150,8 @@ public class OrderService : IOrderService
 
     public async Task<OrderDto> AddItemAsync(AddItemRequest request, CancellationToken ct = default)
     {
+        await _addItemValidator.ValidateAndThrowAsync(request, ct);
+
         var order = await _uow.Repository<Order>().Query()
             .Include(o => o.Items).ThenInclude(i => i.Extras)
             .FirstOrDefaultAsync(o => o.Id == request.OrderId, ct)
@@ -294,6 +315,7 @@ public class OrderService : IOrderService
             _uow.Repository<OrderItem>().Update(drink);
         }
 
+        order.DrinksServedAt = DateTime.UtcNow;
         ApplyDerivedStatus(order);
         _uow.Repository<Order>().Update(order);
         await _uow.SaveChangesAsync(ct);
@@ -301,6 +323,88 @@ public class OrderService : IOrderService
         await _notifier.DrinksServedAsync(order.Id);
         if (order.Status == OrderStatus.Ready)
             await _notifier.OrderReadyAsync(order.Id);
+    }
+
+    public async Task UnserveDrinksAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().Query()
+            .Include(o => o.Items).ThenInclude(i => i.Product).ThenInclude(p => p.Category)
+            .FirstOrDefaultAsync(o => o.Id == orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        var servedDrinks = order.Items
+            .Where(i => i.Product?.Category?.Kind == CategoryKind.Drink && i.Status == OrderItemStatus.Delivered)
+            .ToList();
+        if (servedDrinks.Count == 0) return;
+
+        foreach (var drink in servedDrinks)
+        {
+            drink.Status = OrderItemStatus.Pending;
+            _uow.Repository<OrderItem>().Update(drink);
+        }
+
+        order.DrinksServedAt = null;
+        ApplyDerivedStatus(order);
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.DrinksServedAsync(order.Id);
+    }
+
+    public async Task ServeFirstCoursesAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().Query()
+            .Include(o => o.Items).ThenInclude(i => i.Product).ThenInclude(p => p.Category)
+            .FirstOrDefaultAsync(o => o.Id == orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        var readyFirsts = order.Items
+            .Where(i => i.Product?.Category?.Course == CourseType.Starter
+                        && i.Product?.Category?.Kind != CategoryKind.Drink
+                        && i.Status == OrderItemStatus.Ready)
+            .ToList();
+        if (readyFirsts.Count == 0) return;
+
+        foreach (var item in readyFirsts)
+        {
+            item.Status = OrderItemStatus.Delivered;
+            _uow.Repository<OrderItem>().Update(item);
+        }
+
+        ApplyDerivedStatus(order);
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.FirstCoursesServedAsync(order.Id);
+        if (order.Status == OrderStatus.Ready)
+            await _notifier.OrderReadyAsync(order.Id);
+    }
+
+    public async Task UnserveFirstCoursesAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().Query()
+            .Include(o => o.Items).ThenInclude(i => i.Product).ThenInclude(p => p.Category)
+            .FirstOrDefaultAsync(o => o.Id == orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        var servedFirsts = order.Items
+            .Where(i => i.Product?.Category?.Course == CourseType.Starter
+                        && i.Product?.Category?.Kind != CategoryKind.Drink
+                        && i.Status == OrderItemStatus.Delivered)
+            .ToList();
+        if (servedFirsts.Count == 0) return;
+
+        foreach (var item in servedFirsts)
+        {
+            item.Status = OrderItemStatus.Ready;
+            _uow.Repository<OrderItem>().Update(item);
+        }
+
+        ApplyDerivedStatus(order);
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.FirstCoursesServedAsync(order.Id);
     }
 
     /// <summary>Recomputes an order's rolled-up status from its lines (shared by the serve paths).</summary>
@@ -435,7 +539,7 @@ public class OrderService : IOrderService
             foreach (var table in await GroupMembersAsync(primary, ct))
             {
                 var hasUpcomingReservation = await _uow.Repository<Reservation>().Query().AnyAsync(r =>
-                    r.TableId == table.Id &&
+                    r.Tables.Any(t => t.Id == table.Id) &&
                     (r.Status == ReservationStatus.Confirmed || r.Status == ReservationStatus.Pending) &&
                     r.Date >= DateTime.Today, ct);
                 table.Status = hasUpcomingReservation ? TableStatus.Reserved : TableStatus.Available;
@@ -457,12 +561,13 @@ public class OrderService : IOrderService
                 i.Extras.Select(e => new OrderItemExtraDto(e.Id, e.ExtraId, e.Name, e.Price)).ToList(),
                 i.LineGross,
                 i.Product?.Category?.Kind == CategoryKind.Drink,
-                i.Product?.Category?.Course ?? CourseType.Main))
+                i.Product?.Category?.Course ?? CourseType.Main,
+                i.CreatedAt, i.Product?.CategoryId ?? 0, i.UpdatedAt))
             .ToList();
 
         return new OrderDto(
             o.Id, o.Number, o.Status, o.TableId, o.Table?.Name ?? "?",
             o.WaiterId, o.Waiter?.FullName ?? "?", o.CreatedAt, o.Notes,
-            items, o.Subtotal, o.VatTotal, o.Total, o.FirstsFiredAt, o.SecondsFiredAt);
+            items, o.Subtotal, o.VatTotal, o.Total, o.FirstsFiredAt, o.SecondsFiredAt, o.DrinksServedAt);
     }
 }

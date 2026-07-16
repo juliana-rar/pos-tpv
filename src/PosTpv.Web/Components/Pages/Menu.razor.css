@@ -1,9 +1,5 @@
 .hub { max-width: 1100px; margin: 0 auto; }
 
-.hub__header { margin-bottom: 1.6rem; }
-.hub__header h1 { font-size: 1.7rem; }
-.hub__header p { margin: 0; font-size: 1rem; }
-
 .hub__grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

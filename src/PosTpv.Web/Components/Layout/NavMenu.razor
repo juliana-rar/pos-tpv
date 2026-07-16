@@ -1,42 +1,69 @@
-@* Role-aware side navigation. Links appear only for roles that may use them. *@
-<aside class="nav">
-    <div class="nav__brand">
-        <span class="nav__logo"><LucideIcon Name="pizza" Size="22" /></span>
-        <span class="nav__title">Pos<strong>TPV</strong></span>
-    </div>
+@* Role-aware navigation, rendered inline inside the topbar (no separate sidebar column).
+   Icon-only: labels are dropped everywhere (desktop and mobile) and shown as a title tooltip
+   instead, to keep the bar compact. Interactive (like TopbarControls) so the brand title can
+   live-update when Settings saves, and NavLink's active-route highlighting doesn't need a full
+   page reload. Safe to make interactive directly (unlike MainLayout) since NavMenu takes no
+   RenderFragment parameters. *@
+@rendermode InteractiveServer
+@implements IDisposable
+@inject AppSettingsCache Branding
 
-    <nav class="nav__links">
-        <NavLink class="nav__link" href="/" Match="NavLinkMatch.All">
-            <span class="nav__icon"><LucideIcon Name="home" Size="18" /></span> <span class="nav__text">@Loc.T("Home")</span>
-        </NavLink>
+<div class="nav__brand">
+    <span class="nav__logo"><LucideIcon Name="pizza" Size="18" /></span>
+    <span class="nav__title">@Branding.Current.Title</span>
+</div>
 
-        <NavLink class="nav__link" href="/dashboard">
-            <span class="nav__icon"><LucideIcon Name="layout-dashboard" Size="18" /></span> <span class="nav__text">@Loc.T("Dashboard")</span>
-        </NavLink>
+<button class="nav__burger btn btn--icon btn--ghost" @onclick="() => _mobileOpen = !_mobileOpen" title="@Loc.T("Menu")">
+    <LucideIcon Name="@(_mobileOpen ? "x" : "menu")" Size="20" />
+</button>
 
-        <AuthorizeView Roles="Admin,Waiter,Cashier" Context="a">
-            <NavLink class="nav__link" href="/pos"><span class="nav__icon"><LucideIcon Name="shopping-cart" Size="18" /></span> <span class="nav__text">@Loc.T("Point of Sale")</span></NavLink>
-        </AuthorizeView>
+<nav class="nav__links @(_mobileOpen ? "nav__links--open" : "")">
+    <NavLink class="nav__link" href="/" Match="NavLinkMatch.All" title="@Loc.T("Home")" @onclick="CloseMobile">
+        <LucideIcon Name="home" Size="18" />
+    </NavLink>
 
-        <AuthorizeView Roles="Admin,Waiter,Cashier" Context="a">
-            <NavLink class="nav__link" href="/orders"><span class="nav__icon"><LucideIcon Name="clipboard-list" Size="18" /></span> <span class="nav__text">@Loc.T("Orders")</span></NavLink>
-        </AuthorizeView>
+    <AuthorizeView Roles="Admin,Waiter,Cashier" Context="a">
+        <NavLink class="nav__link" href="/pos" title="@Loc.T("Point of Sale")" @onclick="CloseMobile"><LucideIcon Name="shopping-cart" Size="18" /></NavLink>
+    </AuthorizeView>
 
-        <AuthorizeView Roles="Admin,Waiter,Cashier" Context="a">
-            <NavLink class="nav__link" href="/tables"><span class="nav__icon"><LucideIcon Name="armchair" Size="18" /></span> <span class="nav__text">@Loc.T("Tables")</span></NavLink>
-        </AuthorizeView>
+    <AuthorizeView Roles="Admin,Waiter,Cashier" Context="a">
+        <NavLink class="nav__link" href="/orders" title="@Loc.T("Orders")" @onclick="CloseMobile"><LucideIcon Name="clipboard-list" Size="18" /></NavLink>
+    </AuthorizeView>
 
-        <AuthorizeView Roles="Admin,Kitchen" Context="a">
-            <NavLink class="nav__link" href="/kitchen"><span class="nav__icon"><LucideIcon Name="chef-hat" Size="18" /></span> <span class="nav__text">@Loc.T("Kitchen")</span></NavLink>
-        </AuthorizeView>
+    <AuthorizeView Roles="Admin,Waiter,Cashier" Context="a">
+        <NavLink class="nav__link" href="/tables" title="@Loc.T("Tables")" @onclick="CloseMobile"><LucideIcon Name="armchair" Size="18" /></NavLink>
+    </AuthorizeView>
 
-        <AuthorizeView Roles="Admin,Cashier" Context="a">
-            <NavLink class="nav__link" href="/billing"><span class="nav__icon"><LucideIcon Name="banknote" Size="18" /></span> <span class="nav__text">@Loc.T("Billing")</span></NavLink>
-        </AuthorizeView>
+    <AuthorizeView Roles="Admin,Kitchen" Context="a">
+        <NavLink class="nav__link" href="/kitchen" title="@Loc.T("Kitchen")" @onclick="CloseMobile"><LucideIcon Name="chef-hat" Size="18" /></NavLink>
+    </AuthorizeView>
 
-        <AuthorizeView Roles="Admin" Context="a">
-            <div class="nav__section">@Loc.T("Management")</div>
-            <NavLink class="nav__link" href="/products"><span class="nav__icon"><LucideIcon Name="utensils-crossed" Size="18" /></span> <span class="nav__text">@Loc.T("Products")</span></NavLink>
-        </AuthorizeView>
-    </nav>
-</aside>
+    <AuthorizeView Roles="Admin" Context="a">
+        <span class="nav__divider"></span>
+        <NavLink class="nav__link" href="/products" title="@Loc.T("Products")" @onclick="CloseMobile"><LucideIcon Name="utensils-crossed" Size="18" /></NavLink>
+    </AuthorizeView>
+
+    <NavLink class="nav__link" href="/dashboard" title="@Loc.T("Dashboard")" @onclick="CloseMobile">
+        <LucideIcon Name="layout-dashboard" Size="18" />
+    </NavLink>
+
+    <AuthorizeView Roles="Admin,Cashier" Context="a">
+        <NavLink class="nav__link" href="/billing" title="@Loc.T("Billing")" @onclick="CloseMobile"><LucideIcon Name="banknote" Size="18" /></NavLink>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="Admin" Context="a">
+        <NavLink class="nav__link" href="/settings" title="@Loc.T("Settings")" @onclick="CloseMobile"><LucideIcon Name="settings" Size="18" /></NavLink>
+    </AuthorizeView>
+</nav>
+
+@code {
+    private bool _mobileOpen;
+
+    protected override void OnInitialized() => Branding.Changed += OnBrandingChanged;
+
+    private void OnBrandingChanged() => InvokeAsync(StateHasChanged);
+
+    private void CloseMobile() => _mobileOpen = false;
+
+    public void Dispose() => Branding.Changed -= OnBrandingChanged;
+}

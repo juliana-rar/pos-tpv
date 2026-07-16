@@ -17,6 +17,12 @@ public interface IKitchenNotifier
     Task DrinksServedAsync(int orderId);
 
     /// <summary>
+    /// The ready first-course lines of an order were served (or that was undone). A single event
+    /// carrying the order id, so waiter screens refresh just that order's first-course batches.
+    /// </summary>
+    Task FirstCoursesServedAsync(int orderId);
+
+    /// <summary>
     /// The waiter fired (or the kitchen cleared) the first courses for an order. Both screens
     /// refresh so the highlight appears/disappears in real time.
     /// </summary>

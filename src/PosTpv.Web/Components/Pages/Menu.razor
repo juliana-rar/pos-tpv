@@ -1,16 +1,13 @@
 @page "/"
+@rendermode InteractiveServer
 @attribute [Authorize]
+@inject AppSettingsCache Branding
 
-<PageTitle>@Loc.T("Menu") · PosTPV</PageTitle>
+<PageTitle>@Loc.T("Menu") · @Branding.Current.Title</PageTitle>
 
 <AuthorizeView>
     <Authorized Context="auth">
         <div class="hub">
-            <header class="hub__header">
-                <h1>@Loc.T("Welcome back"), @(auth.User.FindFirst("FullName")?.Value ?? auth.User.Identity?.Name)</h1>
-                <p class="muted">@Loc.T("Choose a module to get started")</p>
-            </header>
-
             <div class="hub__grid">
                 <HubCard Href="/dashboard" Icon="layout-dashboard" Accent="#6366f1"
                          Title="@Loc.T("Dashboard")" Description="@Loc.T("Live sales overview and top products")" />
@@ -43,6 +40,11 @@
                 <AuthorizeView Roles="Admin" Context="a">
                     <HubCard Href="/products" Icon="utensils-crossed" Accent="#ec4899"
                              Title="@Loc.T("Products")" Description="@Loc.T("Manage the product catalogue")" />
+                </AuthorizeView>
+
+                <AuthorizeView Roles="Admin" Context="a">
+                    <HubCard Href="/settings" Icon="settings" Accent="#64748b"
+                             Title="@Loc.T("Settings")" Description="@Loc.T("Manage the app title, staff accounts and service hours")" />
                 </AuthorizeView>
             </div>
         </div>

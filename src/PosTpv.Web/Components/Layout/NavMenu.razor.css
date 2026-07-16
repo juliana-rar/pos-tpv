@@ -1,108 +1,88 @@
-.nav {
-    grid-row: 1 / -1;
-    display: flex;
-    flex-direction: column;
-    width: var(--sidebar-w);
-    background:
-        linear-gradient(180deg, color-mix(in srgb, var(--primary) 7%, var(--card)) 0%, var(--card) 240px);
-    border-right: 1px solid var(--border);
-    padding: 1.1rem .8rem;
-    gap: 1.1rem;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-}
-
 /* ---- Brand ---------------------------------------------------------------- */
-.nav__brand {
-    display: flex;
-    align-items: center;
-    gap: .7rem;
-    padding: .35rem .55rem .9rem;
-    margin-bottom: .1rem;
-    border-bottom: 1px solid var(--border);
-}
+.nav__brand { display: flex; align-items: center; gap: .5rem; flex: none; }
 .nav__logo {
-    display: grid;
-    place-items: center;
-    width: 2.4rem;
-    height: 2.4rem;
+    display: grid; place-items: center;
+    width: 1.6rem; height: 1.6rem;
     color: var(--on-primary);
-    border-radius: 12px;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    box-shadow: 0 6px 14px color-mix(in srgb, var(--primary) 40%, transparent);
+    border-radius: 8px;
+    background: var(--primary);
 }
-.nav__title { font-size: 1.2rem; font-weight: 700; letter-spacing: -.02em; }
-.nav__title strong { color: var(--primary); }
+.nav__title { font-size: .88rem; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
 
-/* ---- Links ---------------------------------------------------------------- */
-.nav__links { display: flex; flex-direction: column; gap: .25rem; overflow-y: auto; padding-right: .1rem; }
+/* ---- Mobile burger (hidden on desktop; toggles the dropdown below) --------- */
+.nav__burger { display: none; flex: none; }
 
-.nav__section {
-    margin: 1rem .7rem .25rem;
-    font-size: .68rem;
-    text-transform: uppercase;
-    letter-spacing: .1em;
-    color: var(--text-soft);
-    font-weight: 700;
-}
+/* ---- Icon-only link bar ---------------------------------------------------- */
+/* No overflow/scroll here: it would force overflow-y to clip too (CSS's visible→auto
+   pairing rule), cutting off the press-and-hold tooltip that hangs below each icon. */
+.nav__links { display: flex; align-items: center; gap: .2rem; flex-wrap: nowrap; }
 
-.nav__link {
+.nav__divider { flex: none; width: 1px; height: 1.4rem; margin: 0 .3rem; background: var(--border); }
+
+/* NavLink renders its own <a>, so these need ::deep to reach past that component boundary. */
+::deep .nav__link {
     position: relative;
-    display: flex;
-    align-items: center;
-    gap: .75rem;
-    padding: .6rem .7rem;
+    flex: none;
+    display: grid; place-items: center;
+    width: 1.95rem; height: 1.95rem;
     border-radius: var(--radius-sm);
     color: var(--text-soft);
-    font-weight: 600;
-    font-size: .93rem;
-    transition: background var(--transition), color var(--transition), transform var(--transition);
+    transition: background var(--transition), color var(--transition);
 }
-.nav__link:hover { background: var(--card-2); color: var(--text); transform: translateX(2px); }
+::deep .nav__link:hover { background: var(--card-2); color: var(--text); }
 
-.nav__icon {
-    display: grid;
-    place-items: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 9px;
-    background: var(--card-2);
-    transition: background var(--transition), box-shadow var(--transition), color var(--transition);
-}
-.nav__link:hover .nav__icon { background: var(--card); }
-.nav__text { line-height: 1; }
-
-/* Active pill: tinted background, coloured icon tile and a left accent bar. */
 ::deep .nav__link.active {
-    background: color-mix(in srgb, var(--primary) 14%, transparent);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
     color: var(--primary);
 }
-::deep .nav__link.active::before {
-    content: "";
+
+/* Press-and-hold (or hover) reveals the link's label as a small tooltip, since the bar is
+   icon-only. Driven by :active so a touch long-press works, not just mouse hover. */
+::deep .nav__link::after {
+    content: attr(title);
     position: absolute;
-    left: -.8rem;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 4px;
-    height: 60%;
-    border-radius: 0 4px 4px 0;
-    background: var(--primary);
+    top: 100%; left: 50%;
+    margin-top: .4rem;
+    transform: translateX(-50%) translateY(-4px);
+    padding: .3rem .55rem;
+    border-radius: 6px;
+    background: var(--text);
+    color: var(--card);
+    font-size: .68rem;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease, transform 120ms ease;
+    z-index: 50;
 }
-::deep .nav__link.active .nav__icon {
-    background: var(--primary);
-    color: var(--on-primary);
-    box-shadow: 0 4px 10px color-mix(in srgb, var(--primary) 40%, transparent);
+::deep .nav__link:active::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    transition-delay: 350ms;
 }
 
+/* ---- Mobile: collapse the bar into a burger + dropdown grid of icons ------- */
 @media (max-width: 900px) {
-    .nav {
-        position: fixed;
-        z-index: 50;
-        left: 0; top: 0;
-        transform: translateX(-100%);
-        transition: transform var(--transition);
-        box-shadow: var(--shadow-lg);
+    .nav__burger { display: inline-flex; }
+
+    .nav__links {
+        display: none;
+        position: absolute;
+        left: 0; right: 0; top: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-start;
+        gap: .4rem;
+        padding: .7rem;
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        max-height: calc(100vh - var(--topbar-h));
+        overflow-y: auto;
     }
-    :global(body.sidebar-open) .nav { transform: translateX(0); }
+    .nav__links--open { display: flex; }
+    ::deep .nav__link { width: 2.6rem; height: 2.6rem; }
+    .nav__divider { width: 100%; height: 1px; margin: .2rem 0; }
 }

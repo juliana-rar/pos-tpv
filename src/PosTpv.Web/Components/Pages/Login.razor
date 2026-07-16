@@ -7,8 +7,9 @@
 @using Microsoft.AspNetCore.Authentication.Cookies
 @inject IAuthService Auth
 @inject NavigationManager Nav
+@inject AppSettingsCache Branding
 
-<PageTitle>Sign in · PosTPV</PageTitle>
+<PageTitle>Sign in · @Branding.Current.Title</PageTitle>
 
 <div class="login">
     <div class="login__lang" role="group" aria-label="@Loc.T("Language")">
@@ -19,7 +20,7 @@
     <div class="login__card card">
         <div class="login__brand">
             <span class="login__logo"><LucideIcon Name="pizza" Size="28" /></span>
-            <h1>Pos<span>TPV</span></h1>
+            <h1>@Branding.Current.Title</h1>
             <p class="muted">@Loc.T("Sign in to your point of sale")</p>
         </div>
 

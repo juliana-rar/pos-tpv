@@ -7,11 +7,11 @@
 @inject IOrderService Orders
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject AppSettingsCache Branding
 
-<PageTitle>Kitchen · PosTPV</PageTitle>
+<PageTitle>Kitchen · @Branding.Current.Title</PageTitle>
 
 <div class="kds__head toolbar">
-    <h1>@Loc.T("Kitchen display")</h1>
     <span class="spacer"></span>
     <span class="badge @(_connected ? "badge--success" : "badge--danger")">
         @(_connected ? Loc.T("● Live") : Loc.T("● Offline"))
@@ -28,13 +28,15 @@ else
     <div class="kds">
         @foreach (var o in _orders)
         {
-            <div class="ticket @TicketClass(o.Status) @(o.FirstsFiredAt is null && o.SecondsFiredAt is null ? "" : "ticket--seconds")">
+            <div class="ticket @(o.FirstsFiredAt is null && o.SecondsFiredAt is null ? "" : "ticket--seconds")">
                 <div class="ticket__head">
                     <span class="ticket__table"><LucideIcon Name="armchair" Size="16" /> @o.TableName</span>
                     <span class="ticket__time">@Elapsed(o.CreatedAt)</span>
                 </div>
                 <div class="ticket__sub">
                     <span>@o.Number</span><span>· @o.WaiterName</span>
+                    <span class="spacer"></span>
+                    <span class="badge ticket__status">@TicketStatusLabel(o.Status)</span>
                 </div>
 
                 @if (o.FirstsFiredAt is not null)
@@ -67,6 +69,10 @@ else
                                 {
                                     <button class="btn btn--icon btn--success" title="@Loc.T("Ready")"
                                             @onclick="() => SetItem(it.Id, OrderItemStatus.Ready)"><LucideIcon Name="arrow-right" Size="18" /></button>
+                                }
+                                else
+                                {
+                                    <LucideIcon Name="check" Size="16" />
                                 }
                             </div>
                             @if (it.Extras.Count > 0)
@@ -159,11 +165,11 @@ else
         await Load();
     }
 
-    private static string TicketClass(OrderStatus s) => s switch
+    private static string TicketStatusLabel(OrderStatus s) => s switch
     {
-        OrderStatus.Ready => "ticket--ready",
-        OrderStatus.InPreparation => "ticket--cooking",
-        _ => "ticket--new"
+        OrderStatus.Ready => Loc.T("Ready"),
+        OrderStatus.InPreparation => Loc.T("In preparation"),
+        _ => Loc.T("Sent")
     };
 
     private static string Elapsed(DateTime createdUtc)

@@ -1,0 +1,206 @@
+@page "/reservations"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin,Waiter,Cashier")]
+@inject IReservationService ReservationService
+@inject NavigationManager Nav
+@inject AppSettingsCache Branding
+
+<PageTitle>Reservations · @Branding.Current.Title</PageTitle>
+
+<div class="resd">
+    <div class="resd__head">
+        <button class="btn btn--ghost btn--sm" @onclick="BackToTables"><LucideIcon Name="arrow-left" Size="15" />@Loc.T("Tables")</button>
+        <h1>@Loc.T("Reservations")</h1>
+    </div>
+
+    <div class="resd__tabs">
+        <button class="resd__tab @(_tab == Tab.Today ? "resd__tab--on" : "")" @onclick="() => _tab = Tab.Today">
+            <LucideIcon Name="calendar" Size="15" />@Loc.T("Today")
+            <span class="resd__tab-count">@_today.Count</span>
+        </button>
+        <button class="resd__tab @(_tab == Tab.Upcoming ? "resd__tab--on" : "")" @onclick="() => _tab = Tab.Upcoming">
+            <LucideIcon Name="clock" Size="15" />@Loc.T("Upcoming")
+            <span class="resd__tab-count">@_upcoming.Count</span>
+        </button>
+        <button class="resd__tab @(_tab == Tab.Past ? "resd__tab--on" : "")" @onclick="() => _tab = Tab.Past">
+            <LucideIcon Name="history" Size="15" />@Loc.T("Past")
+            <span class="resd__tab-count">@_past.Count</span>
+        </button>
+        <button class="resd__tab @(_tab == Tab.Stats ? "resd__tab--on" : "")" @onclick="() => _tab = Tab.Stats">
+            <LucideIcon Name="bar-chart-3" Size="15" />@Loc.T("Statistics")
+        </button>
+    </div>
+
+    @if (_loading)
+    {
+        <p class="muted">@Loc.T("Loading…")</p>
+    }
+    else if (_tab == Tab.Stats)
+    {
+        <div class="dash__metrics">
+            <div class="metric card">
+                <span class="metric__label">@Loc.T("Total reservations")</span>
+                <span class="metric__value">@_all.Count</span>
+            </div>
+            <div class="metric card">
+                <span class="metric__label">@Loc.T("Seated rate")</span>
+                <span class="metric__value">@Pct(_seatedOrFinished, _all.Count)%</span>
+            </div>
+            <div class="metric card">
+                <span class="metric__label">@Loc.T("Cancellation rate")</span>
+                <span class="metric__value metric__value--danger">@Pct(_cancelled, _all.Count)%</span>
+            </div>
+            <div class="metric card">
+                <span class="metric__label">@Loc.T("Avg. party size")</span>
+                <span class="metric__value">@_avgPartySize.ToString("0.0")</span>
+            </div>
+        </div>
+
+        <div class="resd__breakdown card">
+            <h2>@Loc.T("By status")</h2>
+            @foreach (var row in _statusBreakdown)
+            {
+                <div class="meter-row" style="--tone:var(--@StatusColorKey(row.Status))">
+                    <span class="meter-row__label">@Loc.T(row.Status.ToString())</span>
+                    <div class="meter">
+                        <div class="meter__fill" style="width:@(Pct(row.Count, _all.Count))%"></div>
+                    </div>
+                    <span class="meter-row__value">@row.Count <span class="muted">(@Pct(row.Count, _all.Count)%)</span></span>
+                </div>
+            }
+            @if (_all.Count == 0)
+            {
+                <p class="empty">@Loc.T("No reservations yet.")</p>
+            }
+        </div>
+
+        <div class="resd__breakdown card">
+            <h2>@Loc.T("Busiest tables")</h2>
+            @if (_topTables.Count == 0)
+            {
+                <p class="empty">@Loc.T("No reservations yet.")</p>
+            }
+            else
+            {
+                @foreach (var row in _topTables)
+                {
+                    <div class="meter-row" style="--tone:var(--primary)">
+                        <span class="meter-row__label">@row.Name</span>
+                        <div class="meter">
+                            <div class="meter__fill" style="width:@(Pct(row.Count, _topTables[0].Count))%"></div>
+                        </div>
+                        <span class="meter-row__value">@row.Count</span>
+                    </div>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div class="resd__list">
+            @foreach (var r in ActiveList)
+            {
+                <div class="resd-row card" style="border-left-color:@r.Color">
+                    <div class="resd-row__main">
+                        <strong>@r.CustomerName</strong>
+                        <span class="badge @StatusClass(r.Status)">@Loc.T(r.Status.ToString())</span>
+                    </div>
+                    <div class="resd-row__meta muted">
+                        <span><LucideIcon Name="calendar" Size="13" /> @r.Date.ToString("dd MMM yyyy")</span>
+                        <span><LucideIcon Name="clock" Size="13" /> @r.Time.ToString("HH:mm")</span>
+                        <span><LucideIcon Name="users" Size="13" /> @r.PartySize</span>
+                        @if (r.TableNames.Count > 0)
+                        {
+                            <span><LucideIcon Name="armchair" Size="13" /> @string.Join(", ", r.TableNames)</span>
+                        }
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(r.Comments))
+                    {
+                        <div class="resd-row__comment">"@r.Comments"</div>
+                    }
+                </div>
+            }
+            @if (ActiveList.Count == 0)
+            {
+                <p class="empty">@Loc.T("Nothing here.")</p>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private enum Tab { Today, Upcoming, Past, Stats }
+    private Tab _tab = Tab.Today;
+    private bool _loading = true;
+
+    private List<ReservationDto> _all = new();
+    private List<ReservationDto> _today = new();
+    private List<ReservationDto> _upcoming = new();
+    private List<ReservationDto> _past = new();
+
+    private int _seatedOrFinished;
+    private int _cancelled;
+    private double _avgPartySize;
+    private List<(ReservationStatus Status, int Count)> _statusBreakdown = new();
+    private List<(string Name, int Count)> _topTables = new();
+
+    private List<ReservationDto> ActiveList => _tab switch
+    {
+        Tab.Today => _today,
+        Tab.Upcoming => _upcoming,
+        Tab.Past => _past,
+        _ => _all
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _all = await ReservationService.GetAllAsync();
+
+        var today = DateTime.Today;
+        _today = _all.Where(r => r.Date == today).OrderBy(r => r.Time).ToList();
+        _upcoming = _all.Where(r => r.Date > today && r.Status != ReservationStatus.Cancelled)
+            .OrderBy(r => r.Date).ThenBy(r => r.Time).ToList();
+        _past = _all.Where(r => r.Date < today).OrderByDescending(r => r.Date).ThenByDescending(r => r.Time).ToList();
+
+        _seatedOrFinished = _all.Count(r => r.Status is ReservationStatus.Seated or ReservationStatus.Finished);
+        _cancelled = _all.Count(r => r.Status == ReservationStatus.Cancelled);
+        _avgPartySize = _all.Count > 0 ? _all.Average(r => r.PartySize) : 0;
+
+        _statusBreakdown = Enum.GetValues<ReservationStatus>()
+            .Select(s => (Status: s, Count: _all.Count(r => r.Status == s)))
+            .Where(row => row.Count > 0)
+            .OrderByDescending(row => row.Count)
+            .ToList();
+
+        _topTables = _all.SelectMany(r => r.TableNames)
+            .GroupBy(n => n)
+            .Select(g => (Name: g.Key, Count: g.Count()))
+            .OrderByDescending(row => row.Count)
+            .Take(5)
+            .ToList();
+
+        _loading = false;
+    }
+
+    private static int Pct(int part, int total) => total == 0 ? 0 : (int)Math.Round(part * 100.0 / total);
+
+    private static string StatusColorKey(ReservationStatus s) => s switch
+    {
+        ReservationStatus.Confirmed => "primary",
+        ReservationStatus.Seated => "warning",
+        ReservationStatus.Finished => "success",
+        ReservationStatus.Cancelled => "danger",
+        _ => "text-soft"
+    };
+
+    private static string StatusClass(ReservationStatus s) => s switch
+    {
+        ReservationStatus.Confirmed => "badge--primary",
+        ReservationStatus.Seated => "badge--warning",
+        ReservationStatus.Finished => "badge--success",
+        ReservationStatus.Cancelled => "badge--danger",
+        _ => ""
+    };
+
+    private void BackToTables() => Nav.NavigateTo("/tables");
+}

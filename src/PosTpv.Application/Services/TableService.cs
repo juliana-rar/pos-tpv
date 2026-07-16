@@ -14,8 +14,9 @@ public interface ITableService
     Task UpdateInfoAsync(TableFormDto form, CancellationToken ct = default);
     Task DeleteAsync(int id, CancellationToken ct = default);
     Task SaveLayoutAsync(IEnumerable<TableLayoutDto> layout, CancellationToken ct = default);
-    Task JoinTablesAsync(IEnumerable<int> tableIds, CancellationToken ct = default);
+    Task JoinTablesAsync(IEnumerable<int> tableIds, string? groupName = null, CancellationToken ct = default);
     Task SeparateGroupAsync(int tableId, CancellationToken ct = default);
+    Task RenameGroupAsync(int groupId, string groupName, CancellationToken ct = default);
 }
 
 public class TableService : ITableService
@@ -58,7 +59,7 @@ public class TableService : ITableService
 
             return new TableDto(t.Id, t.Name, t.Seats, t.Shape, t.Status,
                 t.PositionX, t.PositionY, t.Width, t.Height, t.Rotation, t.IsLocked,
-                order?.Id, order?.Total ?? 0m, t.GroupId);
+                order?.Id, order?.Total ?? 0m, t.GroupId, t.Zone, t.GroupName);
         }).ToList();
     }
 
@@ -69,6 +70,7 @@ public class TableService : ITableService
             Name = form.Name,
             Seats = form.Seats,
             Shape = form.Shape,
+            Zone = form.Zone,
         };
         await _uow.Repository<RestaurantTable>().AddAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
@@ -82,6 +84,7 @@ public class TableService : ITableService
         entity.Name = form.Name;
         entity.Seats = form.Seats;
         entity.Shape = form.Shape;
+        entity.Zone = form.Zone;
         _uow.Repository<RestaurantTable>().Update(entity);
         await _uow.SaveChangesAsync(ct);
     }
@@ -119,7 +122,7 @@ public class TableService : ITableService
         await _uow.SaveChangesAsync(ct);
     }
 
-    public async Task JoinTablesAsync(IEnumerable<int> tableIds, CancellationToken ct = default)
+    public async Task JoinTablesAsync(IEnumerable<int> tableIds, string? groupName = null, CancellationToken ct = default)
     {
         var ids = tableIds.Distinct().ToList();
         if (ids.Count < 2)
@@ -141,6 +144,9 @@ public class TableService : ITableService
             throw new InvalidOperationException("Cannot join tables with an open order. Charge them first.");
 
         var newGroupId = (await repo.Query().MaxAsync(t => (int?)t.GroupId, ct) ?? 0) + 1;
+        var resolvedName = string.IsNullOrWhiteSpace(groupName)
+            ? string.Join(" + ", members.OrderBy(t => t.Name).Select(t => t.Name))
+            : groupName.Trim();
 
         // Snap the members edge-to-edge into a single contiguous row so the group
         // reads as one physical table. The top-left-most member is the anchor; the
@@ -171,6 +177,22 @@ public class TableService : ITableService
             cursorX += t.Width - borderOverlap;
 
             t.GroupId = newGroupId;
+            t.GroupName = resolvedName;
+            repo.Update(t);
+        }
+        await _uow.SaveChangesAsync(ct);
+    }
+
+    public async Task RenameGroupAsync(int groupId, string groupName, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(groupName))
+            throw new InvalidOperationException("Group name cannot be empty.");
+
+        var repo = _uow.Repository<RestaurantTable>();
+        var members = await repo.Query().Where(t => t.GroupId == groupId).ToListAsync(ct);
+        foreach (var t in members)
+        {
+            t.GroupName = groupName.Trim();
             repo.Update(t);
         }
         await _uow.SaveChangesAsync(ct);
@@ -208,6 +230,7 @@ public class TableService : ITableService
             t.PreJoinRotation = null;
             t.PreJoinIsLocked = null;
             t.GroupId = null;
+            t.GroupName = null;
             repo.Update(t);
         }
         await _uow.SaveChangesAsync(ct);

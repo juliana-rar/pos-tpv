@@ -1,0 +1,57 @@
+@* A compact, styled time picker: a trigger button showing "HH:mm" that opens a small panel
+   with two scrollable hour/minute columns. Replaces the native <input type="time"> where a more
+   deliberate, on-brand look is wanted (its native popup can't be restyled across browsers). *@
+
+<div class="time-picker">
+    <button type="button" class="time-picker__trigger" @onclick="ToggleOpen">
+        <LucideIcon Name="clock" Size="16" />
+        <span>@Value.ToString("HH:mm")</span>
+    </button>
+
+    @if (_open)
+    {
+        <div class="time-picker__backdrop" @onclick="Close"></div>
+        <div class="time-picker__panel">
+            <div class="time-picker__cols">
+                <div class="time-picker__col">
+                    @foreach (var h in Hours)
+                    {
+                        <button type="button" class="time-picker__opt @(h == Value.Hour ? "time-picker__opt--on" : "")"
+                                @onclick="() => SetHour(h)">@h.ToString("00")</button>
+                    }
+                </div>
+                <div class="time-picker__sep">:</div>
+                <div class="time-picker__col">
+                    @foreach (var m in Minutes)
+                    {
+                        <button type="button" class="time-picker__opt @(m == Value.Minute ? "time-picker__opt--on" : "")"
+                                @onclick="() => SetMinute(m)">@m.ToString("00")</button>
+                    }
+                </div>
+            </div>
+            <button type="button" class="time-picker__now" @onclick="SetNow">@Loc.T("Now")</button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public TimeOnly Value { get; set; }
+    [Parameter] public EventCallback<TimeOnly> ValueChanged { get; set; }
+
+    private bool _open;
+    private static readonly int[] Hours = Enumerable.Range(0, 24).ToArray();
+    private static readonly int[] Minutes = Enumerable.Range(0, 12).Select(i => i * 5).ToArray();
+
+    private void ToggleOpen() => _open = !_open;
+    private void Close() => _open = false;
+
+    private Task SetHour(int h) => Update(new TimeOnly(h, Value.Minute));
+    private Task SetMinute(int m) => Update(new TimeOnly(Value.Hour, m));
+    private Task SetNow() => Update(TimeOnly.FromDateTime(DateTime.Now));
+
+    private Task Update(TimeOnly value)
+    {
+        Value = value;
+        return ValueChanged.InvokeAsync(value);
+    }
+}

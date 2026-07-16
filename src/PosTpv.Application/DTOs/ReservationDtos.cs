@@ -5,7 +5,7 @@ namespace PosTpv.Application.DTOs;
 public record ReservationDto(
     int Id, string CustomerName, string? Phone, DateTime Date, TimeOnly Time,
     int DurationMinutes, int PartySize, string? Comments, string Color,
-    ReservationStatus Status, int? TableId, string? TableName);
+    ReservationStatus Status, IReadOnlyList<int> TableIds, IReadOnlyList<string> TableNames);
 
 public class ReservationFormDto
 {
@@ -19,5 +19,5 @@ public class ReservationFormDto
     public string? Comments { get; set; }
     public string Color { get; set; } = "#6366f1";
     public ReservationStatus Status { get; set; } = ReservationStatus.Pending;
-    public int? TableId { get; set; }
+    public List<int> TableIds { get; set; } = new();
 }

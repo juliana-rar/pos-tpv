@@ -1,0 +1,58 @@
+.resd { display: flex; flex-direction: column; gap: 1.1rem; max-width: 1100px; margin: 0 auto; }
+
+.resd__head { display: flex; align-items: center; gap: .9rem; }
+.resd__head h1 { margin: 0; font-size: 1.3rem; }
+
+/* Segmented tab control — the entry point into each of the four information views. */
+.resd__tabs { display: flex; gap: .4rem; flex-wrap: wrap; }
+.resd__tab {
+    display: inline-flex; align-items: center; gap: .45rem;
+    padding: .55rem .9rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--text-soft);
+    font: inherit; font-weight: 700; font-size: .85rem;
+    cursor: pointer;
+    transition: transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition);
+}
+.resd__tab:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.resd__tab--on { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, var(--card)); color: var(--primary); }
+.resd__tab-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1.35rem; height: 1.35rem; padding: 0 .35rem;
+    border-radius: 999px;
+    background: var(--card-2);
+    color: var(--text);
+    font-size: .72rem; font-weight: 800;
+}
+.resd__tab--on .resd__tab-count { background: var(--primary); color: var(--on-primary); }
+
+/* ---- Statistics tab --------------------------------------------------------- */
+.metric__value--danger { color: var(--danger); }
+
+.resd__breakdown { padding: 1.1rem 1.2rem; display: flex; flex-direction: column; gap: .7rem; }
+.resd__breakdown h2 { margin: 0 0 .2rem; font-size: .95rem; }
+
+.meter-row { display: grid; grid-template-columns: 7rem 1fr auto; align-items: center; gap: .8rem; }
+.meter-row__label { font-size: .85rem; font-weight: 600; color: var(--text-soft); }
+.meter-row__value { font-size: .85rem; font-weight: 700; min-width: 4.5rem; text-align: right; }
+.meter {
+    height: .55rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--tone, var(--primary)) 15%, var(--card-2));
+    overflow: hidden;
+}
+.meter__fill { height: 100%; border-radius: 999px; background: var(--tone, var(--primary)); transition: width .4s ease; }
+
+/* ---- Today / Upcoming / Past tabs ------------------------------------------- */
+.resd__list { display: flex; flex-direction: column; gap: .6rem; }
+.resd-row { padding: .8rem 1rem; border-left: 4px solid var(--border); display: flex; flex-direction: column; gap: .35rem; }
+.resd-row__main { display: flex; align-items: center; gap: .6rem; }
+.resd-row__meta { display: flex; flex-wrap: wrap; gap: .9rem; font-size: .82rem; }
+.resd-row__meta span { display: inline-flex; align-items: center; gap: .3rem; }
+.resd-row__comment { font-size: .85rem; font-style: italic; color: var(--text-soft); }
+
+@media (max-width: 640px) {
+    .meter-row { grid-template-columns: 5.5rem 1fr auto; gap: .5rem; }
+}

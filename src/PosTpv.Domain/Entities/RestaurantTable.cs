@@ -11,6 +11,9 @@ public class RestaurantTable : BaseEntity
     public TableShape Shape { get; set; } = TableShape.Square;
     public TableStatus Status { get; set; } = TableStatus.Available;
 
+    /// <summary>Free-text floor area (e.g. "Main hall", "Bar") used to group/filter tables. Null = unassigned.</summary>
+    public string? Zone { get; set; }
+
     // Floor-map geometry (pixels on the plan canvas).
     public double PositionX { get; set; }
     public double PositionY { get; set; }
@@ -24,6 +27,9 @@ public class RestaurantTable : BaseEntity
     /// The lowest-Id member of a group is treated as the primary (it holds the order).
     /// </summary>
     public int? GroupId { get; set; }
+
+    /// <summary>Display name for the joined group (shared by every member). Null while ungrouped.</summary>
+    public string? GroupName { get; set; }
 
     /// <summary>
     /// Geometry captured the moment this table was first joined, so Separate can restore its

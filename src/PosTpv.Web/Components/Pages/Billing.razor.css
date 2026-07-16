@@ -38,3 +38,24 @@
 @media (max-width: 900px) {
     .charts { grid-template-columns: 1fr; }
 }
+
+/* ---- Invoice list: rows open the detail receipt ---------------------------- */
+.table--clickable tbody tr { cursor: pointer; transition: background var(--transition); }
+.table--clickable tbody tr:hover { background: var(--card-2); }
+
+/* ---- Invoice detail: laid out like a real receipt -------------------------- */
+.invoice { display: flex; flex-direction: column; gap: 1.1rem; }
+.invoice__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px dashed var(--border); }
+.invoice__brand { font-size: 1.1rem; }
+.invoice__meta { display: flex; flex-direction: column; gap: .2rem; text-align: right; font-size: .88rem; }
+.invoice__meta .muted { margin-right: .3rem; }
+
+.invoice__lines th, .invoice__lines td { vertical-align: top; }
+.invoice__linenote { margin-top: .2rem; font-size: .78rem; color: var(--secondary); font-weight: 600; }
+.invoice__linenote--comment { color: var(--warning); font-style: italic; font-weight: 400; }
+
+.invoice__totals { align-self: flex-end; width: min(280px, 100%); display: grid; gap: .3rem; }
+.invoice__totals > div { display: flex; justify-content: space-between; color: var(--text-soft); }
+.invoice__grand { border-top: 1px solid var(--border); margin-top: .3rem; padding-top: .4rem; font-size: 1.15rem; font-weight: 800; color: var(--text) !important; }
+
+.invoice__payments { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; padding-top: .8rem; border-top: 1px dashed var(--border); }

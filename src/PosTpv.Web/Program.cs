@@ -78,6 +78,10 @@ app.MapGet("/culture/set", (string culture, string? redirect, HttpContext http) 
     return Results.LocalRedirect(string.IsNullOrWhiteSpace(redirect) ? "/" : redirect);
 }).AllowAnonymous();
 
+// MapStaticAssets only serves files known at build time (via its manifest), so
+// uploaded product/category images (written to wwwroot at runtime) need the
+// classic static file middleware as well.
+app.UseStaticFiles();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
@@ -113,6 +117,11 @@ using (var scope = app.Services.CreateScope())
 {
     var seeder = scope.ServiceProvider.GetRequiredService<IDbSeeder>();
     await seeder.SeedAsync();
+
+    // Warm the in-memory app-settings cache so branding/schedule are available from the
+    // very first page render, without every component needing its own DB round-trip.
+    var settings = scope.ServiceProvider.GetRequiredService<ISettingsService>();
+    await settings.GetAsync();
 }
 
 app.Run();

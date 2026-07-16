@@ -8,6 +8,7 @@ namespace PosTpv.Application.Services;
 public interface IBillingService
 {
     Task<BillingReportDto> GetReportAsync(DateTime from, DateTime to, CancellationToken ct = default);
+    Task<InvoiceDetailDto?> GetInvoiceDetailAsync(int invoiceId, CancellationToken ct = default);
 }
 
 public class BillingService : IBillingService
@@ -47,5 +48,28 @@ public class BillingService : IBillingService
             .ToListAsync(ct);
 
         return new BillingReportDto(total, vat, invoices.Count, avg, invoices, daily, byMethod);
+    }
+
+    public async Task<InvoiceDetailDto?> GetInvoiceDetailAsync(int invoiceId, CancellationToken ct = default)
+    {
+        var invoice = await _uow.Repository<Invoice>().Query()
+            .Include(i => i.Order).ThenInclude(o => o.Table)
+            .Include(i => i.Order).ThenInclude(o => o.Waiter)
+            .Include(i => i.Order).ThenInclude(o => o.Items).ThenInclude(li => li.Product)
+            .Include(i => i.Order).ThenInclude(o => o.Items).ThenInclude(li => li.Extras)
+            .Include(i => i.Payments)
+            .FirstOrDefaultAsync(i => i.Id == invoiceId, ct);
+        if (invoice is null) return null;
+
+        var lines = invoice.Order.Items.Select(li => new InvoiceLineDto(
+            li.Product.Name, li.Quantity, li.UnitPrice, li.LineGross,
+            li.Extras.Select(e => e.Name).ToList(), li.Comment)).ToList();
+
+        var payments = invoice.Payments.Select(p => new InvoicePaymentDto(p.Method, p.Amount)).ToList();
+
+        return new InvoiceDetailDto(
+            invoice.Id, invoice.Number, invoice.Order.Number, invoice.Order.Table.Name, invoice.Order.Waiter.FullName,
+            invoice.Subtotal, invoice.VatTotal, invoice.Total, invoice.PaymentMethod, invoice.CreatedAt,
+            lines, payments);
     }
 }

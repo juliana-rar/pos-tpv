@@ -14,7 +14,7 @@
             @* Top-right cluster: total, confirm tick and close — all in one place. *@
             @if (_order is not null)
             {
-                <strong class="order-editor-page__total">@_order.Total.ToString("C")</strong>
+                <strong class="order-editor-page__total">@_order.Total.ToString("N2")</strong>
                 @* Single confirm tick: sends food to the kitchen (skipped for a drinks-only order) and closes. *@
                 <button class="btn btn--success btn--tick"
                         title="@(HasKitchenItems ? Loc.T("Send to kitchen and close") : Loc.T("Confirm and close"))"
@@ -53,7 +53,7 @@
                         <button class="productCard @(p.IsAvailable ? "" : "productCard--off")" style="--pc:@p.Color"
                                 disabled="@(!p.IsAvailable || _busy)" @onclick="() => OnProductClick(p)" type="button">
                             <span class="productCard__name">@p.Name</span>
-                            <span class="productCard__price">@p.Price.ToString("C")</span>
+                            <span class="productCard__price">@p.Price.ToString("N2")</span>
                             @if (!p.IsAvailable) { <span class="productCard__off">@Loc.T("Unavailable")</span> }
                         </button>
                     }
@@ -67,7 +67,7 @@
                         <div class="orderLine">
                             <div class="orderLine__main">
                                 <span class="orderLine__name">@it.ProductName</span>
-                                <span class="orderLine__price">@it.LineTotal.ToString("C")</span>
+                                <span class="orderLine__price">@it.LineTotal.ToString("N2")</span>
                             </div>
                             <div class="orderLine__ctrl">
                                 <button class="btn btn--icon btn--ghost" disabled="@_busy" @onclick="() => ChangeQty(it.Id, -1)">−</button>
@@ -75,6 +75,7 @@
                                 <button class="btn btn--icon btn--ghost" disabled="@_busy" @onclick="() => ChangeQty(it.Id, 1)">+</button>
                                 <span class="badge @ItemStatusClass(it.Status)">@Loc.T(it.Status.ToString())</span>
                                 <span class="spacer"></span>
+                                <button class="btn btn--icon btn--ghost" title="@Loc.T("Extras")" disabled="@_busy" @onclick="() => OpenEditExtras(it)"><LucideIcon Name="list-plus" Size="16" /></button>
                                 <button class="btn btn--icon btn--ghost" title="@Loc.T("Comment")" disabled="@_busy" @onclick="() => OpenComment(it)"><LucideIcon Name="pencil" Size="16" /></button>
                                 <button class="btn btn--icon btn--ghost" title="@Loc.T("Remove")" disabled="@_busy" @onclick="() => RemoveItem(it.Id)"><LucideIcon Name="trash-2" Size="16" /></button>
                             </div>
@@ -104,9 +105,9 @@
             <textarea class="input" rows="3" @bind="_commentText" placeholder="@Loc.T("No onion, well done, extra sauce…")"></textarea>
         </div>
         <div class="comment-presets">
-            @foreach (var preset in Presets)
+            @foreach (var preset in _commentPresets)
             {
-                <button class="btn btn--ghost" type="button" @onclick="() => _commentText = Loc.T(preset)">@Loc.T(preset)</button>
+                <button class="btn btn--ghost" type="button" @onclick="() => _commentText = preset.Text">@preset.Text</button>
             }
         </div>
     </ChildContent>
@@ -116,26 +117,12 @@
     </Footer>
 </Modal>
 
-@* Extras / quantity / comment for a product with add-ons (nested over the editor). *@
-<Modal Visible="_customizeProduct is not null" Title="@(_customizeProduct?.Name ?? string.Empty)" OnClose="() => _customizeProduct = null">
+@* Edit the extras of an already-added line (tapping a product adds it straight away). *@
+<Modal Visible="_editingItem is not null" Title="@(_editingItem?.ProductName ?? string.Empty)" OnClose="() => _editingItem = null">
     <ChildContent>
-        @if (_customizeProduct is not null)
+        @if (_editingItem is not null)
         {
             <div class="customize">
-                <div class="customize__row">
-                    <span class="muted">@Loc.T("Base price")</span>
-                    <strong>@_customizeProduct.Price.ToString("C")</strong>
-                </div>
-
-                <div class="customize__row">
-                    <span>@Loc.T("Quantity")</span>
-                    <div class="qty-stepper">
-                        <button class="btn btn--icon btn--ghost" @onclick="() => _customizeQty = Math.Max(1, _customizeQty - 1)">−</button>
-                        <span class="qty-stepper__val">@_customizeQty</span>
-                        <button class="btn btn--icon btn--ghost" @onclick="() => _customizeQty++">+</button>
-                    </div>
-                </div>
-
                 @if (_extrasLoading)
                 {
                     <div class="customize__extras">
@@ -153,25 +140,22 @@
                                 <button class="extra-chip @(_selectedExtraIds.Contains(ex.Id) ? "extra-chip--on" : "")"
                                         @onclick="() => ToggleExtra(ex.Id)" type="button">
                                     <span>@ex.Name</span>
-                                    <span class="extra-chip__price">＋@ex.Price.ToString("C")</span>
+                                    <span class="extra-chip__price">＋@ex.Price.ToString("N2")</span>
                                 </button>
                             }
                         </div>
                     </div>
                 }
-
-                <div class="field">
-                    <label>@Loc.T("Comment")</label>
-                    <textarea class="input" rows="2" @bind="_customizeComment" placeholder="@Loc.T("No onion, well done…")"></textarea>
-                </div>
+                else
+                {
+                    <p class="muted">@Loc.T("No extras available for this product.")</p>
+                }
             </div>
         }
     </ChildContent>
     <Footer>
-        <span class="customize__total">@Loc.T("Total") <strong>@CustomizeLineTotal().ToString("C")</strong></span>
-        <span class="spacer"></span>
-        <button class="btn btn--ghost" @onclick="() => _customizeProduct = null">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" disabled="@(_busy || _extrasLoading)" @onclick="AddCustomized">@Loc.T("Add to order")</button>
+        <button class="btn btn--ghost" @onclick="() => _editingItem = null">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" disabled="@(_busy || _extrasLoading)" @onclick="SaveExtras">@Loc.T("Save")</button>
     </Footer>
 </Modal>
 
@@ -191,22 +175,20 @@
     private bool _busy;
     private string? _error;
 
-    private static readonly string[] Presets = { "No onion", "Well done", "No cheese", "Extra sauce", "Spicy", "Gluten free" };
+    private List<CategoryCommentDto> _commentPresets = new();
     private OrderItemDto? _commentItem;
     private string? _commentText;
 
-    private ProductDto? _customizeProduct;
+    private OrderItemDto? _editingItem;
     private List<ExtraDto> _customizeExtras = new();
     private readonly HashSet<int> _selectedExtraIds = new();
-    private int _customizeQty = 1;
-    private string? _customizeComment;
     private bool _extrasLoading;
 
     protected override async Task OnParametersSetAsync()
     {
         if (OrderId == _loadedOrderId) return;   // nothing changed
         _loadedOrderId = OrderId;
-        _customizeProduct = null;
+        _editingItem = null;
         _error = null;
         if (OrderId is null) { _order = null; return; }
 
@@ -245,24 +227,27 @@
         finally { _busy = false; }
     }
 
-    // Every product opens the detail panel so a comment (and quantity/extras) can be set before adding.
+    // Tapping a product adds it straight away, as its own line (no dialog in the way).
+    // Extras/comment can be set afterwards from the line itself.
     private Task OnProductClick(ProductDto p)
     {
         if (_order is null) return Task.CompletedTask;
-        return OpenCustomize(p);
+        var orderId = _order.Id;
+        return Mutate(async () => await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id, Merge: false)));
     }
 
-    private async Task OpenCustomize(ProductDto p)
+    // Extras editor for an already-added line.
+    private async Task OpenEditExtras(OrderItemDto item)
     {
-        _customizeProduct = p;
+        _editingItem = item;
         _customizeExtras = new();
         _selectedExtraIds.Clear();
-        _customizeQty = 1;
-        _customizeComment = null;
+        foreach (var e in item.Extras.Where(e => e.ExtraId.HasValue))
+            _selectedExtraIds.Add(e.ExtraId!.Value);
         _extrasLoading = true;
         StateHasChanged();
 
-        try { _customizeExtras = await Products.GetExtrasAsync(p.Id); }
+        try { _customizeExtras = await Products.GetExtrasAsync(item.ProductId); }
         catch (Exception ex) { _error = ex.Message; }
         finally { _extrasLoading = false; }
     }
@@ -272,36 +257,28 @@
         if (!_selectedExtraIds.Add(id)) _selectedExtraIds.Remove(id);
     }
 
-    private decimal CustomizeLineTotal()
+    private Task SaveExtras()
     {
-        if (_customizeProduct is null) return 0m;
-        var extras = _customizeExtras.Where(e => _selectedExtraIds.Contains(e.Id)).Sum(e => e.Price);
-        return (_customizeProduct.Price + extras) * _customizeQty;
-    }
-
-    private Task AddCustomized()
-    {
-        if (_customizeProduct is null || _order is null) return Task.CompletedTask;
-        var product = _customizeProduct;
-        var qty = _customizeQty;
-        var comment = _customizeComment;
+        if (_editingItem is null) return Task.CompletedTask;
+        var itemId = _editingItem.Id;
         var extraIds = _selectedExtraIds.ToList();
-        var orderId = _order.Id;
 
         return Mutate(async () =>
         {
-            // Add every unit (drinks and food alike) as its own unmerged line so each can carry its own comment.
-            OrderDto? updated = _order;
-            for (var n = 0; n < qty; n++)
-                updated = await Orders.AddItemAsync(new AddItemRequest(orderId, product.Id, 1, comment, extraIds, Merge: false));
-            _customizeProduct = null;
+            var updated = await Orders.SetItemExtrasAsync(itemId, extraIds);
+            _editingItem = null;
             return updated;
         });
     }
 
     // Open the comment editor for an existing line (works for drinks too, so more of the same
     // drink can carry a note without going back through the product grid).
-    private void OpenComment(OrderItemDto item) { _commentItem = item; _commentText = item.Comment; }
+    private async Task OpenComment(OrderItemDto item)
+    {
+        _commentItem = item;
+        _commentText = item.Comment;
+        _commentPresets = await Categories.GetCommentsAsync(item.CategoryId);
+    }
 
     private Task SaveComment()
     {

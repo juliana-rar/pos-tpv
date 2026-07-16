@@ -17,6 +17,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>postpv-web-dev</UserSecretsId>
   </PropertyGroup>
 
 </Project>

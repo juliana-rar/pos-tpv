@@ -1,0 +1,26 @@
+@* Interactive island: MainLayout is rendered statically (so pages that opt out of
+   interactivity, like Login, keep working), but a plain layout never gets a render
+   mode of its own — @Body is a RenderFragment and can't cross into one. This small
+   leaf component takes no RenderFragment parameters, so it can declare its own
+   InteractiveServer mode and actually respond to clicks. *@
+@rendermode InteractiveServer
+@inject IJSRuntime JS
+
+<button class="btn btn--icon btn--ghost" @onclick="ToggleTheme" title="@Loc.T("Toggle theme")">
+    <LucideIcon Name="@(_theme == "dark" ? "sun" : "moon")" Size="18" />
+</button>
+
+@code {
+    private string _theme = "light";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _theme = await JS.InvokeAsync<string>("posTheme.get");
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleTheme() => _theme = await JS.InvokeAsync<string>("posTheme.toggle");
+}

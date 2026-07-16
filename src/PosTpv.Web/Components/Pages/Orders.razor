@@ -6,20 +6,37 @@
 @implements IAsyncDisposable
 @inject IOrderService OrderSvc
 @inject NavigationManager Nav
+@inject AppSettingsCache Branding
 
-<PageTitle>Orders · PosTPV</PageTitle>
+<PageTitle>Orders · @Branding.Current.Title</PageTitle>
 
-<div class="toolbar">
-    <h1>@Loc.T("Open orders")</h1>
-    <span class="spacer"></span>
-    <select class="select" style="max-width:170px" @bind="_statusFilter">
-        <option value="">@Loc.T("All statuses")</option>
-        @foreach (var s in new[] { OrderStatus.Open, OrderStatus.Sent, OrderStatus.InPreparation, OrderStatus.Ready, OrderStatus.Delivered })
-        {
-            <option value="@s">@Loc.T(s.ToString())</option>
-        }
-    </select>
-    <button class="btn btn--ghost" @onclick="Reload"><LucideIcon Name="rotate-cw" Size="16" />@Loc.T("Refresh")</button>
+<div class="orders-header">
+    @if (Filtered.Count > 0)
+    {
+        <div class="orders-quicknav">
+            @foreach (var o in Filtered)
+            {
+                <button class="orders-quicknav__chip" data-status="@o.Status.ToString().ToLower()"
+                        title="@o.TableName · @o.Number · @Loc.T(o.Status.ToString())" @onclick="() => OpenEditor(o.Id)">
+                    <LucideIcon Name="@StatusIcon(o.Status)" Size="13" />@o.TableName
+                </button>
+            }
+        </div>
+    }
+    <div class="toolbar">
+        <select class="select" style="max-width:170px" @bind="_statusFilter">
+            <option value="">@Loc.T("All statuses")</option>
+            @foreach (var s in new[] { OrderStatus.Open, OrderStatus.Sent, OrderStatus.InPreparation, OrderStatus.Ready, OrderStatus.Delivered })
+            {
+                <option value="@s">@Loc.T(s.ToString())</option>
+            }
+        </select>
+        <select class="select" style="max-width:170px" @bind="_sortOrder">
+            <option value="oldest">@Loc.T("Oldest first")</option>
+            <option value="newest">@Loc.T("Newest first")</option>
+        </select>
+        <button class="btn btn--ghost" @onclick="Reload"><LucideIcon Name="rotate-cw" Size="16" />@Loc.T("Refresh")</button>
+    </div>
 </div>
 
 <div class="orders">
@@ -28,8 +45,15 @@
         <OrderCard @key="o.Id"
                    Order="o"
                    OnServeDrinks="ServeDrinks"
+                   OnUnserveDrinks="UnserveDrinks"
+                   OnUnserveDrink="UnserveDrink"
+                   OnServeFirsts="ServeFirsts"
+                   OnUnserveFirsts="UnserveFirsts"
+                   OnUnserveFirstItem="UnserveFirstItem"
                    OnFireFirsts="FireFirsts"
+                   OnUnfireFirsts="UnfireFirsts"
                    OnFireSeconds="FireSeconds"
+                   OnUnfireSeconds="UnfireSeconds"
                    OnEdit="OpenEditor"
                    OnPay="OpenPayment" />
     }
@@ -41,6 +65,15 @@
 <PaymentDialog Order="_payingOrder" Visible="_payingOrder is not null" OnClose="ClosePayment" OnConfirm="ConfirmPayment" />
 
 @code {
+    private static string StatusIcon(OrderStatus s) => s switch
+    {
+        OrderStatus.Sent => "send",
+        OrderStatus.InPreparation => "chef-hat",
+        OrderStatus.Ready => "bell",
+        OrderStatus.Delivered => "check-check",
+        _ => "circle"
+    };
+
     private List<OrderDto> _orders = new();
     private OrderStatus? _statusFilterValue;
     private HubConnection? _hub;
@@ -54,8 +87,22 @@
         set => _statusFilterValue = Enum.TryParse<OrderStatus>(value, out var s) ? s : null;
     }
 
-    private List<OrderDto> Filtered =>
-        _statusFilterValue is null ? _orders : _orders.Where(o => o.Status == _statusFilterValue).ToList();
+    private bool _newestFirst = true;
+
+    private string _sortOrder
+    {
+        get => _newestFirst ? "newest" : "oldest";
+        set => _newestFirst = value == "newest";
+    }
+
+    private List<OrderDto> Filtered
+    {
+        get
+        {
+            var list = _statusFilterValue is null ? _orders : _orders.Where(o => o.Status == _statusFilterValue);
+            return (_newestFirst ? list.OrderByDescending(o => o.CreatedAt) : list.OrderBy(o => o.CreatedAt)).ToList();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -70,6 +117,7 @@
         _hub.On<int>(KitchenHub.FirstsFired, RefreshOrder);
         _hub.On<int>(KitchenHub.SecondsFired, RefreshOrder);
         _hub.On<int>(KitchenHub.DrinksServed, RefreshOrder);
+        _hub.On<int>(KitchenHub.FirstCoursesServed, RefreshOrder);
         await _hub.StartAsync();
     }
 
@@ -124,10 +172,27 @@
     // Drinks come from the bar: one button serves the whole block. The single DrinksServed
     // broadcast refreshes this card (and every other waiter's) — no per-line events or full reload.
     private Task ServeDrinks(int orderId) => OrderSvc.ServeDrinksAsync(orderId);
+    private Task UnserveDrinks(int orderId) => OrderSvc.UnserveDrinksAsync(orderId);
+
+    // Undo path "just in case" a drink was marked served by mistake: back to Pending so it
+    // reappears under "Serve drinks". The ItemStatusChanged broadcast refreshes the card.
+    private Task UnserveDrink(int itemId) => OrderSvc.SetItemStatusAsync(itemId, OrderItemStatus.Pending);
+
+    // Same green-badge serve/undo pattern as drinks, but for ready first-course lines: serving
+    // needs the kitchen to have marked them Ready first, and undo puts them back to Ready (not
+    // Pending) so they don't reappear as unstarted on the kitchen display.
+    private Task ServeFirsts(int orderId) => OrderSvc.ServeFirstCoursesAsync(orderId);
+    private Task UnserveFirsts(int orderId) => OrderSvc.UnserveFirstCoursesAsync(orderId);
+    private Task UnserveFirstItem(int itemId) => OrderSvc.SetItemStatusAsync(itemId, OrderItemStatus.Ready);
 
     // "Marchar primeros / segundos": alert the kitchen in real time; the echo refreshes the card.
     private Task FireFirsts(int orderId) => OrderSvc.FireFirstCoursesAsync(orderId);
     private Task FireSeconds(int orderId) => OrderSvc.FireSecondCoursesAsync(orderId);
+
+    // Undo path: same "acknowledge" the kitchen uses to clear its alert, reused here so a
+    // mis-fired course goes back to unfired instead of staying stuck on both screens.
+    private Task UnfireFirsts(int orderId) => OrderSvc.AcknowledgeFirstCoursesAsync(orderId);
+    private Task UnfireSeconds(int orderId) => OrderSvc.AcknowledgeSecondCoursesAsync(orderId);
 
     public async ValueTask DisposeAsync()
     {

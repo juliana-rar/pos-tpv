@@ -1,6 +1,7 @@
 using System.Reflection;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using PosTpv.Application.Common;
 using PosTpv.Application.Services;
 
 namespace PosTpv.Application;
@@ -23,6 +24,9 @@ public static class DependencyInjection
         services.AddScoped<IReservationService, ReservationService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IBillingService, BillingService>();
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<ISettingsService, SettingsService>();
+        services.AddSingleton<AppSettingsCache>();
 
         return services;
     }

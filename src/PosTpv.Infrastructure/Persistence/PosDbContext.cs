@@ -15,6 +15,7 @@ public class PosDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<CategoryComment> CategoryComments => Set<CategoryComment>();
     public DbSet<Extra> Extras => Set<Extra>();
     public DbSet<RestaurantTable> Tables => Set<RestaurantTable>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
@@ -24,6 +25,7 @@ public class PosDbContext : DbContext
     public DbSet<OrderItemExtra> OrderItemExtras => Set<OrderItemExtra>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<AppSetting> AppSettings => Set<AppSetting>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -63,6 +65,14 @@ public class PosDbContext : DbContext
             e.Property(x => x.Price).HasPrecision(10, 2);
         });
 
+        b.Entity<CategoryComment>(e =>
+        {
+            e.Property(x => x.Text).HasMaxLength(80).IsRequired();
+            e.HasOne(x => x.Category).WithMany(c => c.Comments)
+                .HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.CategoryId);
+        });
+
         b.Entity<RestaurantTable>(e =>
         {
             e.Property(x => x.Name).HasMaxLength(40).IsRequired();
@@ -75,8 +85,8 @@ public class PosDbContext : DbContext
             e.Property(x => x.CustomerName).HasMaxLength(120).IsRequired();
             e.Property(x => x.Phone).HasMaxLength(30);
             e.Property(x => x.Color).HasMaxLength(9);
-            e.HasOne(x => x.Table).WithMany(t => t.Reservations)
-                .HasForeignKey(x => x.TableId).OnDelete(DeleteBehavior.SetNull);
+            e.HasMany(x => x.Tables).WithMany(t => t.Reservations)
+                .UsingEntity(j => j.ToTable("ReservationTables"));
             e.HasOne(x => x.Customer).WithMany(c => c.Reservations)
                 .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => x.Date);
@@ -141,6 +151,11 @@ public class PosDbContext : DbContext
             e.Property(x => x.Amount).HasPrecision(10, 2);
             e.HasOne(x => x.Invoice).WithMany(i => i.Payments)
                 .HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<AppSetting>(e =>
+        {
+            e.Property(x => x.Title).HasMaxLength(80).IsRequired();
         });
     }
 

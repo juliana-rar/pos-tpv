@@ -9,7 +9,23 @@ public class MappingProfile : Profile
 {
     public MappingProfile()
     {
-        CreateMap<User, UserDto>();
+        CreateMap<User, UserDto>()
+            .ForCtorParam(nameof(UserDto.IsLocked), o => o.MapFrom(s => s.LockedUntil != null && s.LockedUntil > DateTime.UtcNow));
+        CreateMap<User, UserFormDto>()
+            .ForMember(d => d.Pin, o => o.Ignore());
+        CreateMap<UserFormDto, User>()
+            .ForMember(d => d.PasswordHash, o => o.Ignore())
+            .ForMember(d => d.FailedLoginAttempts, o => o.Ignore())
+            .ForMember(d => d.LockedUntil, o => o.Ignore())
+            .ForMember(d => d.Orders, o => o.Ignore())
+            .ForMember(d => d.CreatedAt, o => o.Ignore())
+            .ForMember(d => d.UpdatedAt, o => o.Ignore());
+
+        CreateMap<AppSetting, AppSettingsDto>();
+        CreateMap<AppSetting, AppSettingsFormDto>();
+        CreateMap<AppSettingsFormDto, AppSetting>()
+            .ForMember(d => d.CreatedAt, o => o.Ignore())
+            .ForMember(d => d.UpdatedAt, o => o.Ignore());
 
         CreateMap<Category, CategoryDto>()
             .ForCtorParam(nameof(CategoryDto.ProductCount), o => o.MapFrom(s => s.Products.Count));
@@ -30,10 +46,12 @@ public class MappingProfile : Profile
             .ForMember(d => d.UpdatedAt, o => o.Ignore());
 
         CreateMap<Reservation, ReservationDto>()
-            .ForCtorParam(nameof(ReservationDto.TableName), o => o.MapFrom(s => s.Table != null ? s.Table.Name : null));
-        CreateMap<Reservation, ReservationFormDto>();
+            .ForCtorParam(nameof(ReservationDto.TableIds), o => o.MapFrom(s => s.Tables.Select(t => t.Id)))
+            .ForCtorParam(nameof(ReservationDto.TableNames), o => o.MapFrom(s => s.Tables.Select(t => t.Name)));
+        CreateMap<Reservation, ReservationFormDto>()
+            .ForMember(d => d.TableIds, o => o.MapFrom(s => s.Tables.Select(t => t.Id)));
         CreateMap<ReservationFormDto, Reservation>()
-            .ForMember(d => d.Table, o => o.Ignore())
+            .ForMember(d => d.Tables, o => o.Ignore())
             .ForMember(d => d.Customer, o => o.Ignore())
             .ForMember(d => d.CustomerId, o => o.Ignore())
             .ForMember(d => d.CreatedAt, o => o.Ignore())

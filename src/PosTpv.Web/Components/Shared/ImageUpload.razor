@@ -1,0 +1,82 @@
+@* Reusable image picker: shows the current image (if any) and lets the user pick a
+   replacement from disk. Used by the product and category forms on /products. *@
+@inject IWebHostEnvironment Env
+
+<div class="imgpick">
+    <div class="imgpick__preview">
+        @if (!string.IsNullOrWhiteSpace(Value))
+        {
+            <img src="@Value" alt="" />
+        }
+        else
+        {
+            <LucideIcon Name="image" Size="22" />
+        }
+    </div>
+    <div class="imgpick__side">
+        <label class="btn btn--ghost btn--sm imgpick__pick">
+            @Loc.T("Choose image")
+            <InputFile OnChange="OnSelected" accept="image/png,image/jpeg,image/webp,image/gif" class="imgpick__input" />
+        </label>
+        @if (!string.IsNullOrWhiteSpace(Value))
+        {
+            <button class="btn btn--ghost btn--sm" type="button" @onclick="Remove">@Loc.T("Remove image")</button>
+        }
+        @if (_error is not null)
+        {
+            <span class="field-error">@_error</span>
+        }
+    </div>
+</div>
+
+@code {
+    private const long MaxBytes = 5 * 1024 * 1024;
+    private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    { ".png", ".jpg", ".jpeg", ".webp", ".gif" };
+
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>Subfolder under wwwroot/uploads to store this picker's images in (e.g. "products").</summary>
+    [Parameter, EditorRequired] public string Folder { get; set; } = "misc";
+
+    private string? _error;
+
+    private async Task OnSelected(InputFileChangeEventArgs e)
+    {
+        _error = null;
+        var file = e.File;
+        var ext = Path.GetExtension(file.Name);
+
+        if (!AllowedExtensions.Contains(ext))
+        {
+            _error = Loc.T("Unsupported image format.");
+            return;
+        }
+        if (file.Size > MaxBytes)
+        {
+            _error = Loc.T("Image is too large (max 5 MB).");
+            return;
+        }
+
+        var dir = Path.Combine(Env.WebRootPath, "uploads", Folder);
+        Directory.CreateDirectory(dir);
+        var fileName = $"{Guid.NewGuid():N}{ext.ToLowerInvariant()}";
+
+        await using (var output = File.Create(Path.Combine(dir, fileName)))
+        await using (var input = file.OpenReadStream(MaxBytes))
+        {
+            await input.CopyToAsync(output);
+        }
+
+        Value = $"/uploads/{Folder}/{fileName}";
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task Remove()
+    {
+        Value = null;
+        _error = null;
+        await ValueChanged.InvokeAsync(null);
+    }
+}

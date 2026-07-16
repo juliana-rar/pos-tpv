@@ -12,5 +12,11 @@ public class User : BaseEntity
     public UserRole Role { get; set; }
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Consecutive failed sign-in attempts since the last success; drives <see cref="LockedUntil"/>.</summary>
+    public int FailedLoginAttempts { get; set; }
+
+    /// <summary>Set after too many failed attempts; sign-in is refused until this instant passes.</summary>
+    public DateTime? LockedUntil { get; set; }
+
     public ICollection<Order> Orders { get; set; } = new List<Order>();
 }

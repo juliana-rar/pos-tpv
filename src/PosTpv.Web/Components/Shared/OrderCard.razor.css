@@ -1,6 +1,7 @@
-.order-card { padding: 1rem; display: flex; flex-direction: column; gap: .5rem; }
-.order-card__head { display: flex; align-items: center; justify-content: space-between; }
-.order-card__meta { font-size: .8rem; }
+.order-card { height: 640px; padding: 1rem; display: flex; flex-direction: column; gap: .5rem; }
+.order-card__head { flex: none; display: flex; align-items: center; justify-content: space-between; }
+.order-card__meta { flex: none; font-size: .7rem; }
+.order-card__body { flex: 1; min-height: 0; overflow-y: auto; }
 .order-card__group {
     display: flex; align-items: center; gap: .4rem;
     font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
@@ -8,11 +9,36 @@
     margin-top: 1rem; padding-top: .7rem;
     border-top: 1px solid var(--border);
 }
-.order-card__meta + .order-card__group { margin-top: .6rem; padding-top: 0; border-top: none; }
+.order-card__body > .order-card__group:first-child { margin-top: 0; padding-top: 0; border-top: none; }
 .order-card__lines { display: flex; flex-direction: column; gap: .3rem; padding-top: .15rem; padding-bottom: .1rem; }
+/* Past 7 drinks the list scrolls on its own instead of pushing the food sections further down. */
+.order-card__lines--scroll { max-height: 13rem; overflow-y: auto; padding-right: .3rem; }
 .order-card__line { min-height: 1.6rem; display: flex; justify-content: space-between; font-size: .9rem; }
-.order-card__serve { align-self: flex-start; margin-top: .15rem; }
-.order-card__fire { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; margin-top: .2rem; }
-.order-card__fire .btn { padding: .4rem .5rem; }
+.order-card__time { font-size: .72rem; color: var(--text-soft); font-weight: 400; }
+/* One badge per serve batch: lines served together get a shared tinted frame instead of
+   a repeated badge per line, so it reads as "these came out together". */
+.order-card__drink-batch { display: flex; flex-direction: column; gap: .15rem; }
+.order-card__drink-batch[data-served="true"] {
+    background: color-mix(in srgb, var(--success) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--success) 22%, transparent);
+    border-radius: .5rem;
+    padding: .3rem .5rem;
+}
+.order-card__drink-batch[data-served="true"] .badge { align-self: flex-start; margin-top: .2rem; }
+.badge--btn { border: none; cursor: pointer; transition: filter .15s; }
+.badge--btn:hover { filter: brightness(0.9); }
+.order-card__actions { flex: none; display: flex; flex-direction: column; gap: .35rem; }
+.order-card__actions .btn {
+    width: 100%;
+    justify-content: flex-start;
+    gap: .6rem;
+    padding: .55rem .75rem;
+    font-size: .85rem;
+    font-weight: 700;
+    letter-spacing: .01em;
+}
+.order-card__actions .btn--primary { box-shadow: var(--shadow-sm); }
+.order-card__actions .btn--ghost { background: var(--card-2); color: var(--text-soft); }
+.order-card__actions .btn--ghost .lucide { opacity: .6; }
 .order-card__foot { display: flex; align-items: center; gap: .4rem; border-top: 1px solid var(--border); padding-top: .5rem; margin-top: .2rem; }
 .order-card__foot .btn { padding: .4rem .7rem; }

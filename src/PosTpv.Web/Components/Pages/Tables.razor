@@ -9,57 +9,82 @@
 @inject IValidator<TableFormDto> Validator
 @inject IValidator<ReservationFormDto> ResValidator
 @inject IJSRuntime JS
+@inject AppSettingsCache Branding
+@inject NavigationManager Nav
 
-<PageTitle>Tables · PosTPV</PageTitle>
+<PageTitle>Tables · @Branding.Current.Title</PageTitle>
 
-<div class="toolbar">
-    <h1>@Loc.T("Floor plan")</h1>
-    <span class="spacer"></span>
-    <div class="legend">
-        <span class="legend__item"><i class="dot dot--available"></i>@Loc.T("Free")</span>
-        <span class="legend__item"><i class="dot dot--occupied"></i>@Loc.T("Occupied")</span>
-        <span class="legend__item"><i class="dot dot--reserved"></i>@Loc.T("Reserved")</span>
+<div class="tables-datebar">
+    <div class="resv__day-nav">
+        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Previous day")" @onclick="() => ShiftDay(-1)"><LucideIcon Name="arrow-left" Size="15" /></button>
+        <input type="date" class="input resv__head-date" @bind="_reserveDate" @bind:after="LoadReservations" />
+        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Next day")" @onclick="() => ShiftDay(1)"><LucideIcon Name="arrow-right" Size="15" /></button>
     </div>
-    @if (_editing)
-    {
-        <button class="btn btn--ghost" @onclick="CancelEdit">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" @onclick="SaveLayout"><LucideIcon Name="save" Size="16" />@Loc.T("Save layout")</button>
-    }
-    else if (_selecting)
-    {
-        <span class="badge badge--primary">@_selection.Count @Loc.T("selected")</span>
-        <button class="btn btn--ghost" @onclick="CancelSelect">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" disabled="@(_selection.Count < 2)" @onclick="JoinSelected"><LucideIcon Name="link" Size="16" />@Loc.T("Join")</button>
-    }
-    else
-    {
-        <button class="btn btn--ghost" @onclick="() => OpenForm(null)">+ @Loc.T("New table")</button>
-        <button class="btn btn--ghost" @onclick="StartSelect"><LucideIcon Name="link" Size="16" />@Loc.T("Join tables")</button>
-        <button class="btn btn--primary" @onclick="StartEdit"><LucideIcon Name="move" Size="16" />@Loc.T("Edit layout")</button>
-    }
+    <button class="resv__stats-btn" title="@Loc.T("Full reservations dashboard")" @onclick="OpenDashboard"><LucideIcon Name="bar-chart-3" Size="12" /></button>
 </div>
 
-@if (_notice is not null)
-{
-    <p class="floor-notice">@_notice</p>
-}
-@if (_editing)
-{
-    <p class="floor-hint muted">@Loc.T("Drag to move · corner handle to resize · top handle to rotate · ◻ to change shape · 🔒 to lock. Changes are saved when you press") <strong>@Loc.T("Save layout")</strong>.</p>
-}
-else if (_selecting)
-{
-    <p class="floor-hint muted">@Loc.T("Tap two or more free tables to join them into one group that shares a single bill.")</p>
-}
-else if (_assignReservationId is not null)
-{
-    <p class="floor-hint floor-hint--assign">@Loc.T("Click a table on the plan to assign the reservation of") <strong>@_assignName</strong>.
-        <button class="btn btn--ghost btn--sm" @onclick="CancelAssign">@Loc.T("Cancel")</button></p>
-}
+<div class="floor-layout floor-layout--split @(_mapExpanded ? "floor-layout--map-expanded" : "")">
+    <div class="floor-panel card">
+        <div class="toolbar toolbar--tables">
+            <div class="legend">
+                <span class="legend__item"><i class="dot dot--available"></i>@Loc.T("Free")</span>
+                <span class="legend__item"><i class="dot dot--occupied"></i>@Loc.T("Occupied")</span>
+                <span class="legend__item"><i class="dot dot--reserved"></i>@Loc.T("Reserved")</span>
+            </div>
+            <span class="spacer"></span>
+            @if (_editing)
+            {
+                <button class="btn btn--ghost btn--sm" @onclick="CancelEdit">@Loc.T("Cancel")</button>
+                <button class="btn btn--primary btn--sm" @onclick="SaveLayout"><LucideIcon Name="save" Size="14" />@Loc.T("Save layout")</button>
+            }
+            else if (_selecting)
+            {
+                <span class="badge badge--primary">@_selection.Count @Loc.T("selected")</span>
+                <button class="btn btn--ghost btn--sm" @onclick="CancelSelect">@Loc.T("Cancel")</button>
+                <button class="btn btn--primary btn--sm" disabled="@(_selection.Count < 2)" @onclick="OpenJoinNamePrompt"><LucideIcon Name="link" Size="14" />@Loc.T("Join")</button>
+            }
+            else
+            {
+                <div class="toolbar-actions">
+                    <button class="btn btn--ghost btn--sm" @onclick="() => OpenForm(null)">+ @Loc.T("New table")</button>
+                    <button class="btn btn--ghost btn--sm" @onclick="StartSelect"><LucideIcon Name="link" Size="14" />@Loc.T("Join tables")</button>
+                    <button class="btn btn--primary btn--sm" @onclick="StartEdit"><LucideIcon Name="move" Size="14" />@Loc.T("Edit layout")</button>
+                </div>
+            }
+        </div>
 
-<div class="floor-layout floor-layout--split">
-    <div class="floor card @(_editing ? "floor--edit" : "") @(_selecting ? "floor--select" : "") @(_assignReservationId is not null ? "floor--assign" : "")" @ref="_floorEl">
-        @foreach (var t in _tables)
+        @if (!_editing && !_selecting && _assignReservationId is null && Zones.Count > 0)
+        {
+            <div class="zone-filter">
+                <button class="tbl-chip @(_zoneFilter is null ? "tbl-chip--on" : "")" @onclick="() => _zoneFilter = null">@Loc.T("All zones")</button>
+                @foreach (var z in Zones)
+                {
+                    <button class="tbl-chip @(_zoneFilter == z ? "tbl-chip--on" : "")" @onclick="() => _zoneFilter = z">@z</button>
+                }
+            </div>
+        }
+
+        @if (_notice is not null)
+        {
+            <p class="floor-notice">@_notice</p>
+        }
+        @if (_editing)
+        {
+            <p class="floor-hint muted">@Loc.T("Drag to move · corner handle to resize · top handle to rotate · ◻ to change shape · 🔒 to lock. Changes are saved when you press") <strong>@Loc.T("Save layout")</strong>.</p>
+        }
+        else if (_selecting)
+        {
+            <p class="floor-hint muted">@Loc.T("Tap two or more free tables to join them into one group that shares a single bill.")</p>
+        }
+        else if (_assignReservationId is not null)
+        {
+            <p class="floor-hint floor-hint--assign">@Loc.T("Click one or more tables on the plan to assign them to the reservation of") <strong>@_assignName</strong>.
+                <button class="btn btn--primary btn--sm" @onclick="CancelAssign">@Loc.T("Done")</button></p>
+        }
+
+    <div class="floor-wrap">
+    <div class="floor @(_editing ? "floor--edit" : "") @(_selecting ? "floor--select" : "") @(_assignReservationId is not null ? "floor--assign" : "")" @ref="_floorEl">
+        @foreach (var t in VisibleTables)
         {
             <div class="@TableClass(t)"
                  data-id="@t.Id"
@@ -68,18 +93,25 @@ else if (_assignReservationId is not null)
                  data-locked="@(t.IsLocked ? "true" : "false")"
                  data-shape="@((int)t.Shape)"
                  style="@TableStyle(t)"
-                 @onclick="() => OnTableClick(t)" title="@t.Name">
+                 @onclick="() => OnTableClick(t)" title="@(t.GroupId is not null ? (t.GroupName ?? t.Name) : t.Name)">
+                @{ ResByTable.TryGetValue(t.Id, out var rv); }
                 <div class="tbl__content">
-                    <span class="tbl__name">@t.Name</span>
-                    <span class="tbl__seats">@t.Seats<LucideIcon Name="user" Size="12" /></span>
-                    @if (t.ActiveOrderId is not null && (t.GroupId is null || IsGroupAnchor(t)))
+                    @if (t.GroupId is null || IsGroupAnchor(t))
                     {
-                        <span class="tbl__total">@t.ActiveOrderTotal.ToString("C")</span>
+                        <span class="tbl__name @(t.GroupId is not null ? "tbl__name--group" : "")">@(t.GroupId is not null ? (t.GroupName ?? t.Name) : t.Name)</span>
+                    }
+                    <span class="tbl__seats">@t.Seats<LucideIcon Name="user" Size="12" /></span>
+                    @if (t.GroupId is null || IsGroupAnchor(t))
+                    {
+                        @if (rv is not null)
+                        {
+                            <span class="tbl__total">@rv.CustomerName</span>
+                        }
                     }
                 </div>
-                @if (!_editing && _resByTable.TryGetValue(t.Id, out var rv))
+                @if (!_editing && rv is not null)
                 {
-                    <span class="tbl__resv" title="@rv.CustomerName"><LucideIcon Name="calendar" Size="14" /> @rv.Time.ToString("HH:mm")</span>
+                    <span class="tbl__resv" title="@rv.CustomerName"><LucideIcon Name="@(rv.Status == ReservationStatus.Seated ? "armchair" : PeriodIcon(rv.Time))" Size="14" /> @rv.Time.ToString("HH:mm")</span>
                 }
                 @if (t.GroupId is not null && IsGroupAnchor(t))
                 {
@@ -95,6 +127,13 @@ else if (_assignReservationId is not null)
             </div>
         }
         @if (_tables.Count == 0) { <p class="empty">@Loc.T("No tables yet. Create one to start.")</p> }
+        else if (VisibleTables.Count == 0) { <p class="empty">@Loc.T("No tables in this zone.")</p> }
+    </div>
+        <button class="btn btn--icon btn--ghost floor__expand" type="button"
+                title="@(_mapExpanded ? Loc.T("Minimise map") : Loc.T("Expand map"))" @onclick="() => _mapExpanded = !_mapExpanded">
+            <LucideIcon Name="@(_mapExpanded ? "minimize-2" : "maximize-2")" Size="18" />
+        </button>
+    </div>
     </div>
 
         <aside class="resv card @(_resCollapsed ? "resv--collapsed" : "")">
@@ -109,47 +148,73 @@ else if (_assignReservationId is not null)
             else
             {
             <div class="resv__head">
-                <h2><LucideIcon Name="calendar" Size="14" /> @Loc.T("Reservations")</h2>
+                <h2><LucideIcon Name="calendar" Size="13" /> @Loc.T("Reservations")</h2>
                 <span class="spacer"></span>
-                <button class="btn btn--ghost btn--sm" title="@Loc.T("Collapse")" @onclick="ToggleCollapse">»</button>
-            </div>
-
-            <div class="resv__toolbar">
-                <input type="date" class="input" @bind="_reserveDate" @bind:after="LoadReservations" />
-                <button class="btn btn--primary btn--sm" @onclick="() => OpenResForm(null)">+ @Loc.T("New")</button>
+                <button class="btn btn--primary btn--sm" @onclick="() => OpenResForm(null)"><LucideIcon Name="plus" Size="13" />@Loc.T("New")</button>
+                <button class="btn btn--icon btn--ghost resv__collapse" title="@Loc.T("Collapse")" @onclick="ToggleCollapse"><LucideIcon Name="panel-left-close" Size="15" /></button>
             </div>
 
             @if (_assignReservationId is not null)
             {
                 <div class="resv__assigning">
-                    <LucideIcon Name="armchair" Size="14" /> @Loc.T("Pick a table on the plan…")
-                    <button class="btn btn--ghost btn--sm" @onclick="CancelAssign">@Loc.T("Cancel")</button>
+                    <LucideIcon Name="armchair" Size="14" /> @Loc.T("Pick one or more tables on the plan…")
+                    <button class="btn btn--primary btn--sm" @onclick="CancelAssign">@Loc.T("Done")</button>
+                </div>
+            }
+
+            @if (_reservations.Count > 0)
+            {
+                <div class="tabs resv__period-tabs">
+                    <button class="tabs__opt @(_periodFilter is null ? "tabs__opt--on" : "")" @onclick="() => _periodFilter = null">
+                        @Loc.T("All") <span class="muted">@_reservations.Count</span>
+                    </button>
+                    <button class="tabs__opt @(_periodFilter == ServicePeriod.Lunch ? "tabs__opt--on" : "")" @onclick="() => _periodFilter = ServicePeriod.Lunch">
+                        <LucideIcon Name="sun" Size="13" />@Loc.T("Lunch") <span class="muted">@_reservations.Count(r => Branding.Current.GetPeriod(r.Time) == ServicePeriod.Lunch)</span>
+                    </button>
+                    <button class="tabs__opt @(_periodFilter == ServicePeriod.Dinner ? "tabs__opt--on" : "")" @onclick="() => _periodFilter = ServicePeriod.Dinner">
+                        <LucideIcon Name="moon" Size="13" />@Loc.T("Dinner") <span class="muted">@_reservations.Count(r => Branding.Current.GetPeriod(r.Time) == ServicePeriod.Dinner)</span>
+                    </button>
                 </div>
             }
 
             <div class="resv__list">
-                @foreach (var r in _reservations)
+                @foreach (var r in FilteredReservations)
                 {
                     <div class="resv-card @(_assignReservationId == r.Id ? "resv-card--active" : "")" style="border-left:4px solid @r.Color">
                         <div class="resv-card__top">
+                            <span class="resv-card__period" title="@Loc.T(PeriodLabel(r.Time))"><LucideIcon Name="@PeriodIcon(r.Time)" Size="14" /></span>
                             <strong>@r.Time.ToString("HH:mm")</strong>
                             <span class="resv-card__name">@r.CustomerName</span>
                             <span class="spacer"></span>
                             <span class="badge @StatusClass(r.Status)">@Loc.T(r.Status.ToString())</span>
                         </div>
                         <div class="resv-card__meta muted">
-                            <LucideIcon Name="users" Size="14" /> @r.PartySize · @if (r.TableName is not null)
+                            <LucideIcon Name="users" Size="14" /> @r.PartySize
+                            @if (r.TableNames.Count > 0)
                             {
-                                <LucideIcon Name="armchair" Size="14" /><text> @r.TableName</text>
+                                <span class="resv-card__tables">
+                                    @foreach (var name in r.TableNames)
+                                    {
+                                        <span class="tbl-chip tbl-chip--sm"><LucideIcon Name="armchair" Size="12" /> @name</span>
+                                    }
+                                </span>
                             }
                             else
                             {
-                                @Loc.T("Unassigned")
+                                <span>· @Loc.T("Unassigned")</span>
                             }
                         </div>
                         <div class="resv-card__actions">
-                            <button class="btn btn--ghost btn--sm" @onclick="() => StartAssign(r)"><LucideIcon Name="armchair" Size="16" />@(r.TableId is null ? Loc.T("Assign") : Loc.T("Reassign"))</button>
-                            @if (r.TableId is not null)
+                            @if (r.Status is ReservationStatus.Pending or ReservationStatus.Confirmed)
+                            {
+                                <button class="btn btn--primary btn--sm" @onclick="() => SetResStatus(r.Id, ReservationStatus.Seated)"><LucideIcon Name="check" Size="16" />@Loc.T("Seat")</button>
+                            }
+                            else if (r.Status == ReservationStatus.Seated)
+                            {
+                                <button class="btn btn--primary btn--sm" @onclick="() => SetResStatus(r.Id, ReservationStatus.Finished)"><LucideIcon Name="log-out" Size="16" />@Loc.T("Mark as left")</button>
+                            }
+                            <button class="btn btn--ghost btn--sm" @onclick="() => StartAssign(r)"><LucideIcon Name="armchair" Size="16" />@(r.TableIds.Count == 0 ? Loc.T("Assign") : Loc.T("Reassign"))</button>
+                            @if (r.TableIds.Count > 0)
                             {
                                 <button class="btn btn--ghost btn--sm" @onclick="() => Unassign(r.Id)">@Loc.T("Unassign")</button>
                             }
@@ -158,6 +223,7 @@ else if (_assignReservationId is not null)
                     </div>
                 }
                 @if (_reservations.Count == 0) { <p class="empty">@Loc.T("No reservations for this day.")</p> }
+                else if (FilteredReservations.Count == 0) { <p class="empty">@Loc.T("No reservations for this service.")</p> }
             </div>
             }
         </aside>
@@ -179,8 +245,19 @@ else if (_assignReservationId is not null)
                     </select>
                 </div>
             </div>
+            <div class="field">
+                <label>@Loc.T("Zone")</label>
+                <input class="input" list="zone-options" placeholder="@Loc.T("e.g. Main hall, Bar")" @bind="_form.Zone" />
+                <datalist id="zone-options">
+                    @foreach (var z in Zones)
+                    {
+                        <option value="@z"></option>
+                    }
+                </datalist>
+            </div>
             @if (_groupMembers.Count > 0)
             {
+                <div class="field"><label>@Loc.T("Group name")</label><input class="input" @bind="_groupNameEdit" /></div>
                 <div class="join-info">
                     <span class="badge badge--primary"><LucideIcon Name="link" Size="14" /> @Loc.T("Joined")</span>
                     @Loc.T("Shares a bill with:") <strong>@string.Join(", ", _groupMembers)</strong>
@@ -204,44 +281,95 @@ else if (_assignReservationId is not null)
     </Footer>
 </Modal>
 
-<Modal Visible="_resForm is not null" Title="@(_resForm?.Id > 0 ? Loc.T("Edit reservation") : Loc.T("New reservation"))" OnClose="CloseResForm">
+<Modal Visible="_showJoinNamePrompt" Title="@Loc.T("Name this table")" OnClose="CancelJoinNamePrompt">
+    <ChildContent>
+        <div class="field"><label>@Loc.T("Group name")</label><input class="input" @bind="_joinNameInput" /></div>
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="CancelJoinNamePrompt">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="ConfirmJoin"><LucideIcon Name="link" Size="16" />@Loc.T("Join")</button>
+    </Footer>
+</Modal>
+
+<Modal Visible="_resForm is not null" Title="@(_resForm?.Id > 0 ? Loc.T("Edit reservation") : Loc.T("New reservation"))" OnClose="CloseResForm" FullScreen="true">
+    <HeaderActions>
+        <button class="btn btn--icon btn--primary" title="@Loc.T("Save")" @onclick="SaveRes" type="button"><LucideIcon Name="check" Size="18" /></button>
+    </HeaderActions>
     <ChildContent>
         @if (_resForm is not null)
         {
-            <div class="field"><label>@Loc.T("Customer name")</label><input class="input" @bind="_resForm.CustomerName" /></div>
-            <div class="row-2">
-                <div class="field"><label>@Loc.T("Phone")</label><input class="input" @bind="_resForm.Phone" /></div>
-                <div class="field"><label>@Loc.T("Party size")</label><input type="number" class="input" @bind="_resForm.PartySize" /></div>
-            </div>
-            <div class="row-2">
-                <div class="field"><label>@Loc.T("Date")</label><input type="date" class="input" @bind="_resForm.Date" /></div>
-                <div class="field"><label>@Loc.T("Time")</label><input type="time" class="input" @bind="_resForm.Time" /></div>
-            </div>
-            <div class="row-2">
-                <div class="field"><label>@Loc.T("Duration (min)")</label><input type="number" class="input" @bind="_resForm.DurationMinutes" /></div>
-                <div class="field"><label>@Loc.T("Table")</label>
-                    <select class="select" @bind="_resForm.TableId">
-                        <option value="">@Loc.T("— none —")</option>
-                        @foreach (var t in _tables)
-                        {
-                            <option value="@t.Id">@t.Name (@t.Seats)</option>
-                        }
-                    </select>
+            <div class="resv-form">
+                <div class="modal-section">@Loc.T("Tables")</div>
+                <div class="tbl-pick">
+                    @foreach (var t in _tables)
+                    {
+                        <button type="button" class="tbl-chip @(_resForm.TableIds.Contains(t.Id) ? "tbl-chip--on" : "")"
+                                @onclick="() => ToggleFormTable(t.Id)">
+                            <span>@t.Name</span>
+                            <span class="tbl-chip__seats">@t.Seats<LucideIcon Name="user" Size="11" /></span>
+                        </button>
+                    }
+                    @if (_tables.Count == 0) { <p class="muted">@Loc.T("No tables yet. Create one to start.")</p> }
                 </div>
-            </div>
-            <div class="row-2">
-                <div class="field"><label>@Loc.T("Colour")</label><input type="color" class="input" @bind="_resForm.Color" /></div>
-                <div class="field"><label>@Loc.T("Status")</label>
-                    <select class="select" @bind="_resForm.Status">
-                        @foreach (var s in Enum.GetValues<ReservationStatus>())
-                        {
-                            <option value="@s">@Loc.T(s.ToString())</option>
-                        }
-                    </select>
+                <div class="tbl-pick__summary">
+                    <span class="badge @(SelectedSeats >= _resForm.PartySize ? "badge--success" : "badge--warning")">
+                        @SelectedSeats / @_resForm.PartySize @Loc.T("seats selected")
+                    </span>
                 </div>
+
+                <div class="modal-section">@Loc.T("Guest")</div>
+                <div class="resv-row resv-row--guest">
+                    <div class="field"><label>@Loc.T("Customer name")</label><input class="input" @bind="_resForm.CustomerName" /></div>
+                    <div class="field"><label>@Loc.T("Party size")</label><input type="number" class="input" @bind="_resForm.PartySize" /></div>
+                    <div class="field"><label>@Loc.T("Phone")</label><input class="input" @bind="_resForm.Phone" /></div>
+                </div>
+
+                <div class="modal-section">@Loc.T("When")</div>
+                <div class="resv-row resv-row--3">
+                    <div class="field"><label>@Loc.T("Date")</label><input type="date" class="input" @bind="_resForm.Date" /></div>
+                    <div class="field"><label>@Loc.T("Time")</label><TimePicker @bind-Value="_resForm.Time" /></div>
+                    <div class="field"><label>@Loc.T("Duration (min)")</label><input type="number" class="input" @bind="_resForm.DurationMinutes" /></div>
+                </div>
+                <div class="resv-quick-time">
+                    <button type="button" class="btn btn--sm @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "btn--primary" : "btn--ghost")"
+                            @onclick="() => _resForm.Time = Branding.Current.LunchStart">
+                        <LucideIcon Name="sun" Size="14" />@Loc.T("Lunch") · @Branding.Current.LunchStart.ToString("HH:mm")
+                    </button>
+                    <button type="button" class="btn btn--sm @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Dinner ? "btn--primary" : "btn--ghost")"
+                            @onclick="() => _resForm.Time = Branding.Current.DinnerStart">
+                        <LucideIcon Name="moon" Size="14" />@Loc.T("Dinner") · @Branding.Current.DinnerStart.ToString("HH:mm")
+                    </button>
+                </div>
+                @if (!Branding.Current.IsInService(_resForm.Time))
+                {
+                    <p class="field-hint field-hint--warning"><LucideIcon Name="triangle-alert" Size="14" /> @Loc.T("This reservation falls outside the configured lunch/dinner hours.")</p>
+                }
+
+                <div class="modal-section">@Loc.T("Details")</div>
+                <div class="resv-row">
+                    <div class="field">
+                        <label>@Loc.T("Colour")</label>
+                        <div class="color-pick">
+                            @foreach (var c in GroupColors)
+                            {
+                                <button type="button" class="color-swatch @(_resForm.Color == c ? "color-swatch--on" : "")"
+                                        style="--sw:@c" title="@c" @onclick="() => _resForm.Color = c"></button>
+                            }
+                            <input type="color" class="color-swatch color-swatch--custom" title="@Loc.T("Custom colour")" @bind="_resForm.Color" />
+                        </div>
+                    </div>
+                    <div class="field"><label>@Loc.T("Status")</label>
+                        <select class="select" @bind="_resForm.Status">
+                            @foreach (var s in Enum.GetValues<ReservationStatus>())
+                            {
+                                <option value="@s">@Loc.T(s.ToString())</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="field"><label>@Loc.T("Comments")</label><textarea class="input" rows="2" @bind="_resForm.Comments"></textarea></div>
+                @if (_resError is not null) { <div class="field-error">@_resError</div> }
             </div>
-            <div class="field"><label>@Loc.T("Comments")</label><textarea class="input" rows="2" @bind="_resForm.Comments"></textarea></div>
-            @if (_resError is not null) { <div class="field-error">@_resError</div> }
         }
     </ChildContent>
     <Footer>
@@ -261,6 +389,8 @@ else if (_assignReservationId is not null)
     private List<TableDto> _tables = new();
     private TableFormDto? _form;
     private List<string> _groupMembers = new();
+    private int? _groupId;
+    private string _groupNameEdit = "";
     private string? _error;
     private string? _notice;
 
@@ -269,11 +399,24 @@ else if (_assignReservationId is not null)
     private readonly HashSet<int> _selection = new();
 
     // ---- Reservations panel state ----
-    // The panel is always docked on the right; it can be collapsed to a thin rail (open by default).
+    // Docked to the left of the floor plan (visually, via CSS order); can be collapsed to a thin rail.
     private bool _resCollapsed;
+    private bool _mapExpanded;
     private DateTime _reserveDate = DateTime.Today;
     private List<ReservationDto> _reservations = new();
-    private Dictionary<int, ReservationDto> _resByTable = new();
+    private ServicePeriod? _periodFilter;
+
+    private List<ReservationDto> FilteredReservations => _periodFilter is null
+        ? _reservations
+        : _reservations.Where(r => Branding.Current.GetPeriod(r.Time) == _periodFilter).ToList();
+
+    // Drives the floor plan's reservation badges too, so switching the Lunch/Dinner filter
+    // hides the other service's reservations from the map, not just the sidebar list.
+    private Dictionary<int, ReservationDto> ResByTable => FilteredReservations
+        .Where(r => r.Status != ReservationStatus.Cancelled && r.Status != ReservationStatus.Finished)
+        .SelectMany(r => r.TableIds.Select(tableId => (TableId: tableId, Res: r)))
+        .GroupBy(x => x.TableId)
+        .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Res.Time).First().Res);
     private int? _assignReservationId;
     private string? _assignName;
     private ReservationFormDto? _resForm;
@@ -295,6 +438,19 @@ else if (_assignReservationId is not null)
                            (o.PositionX == t.PositionX && o.PositionY < t.PositionY)));
 
     private int GroupSeats(int gid) => _tables.Where(t => t.GroupId == gid).Sum(t => t.Seats);
+
+    private string? _zoneFilter;
+    private List<string> Zones => _tables
+        .Select(t => t.Zone)
+        .Where(z => !string.IsNullOrWhiteSpace(z))
+        .Distinct()
+        .OrderBy(z => z)
+        .ToList()!;
+
+    private List<TableDto> VisibleTables =>
+        (_editing || _selecting || _assignReservationId is not null || _zoneFilter is null)
+            ? _tables
+            : _tables.Where(t => t.Zone == _zoneFilter).ToList();
 
     private string TableClass(TableDto t)
     {
@@ -376,14 +532,28 @@ else if (_assignReservationId is not null)
     private void StartSelect() { CancelAssign(); _selecting = true; _selection.Clear(); _notice = null; }
     private void CancelSelect() { _selecting = false; _selection.Clear(); }
 
-    private async Task JoinSelected()
+    // Joining asks for a name first (defaulting to "T1 + T2") so the group reads as one table
+    // everywhere, instead of leaving each member's own name showing.
+    private bool _showJoinNamePrompt;
+    private string _joinNameInput = "";
+
+    private void OpenJoinNamePrompt()
+    {
+        _joinNameInput = string.Join(" + ", _tables.Where(t => _selection.Contains(t.Id)).OrderBy(t => t.Name).Select(t => t.Name));
+        _showJoinNamePrompt = true;
+    }
+
+    private void CancelJoinNamePrompt() => _showJoinNamePrompt = false;
+
+    private async Task ConfirmJoin()
     {
         try
         {
-            await Service.JoinTablesAsync(_selection);
+            await Service.JoinTablesAsync(_selection, _joinNameInput);
             _notice = $"{_selection.Count} {Loc.T("tables joined.")}";
         }
         catch (InvalidOperationException ex) { _notice = ex.Message; }
+        _showJoinNamePrompt = false;
         _selecting = false;
         _selection.Clear();
         await Load();
@@ -400,33 +570,39 @@ else if (_assignReservationId is not null)
 
     // ---- Reservations panel ----
     private void ToggleCollapse() => _resCollapsed = !_resCollapsed;
+    private void OpenDashboard() => Nav.NavigateTo("/reservations");
 
-    private async Task LoadReservations()
+    private Task ShiftDay(int days)
     {
-        _reservations = await ReservationService.GetByDateAsync(_reserveDate);
-        _resByTable = _reservations
-            .Where(r => r.TableId is not null
-                        && r.Status != ReservationStatus.Cancelled
-                        && r.Status != ReservationStatus.Finished)
-            .GroupBy(r => r.TableId!.Value)
-            .ToDictionary(g => g.Key, g => g.OrderBy(r => r.Time).First());
+        _reserveDate = _reserveDate.AddDays(days);
+        return LoadReservations();
     }
+
+    private async Task LoadReservations() => _reservations = await ReservationService.GetByDateAsync(_reserveDate);
 
     private void StartAssign(ReservationDto r) { _assignReservationId = r.Id; _assignName = r.CustomerName; }
     private void CancelAssign() { _assignReservationId = null; _assignName = null; }
 
+    // Clicking a table while assigning toggles its membership; assign mode stays open so
+    // several tables can be picked in one go, and is exited explicitly via "Done".
     private async Task AssignToTable(int tableId)
     {
         if (_assignReservationId is null) return;
-        await ReservationService.AssignTableAsync(_assignReservationId.Value, tableId);
-        CancelAssign();
+        await ReservationService.ToggleTableAsync(_assignReservationId.Value, tableId);
         await LoadReservations();
         await Load();
     }
 
     private async Task Unassign(int reservationId)
     {
-        await ReservationService.AssignTableAsync(reservationId, null);
+        await ReservationService.AssignTablesAsync(reservationId, Array.Empty<int>());
+        await LoadReservations();
+        await Load();
+    }
+
+    private async Task SetResStatus(int reservationId, ReservationStatus status)
+    {
+        await ReservationService.SetStatusAsync(reservationId, status);
         await LoadReservations();
         await Load();
     }
@@ -440,6 +616,14 @@ else if (_assignReservationId is not null)
     }
 
     private void CloseResForm() => _resForm = null;
+
+    private int SelectedSeats => _resForm is null ? 0 : _tables.Where(t => _resForm.TableIds.Contains(t.Id)).Sum(t => t.Seats);
+
+    private void ToggleFormTable(int tableId)
+    {
+        if (_resForm is null) return;
+        if (!_resForm.TableIds.Remove(tableId)) _resForm.TableIds.Add(tableId);
+    }
 
     private async Task SaveRes()
     {
@@ -472,6 +656,22 @@ else if (_assignReservationId is not null)
         _ => ""
     };
 
+    // Which service turn a reservation's time falls into, so it reads at a glance in the
+    // day list and on the floor plan without having to parse the raw HH:mm.
+    private string PeriodIcon(TimeOnly time) => Branding.Current.GetPeriod(time) switch
+    {
+        ServicePeriod.Lunch => "sun",
+        ServicePeriod.Dinner => "moon",
+        _ => "clock"
+    };
+
+    private string PeriodLabel(TimeOnly time) => Branding.Current.GetPeriod(time) switch
+    {
+        ServicePeriod.Lunch => "Lunch",
+        ServicePeriod.Dinner => "Dinner",
+        _ => "Outside service hours"
+    };
+
     // ---- Table click routing ----
     private async Task OnTableClick(TableDto t)
     {
@@ -488,16 +688,18 @@ else if (_assignReservationId is not null)
     private void OpenForm(int? id)
     {
         _error = null;
-        if (id is null) { _form = new TableFormDto(); _groupMembers = new(); return; }
+        if (id is null) { _form = new TableFormDto { Zone = _zoneFilter }; _groupMembers = new(); _groupId = null; _groupNameEdit = ""; return; }
 
         var t = _tables.First(x => x.Id == id);
-        _form = new TableFormDto { Id = t.Id, Name = t.Name, Seats = t.Seats, Shape = t.Shape };
+        _form = new TableFormDto { Id = t.Id, Name = t.Name, Seats = t.Seats, Shape = t.Shape, Zone = t.Zone };
+        _groupId = t.GroupId;
+        _groupNameEdit = t.GroupName ?? "";
         _groupMembers = t.GroupId is null
             ? new()
             : _tables.Where(x => x.GroupId == t.GroupId && x.Id != t.Id).Select(x => x.Name).ToList();
     }
 
-    private void Close() { _form = null; _groupMembers = new(); }
+    private void Close() { _form = null; _groupMembers = new(); _groupId = null; _groupNameEdit = ""; }
 
     private async Task Save()
     {
@@ -508,8 +710,12 @@ else if (_assignReservationId is not null)
         if (_form.Id > 0) await Service.UpdateInfoAsync(_form);
         else await Service.CreateAsync(_form);
 
+        if (_groupId is not null) await Service.RenameGroupAsync(_groupId.Value, _groupNameEdit);
+
         _form = null;
         _groupMembers = new();
+        _groupId = null;
+        _groupNameEdit = "";
         await Load();
     }
 
@@ -519,6 +725,8 @@ else if (_assignReservationId is not null)
         catch (InvalidOperationException ex) { _error = ex.Message; return; }
         _form = null;
         _groupMembers = new();
+        _groupId = null;
+        _groupNameEdit = "";
         await Load();
     }
 

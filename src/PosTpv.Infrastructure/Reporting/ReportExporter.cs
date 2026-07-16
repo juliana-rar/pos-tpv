@@ -33,7 +33,7 @@ public class ReportExporter : IReportExporter
         };
     }
 
-    private static string Money(decimal d) => d.ToString("N2", Inv) + " €";
+    private static string Money(decimal d) => d.ToString("N2", Inv);
 
     // ---- CSV ------------------------------------------------------------------
     private static byte[] BuildCsv(BillingReportDto report)
@@ -56,7 +56,7 @@ public class ReportExporter : IReportExporter
         sb.AppendLine($"Invoices,{report.Count}");
         sb.AppendLine($"Average ticket,{report.Average.ToString("F2", Inv)}");
 
-        // UTF-8 BOM so Excel opens accented text / the € sign correctly.
+        // UTF-8 BOM so Excel opens accented text correctly.
         return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
     }
 
@@ -88,8 +88,8 @@ public class ReportExporter : IReportExporter
         ws.Cell("A6").Value = "Invoices"; ws.Cell("B6").Value = report.Count;
         ws.Cell("A7").Value = "Average ticket"; ws.Cell("B7").Value = report.Average;
         ws.Range("A4:A7").Style.Font.SetBold();
-        ws.Range("B4:B5").Style.NumberFormat.Format = "#,##0.00 €";
-        ws.Cell("B7").Style.NumberFormat.Format = "#,##0.00 €";
+        ws.Range("B4:B5").Style.NumberFormat.Format = "#,##0.00";
+        ws.Cell("B7").Style.NumberFormat.Format = "#,##0.00";
 
         // Invoice table
         const int header = 9;
@@ -117,7 +117,7 @@ public class ReportExporter : IReportExporter
         }
 
         var moneyCols = ws.Range(header + 1, 6, Math.Max(header + 1, row - 1), 8);
-        moneyCols.Style.NumberFormat.Format = "#,##0.00 €";
+        moneyCols.Style.NumberFormat.Format = "#,##0.00";
 
         if (report.Invoices.Count > 0)
         {

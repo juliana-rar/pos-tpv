@@ -6,7 +6,7 @@ services:
     container_name: postpv-db
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "${SA_PASSWORD:-PosTpv!Dev2026}"
+      MSSQL_SA_PASSWORD: "${SA_PASSWORD:?Set SA_PASSWORD in .env (copy .env.example) before starting the database}"
       MSSQL_PID: "Developer"
     ports:
       - "14333:1433"

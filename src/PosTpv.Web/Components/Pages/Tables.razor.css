@@ -1,14 +1,51 @@
-.legend { display: flex; gap: .9rem; }
-.legend__item { display: inline-flex; align-items: center; gap: .35rem; font-size: .82rem; color: var(--text-soft); font-weight: 600; }
-.dot { width: .8rem; height: .8rem; border-radius: 50%; display: inline-block; }
+/* Day picker for the whole /tables screen — centred on the full page width
+   (spans both the floor plan and the reservations sidebar below it), not just
+   inside the reservations panel. */
+.tables-datebar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .35rem;
+    /* Pull it up against the topbar, cancelling most of the page's own top padding. */
+    margin: -1rem auto .8rem;
+}
+
+.floor-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: calc(100vh - 220px);
+    min-height: 420px;
+    padding: .5rem .6rem;
+    gap: .4rem;
+    margin: 0;
+}
+.toolbar--tables { margin: 0; }
+.legend { display: flex; gap: .7rem; flex-wrap: wrap; }
+/* Kept as one flex item so the three buttons wrap onto their own line together
+   instead of splitting — "Edit layout" landing alone below "Join tables" on narrow screens. */
+.toolbar-actions { display: flex; gap: .5rem; flex-wrap: nowrap; }
+.legend__item { display: inline-flex; align-items: center; gap: .3rem; font-size: .74rem; color: var(--text-soft); font-weight: 600; }
+.dot { width: .55rem; height: .55rem; border-radius: 50%; display: inline-block; }
 .dot--available { background: var(--success); }
 .dot--occupied { background: var(--warning); }
 .dot--reserved { background: var(--secondary); }
 
+.floor-panel .floor-notice, .floor-panel .floor-hint { margin: 0; }
+
+.zone-filter { display: flex; flex-wrap: wrap; gap: .4rem; }
+
+/* .floor-wrap doesn't scroll itself — it just gives the expand button a fixed
+   frame to anchor to, so it stays in the top-right corner no matter how far
+   .floor is scrolled inside it (an absolutely-positioned child of .floor would
+   scroll away with the floor plan content instead). */
+.floor-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+
 .floor {
     position: relative;
-    height: calc(100vh - 220px);
-    min-height: 420px;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow: auto;
     background-image:
         linear-gradient(color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px),
@@ -33,9 +70,6 @@
 .tbl--round { border-radius: 50%; }
 .tbl--oval { border-radius: 50%; }
 
-.tbl--available { border-color: var(--success); }
-.tbl--occupied { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 14%, var(--card-2)); }
-.tbl--reserved { border-color: var(--secondary); background: color-mix(in srgb, var(--secondary) 14%, var(--card-2)); }
 .tbl--locked { opacity: .6; }
 
 /* Text content is counter-rotated so labels stay upright/centred even when the
@@ -47,6 +81,7 @@
 }
 
 .tbl__name { font-weight: 800; }
+.tbl__name--group { font-size: .78rem; line-height: 1.1; text-align: center; max-width: 100%; }
 .tbl__seats { font-size: .72rem; color: var(--text-soft); }
 .tbl__total { font-size: .74rem; font-weight: 700; color: var(--primary); }
 
@@ -86,14 +121,14 @@
     cursor: pointer;
     box-shadow: var(--shadow-sm);
 }
-.tbl__shape:hover { border-color: var(--primary); color: var(--primary); }
+.tbl__shape:hover { border-color: var(--text); color: var(--text); }
 
 /* Resize handle (bottom-right corner) */
 .tbl__handle--resize {
     position: absolute;
     right: -7px; bottom: -7px;
     width: 16px; height: 16px;
-    border: 2px solid var(--primary);
+    border: 2px solid var(--text);
     border-radius: 4px;
     background: var(--card);
     cursor: nwse-resize;
@@ -105,7 +140,7 @@
     top: -30px; left: 50%;
     transform: translateX(-50%);
     width: 16px; height: 16px;
-    border: 2px solid var(--secondary);
+    border: 2px solid var(--text-soft);
     border-radius: 50%;
     background: var(--card);
     cursor: grab;
@@ -116,7 +151,7 @@
     top: 14px; left: 50%;
     transform: translateX(-50%);
     width: 2px; height: 16px;
-    background: var(--secondary);
+    background: var(--text-soft);
 }
 
 /* Hide the manipulation handles on locked tables. */
@@ -126,8 +161,8 @@
 /* Members are snapped edge-to-edge on the floor; squaring the corners and sharing
    the group colour/fill makes the row read as one continuous table surface. */
 .tbl--grouped {
-    border-color: var(--grp, var(--primary));
-    background: color-mix(in srgb, var(--grp, var(--primary)) 16%, var(--card-2));
+    border-color: var(--text-soft);
+    background: var(--card-2);
     border-radius: 0;
     box-shadow: none;
 }
@@ -154,26 +189,43 @@
 
 /* ---- Selection mode (join) ------------------------------------------------ */
 .floor--select .tbl { cursor: pointer; }
-.tbl--selected { box-shadow: 0 0 0 3px var(--primary); border-color: var(--primary); }
+.tbl--selected { box-shadow: 0 0 0 3px var(--text); }
 
 .floor-notice {
     margin: 0 0 .8rem;
     padding: .55rem .8rem;
     border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--primary) 14%, transparent);
-    color: var(--primary);
+    border: 1px solid var(--border);
+    background: var(--card-2);
+    color: var(--text);
     font-weight: 600;
     font-size: .88rem;
 }
 
 /* ---- Reservations panel & assignment -------------------------------------- */
 .floor-layout--split { display: flex; gap: 1rem; align-items: stretch; }
-.floor-layout--split .floor { flex: 1 1 auto; min-width: 0; margin: 0; }
+/* Visually place the reservations panel before the floor plan (left side) without
+   reordering the markup, so the drag/resize JS (keyed off the .floor element) is untouched. */
+.floor-layout--split .resv { order: -1; }
+
+/* Expand/minimise toggle sitting in the map's own top-right corner. It's a
+   sibling of the scrolling .floor (inside the non-scrolling .floor-wrap), so it
+   stays anchored to the visible viewport instead of scrolling away with the
+   floor plan content when the map is panned horizontally or vertically. */
+.floor__expand {
+    position: absolute;
+    top: .6rem;
+    right: .6rem;
+    z-index: 5;
+    background: var(--card);
+}
+.floor-layout--map-expanded .resv { display: none; }
+.floor-layout--map-expanded .floor-panel { height: calc(100vh - 160px); }
 
 /* Assign mode: clicking a table books the selected reservation onto it. */
-.floor-hint--assign { display: flex; align-items: center; gap: .6rem; color: var(--secondary); font-weight: 600; }
+.floor-hint--assign { display: flex; align-items: center; gap: .6rem; font-weight: 600; }
 .floor--assign .tbl { cursor: pointer; }
-.floor--assign .tbl:hover { box-shadow: 0 0 0 3px var(--secondary); border-color: var(--secondary); }
+.floor--assign .tbl:hover { box-shadow: 0 0 0 3px var(--text); }
 
 /* Reservation badge on a table (bottom-centre, mirrors the group badge on top). */
 .tbl__resv {
@@ -189,7 +241,7 @@
 
 /* Side drawer */
 .resv {
-    flex: 0 0 340px;
+    flex: 0 0 380px;
     height: calc(100vh - 220px);
     min-height: 420px;
     display: flex; flex-direction: column;
@@ -215,33 +267,126 @@
     font-size: .75rem; font-weight: 700;
 }
 
-.resv__head { display: flex; align-items: center; gap: .5rem; padding: .85rem 1rem; border-bottom: 1px solid var(--border); }
-.resv__head h2 { margin: 0; font-size: 1.05rem; }
-.resv__toolbar { display: flex; gap: .5rem; align-items: center; padding: .7rem 1rem; }
-.resv__toolbar .input { max-width: 165px; }
+.resv__head { display: flex; align-items: center; gap: .4rem; padding: .55rem .75rem; border-bottom: 1px solid var(--border); }
+.resv__head h2 {
+    display: flex; align-items: center; gap: .35rem;
+    margin: 0;
+    font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-soft);
+    white-space: nowrap;
+}
+.resv__head .btn--primary { padding: .4rem .6rem; font-size: .78rem; }
+.resv__collapse { width: 30px; height: 30px; padding: 0; }
+
+/* Day nav + stats link, now living in the page-wide .tables-datebar. */
+.resv__day-nav { display: flex; align-items: center; justify-content: center; gap: .5rem; }
+.resv__day-nav .btn--icon { width: 32px; height: 32px; border-radius: 999px; }
+.resv__head-date {
+    max-width: 160px;
+    padding: .55rem .8rem;
+    font-size: .9rem;
+    font-weight: 600;
+    text-align: center;
+    border-radius: 999px;
+    box-shadow: var(--shadow-sm);
+}
+/* Small, unobtrusive link to the full dashboard, centred right under the date. */
+.resv__stats-btn {
+    display: inline-flex; align-items: center; gap: .3rem;
+    border: none; background: none; cursor: pointer;
+    color: var(--text-soft);
+    font-size: .68rem; font-weight: 600;
+    padding: 0;
+    transition: color var(--transition);
+}
+.resv__stats-btn:hover { color: var(--primary); }
 .resv__assigning {
     display: flex; align-items: center; gap: .5rem; justify-content: space-between;
     margin: 0 1rem .6rem;
     padding: .5rem .7rem;
     border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--secondary) 16%, transparent);
-    color: var(--secondary);
+    border: 1px solid var(--border);
+    background: var(--card-2);
+    color: var(--text);
     font-weight: 600; font-size: .82rem;
 }
-.resv__list { flex: 1 1 auto; overflow: auto; padding: .1rem 1rem 1rem; display: flex; flex-direction: column; gap: .6rem; }
+
+/* Lunch/Dinner service filter for the day's reservation list — reuses the shared .tabs
+   component (Settings page) but tightened to fit the sidebar's width. */
+.resv__period-tabs { margin: .6rem 1rem; }
+.resv__period-tabs .tabs__opt { padding: .35rem .65rem; font-size: .78rem; gap: .3rem; }
+.resv__period-tabs .tabs__opt--on .muted { color: inherit; opacity: .8; }
+.resv__list { flex: 1 1 auto; overflow: auto; padding: .1rem 1rem 1rem; display: flex; flex-direction: column; gap: .4rem; }
 
 .resv-card {
-    padding: .6rem .7rem;
+    padding: .4rem .55rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--card-2);
     transition: box-shadow var(--transition);
 }
-.resv-card--active { box-shadow: 0 0 0 2px var(--secondary); }
-.resv-card__top { display: flex; align-items: center; gap: .5rem; font-size: .9rem; }
+.resv-card--active { box-shadow: 0 0 0 2px var(--text); }
+.resv-card__top { display: flex; align-items: center; gap: .4rem; font-size: .8rem; }
+.resv-card__period { display: inline-flex; color: var(--text-soft); }
 .resv-card__name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.resv-card__meta { font-size: .78rem; margin: .25rem 0 .45rem; }
-.resv-card__actions { display: flex; gap: .3rem; flex-wrap: wrap; }
+.resv-card__meta { display: flex; align-items: center; gap: .25rem; flex-wrap: wrap; font-size: .7rem; margin: .2rem 0 .35rem; }
+.resv-card__tables { display: inline-flex; flex-wrap: wrap; gap: .25rem; }
+.resv-card__actions { display: flex; gap: .25rem; flex-wrap: wrap; }
+.resv-card__actions .btn--sm { padding: .25rem .5rem; font-size: .72rem; }
+
+/* ---- Reservation form: a single flowing column, tables first --------------- */
+/* Deliberately narrower than a two-column layout — a single readable column
+   centers cleanly and needs no breakpoint to behave on mobile. */
+.resv-form { max-width: 640px; margin: 0 auto; }
+
+/* Field rows: auto-fit collapses to one column on narrow/mobile screens with
+   no extra media query needed. */
+.resv-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; }
+.resv-row--3 { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+/* Guest row: name, party size (narrow) and phone side by side on one line —
+   kept in one row even on narrow screens (that's the point), just with a
+   tighter ratio so the inputs still have breathing room. */
+.resv-row--guest { grid-template-columns: 1.8fr 1fr 1.3fr; }
+@media (max-width: 480px) {
+    .resv-row--guest { grid-template-columns: 1.6fr .8fr 1.1fr; gap: .4rem; }
+}
+
+.resv-quick-time { display: flex; gap: .4rem; margin: -.15rem 0 .5rem; }
+
+/* Tighter vertical rhythm so the whole form fits without scrolling on most screens. */
+.resv-form .modal-section { margin-top: .4rem; padding-top: .3rem; }
+.resv-form .field { margin-bottom: .35rem; }
+.resv-form .field > label { margin-bottom: 0; }
+
+/* ---- Table picker: multi-select toggle chips ------------------------------- */
+.tbl-pick { display: flex; flex-wrap: wrap; justify-content: center; gap: .35rem; margin-bottom: .35rem; }
+.tbl-chip {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .45rem .7rem;
+    border: 1px solid var(--border); border-radius: 999px;
+    background: var(--card-2); color: var(--text);
+    font: inherit; font-weight: 600; font-size: .85rem; cursor: pointer;
+    transition: transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition);
+}
+.tbl-chip:hover { transform: translateY(-1px); }
+.tbl-chip--on { border-color: var(--text); background: var(--card); color: var(--text); font-weight: 800; }
+.tbl-chip__seats { display: inline-flex; align-items: center; gap: .15rem; font-size: .76rem; color: var(--text-soft); }
+.tbl-chip--on .tbl-chip__seats { color: var(--text); }
+.tbl-chip--sm { padding: .12rem .5rem; font-size: .72rem; font-weight: 700; background: var(--card); border-color: var(--border); cursor: default; }
+.tbl-pick__summary { margin-bottom: .3rem; }
+
+.field-hint { display: flex; align-items: center; gap: .4rem; margin: -.5rem 0 .9rem; font-size: .8rem; }
+
+/* ---- Colour presets --------------------------------------------------------- */
+.color-pick { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.color-swatch {
+    width: 26px; height: 26px; padding: 0; border-radius: 50%;
+    border: 2px solid var(--border); background: var(--sw, transparent);
+    cursor: pointer; transition: transform var(--transition), border-color var(--transition);
+}
+.color-swatch:hover { transform: scale(1.08); }
+.color-swatch--on { border-color: var(--text); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--sw); }
+.color-swatch--custom { background: none; border-style: dashed; }
 
 @media (max-width: 900px) {
     .floor-layout--split { flex-direction: column; }

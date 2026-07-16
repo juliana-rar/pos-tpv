@@ -3,8 +3,9 @@
 @attribute [Authorize(Roles = "Admin,Cashier")]
 @using System.Globalization
 @inject IBillingService BillingSvc
+@inject AppSettingsCache Branding
 
-<PageTitle>Billing · PosTPV</PageTitle>
+<PageTitle>Billing · @Branding.Current.Title</PageTitle>
 
 <div class="toolbar">
     <h1>@Loc.T("Billing")</h1>
@@ -27,10 +28,10 @@
 else
 {
     <div class="dash__metrics" style="margin-bottom:1.2rem">
-        <div class="metric card"><span class="metric__label">@Loc.T("Revenue")</span><span class="metric__value">@_report.Total.ToString("C")</span></div>
-        <div class="metric card"><span class="metric__label">@Loc.T("VAT collected")</span><span class="metric__value">@_report.VatTotal.ToString("C")</span></div>
+        <div class="metric card"><span class="metric__label">@Loc.T("Revenue")</span><span class="metric__value">@_report.Total.ToString("N2")</span></div>
+        <div class="metric card"><span class="metric__label">@Loc.T("VAT collected")</span><span class="metric__value">@_report.VatTotal.ToString("N2")</span></div>
         <div class="metric card"><span class="metric__label">@Loc.T("Invoices")</span><span class="metric__value">@_report.Count</span></div>
-        <div class="metric card"><span class="metric__label">@Loc.T("Average ticket")</span><span class="metric__value">@_report.Average.ToString("C")</span></div>
+        <div class="metric card"><span class="metric__label">@Loc.T("Average ticket")</span><span class="metric__value">@_report.Average.ToString("N2")</span></div>
     </div>
 
     <div class="charts">
@@ -47,7 +48,7 @@ else
                     @foreach (var d in _report.Daily)
                     {
                         var h = maxDaily > 0 ? (double)(d.Total / maxDaily) * 100 : 0;
-                        <div class="bars__col" title="@d.Date.ToString("dd/MM/yyyy"): @d.Total.ToString("C")">
+                        <div class="bars__col" title="@d.Date.ToString("dd/MM/yyyy"): @d.Total.ToString("N2")">
                             <div class="bars__track">
                                 <div class="bars__bar" style="height:@h.ToString("0.##", Inv)%"></div>
                             </div>
@@ -94,7 +95,7 @@ else
                             <div class="legend2__item">
                                 <span class="legend2__dot" style="background:@s.Color"></span>
                                 <span class="legend2__label">@s.Label</span>
-                                <span class="legend2__val">@s.Amount.ToString("C") · @s.Pct.ToString("0", Inv)%</span>
+                                <span class="legend2__val">@s.Amount.ToString("N2") · @s.Pct.ToString("0", Inv)%</span>
                             </div>
                         }
                     </div>
@@ -110,20 +111,20 @@ else
         }
         else
         {
-            <table class="table">
+            <table class="table table--clickable">
                 <thead>
                     <tr><th>@Loc.T("Invoice")</th><th>@Loc.T("Order")</th><th>@Loc.T("Table")</th><th>@Loc.T("Method")</th><th>@Loc.T("Date")</th><th class="ta-r">@Loc.T("Total")</th></tr>
                 </thead>
                 <tbody>
                     @foreach (var inv in _report.Invoices)
                     {
-                        <tr>
+                        <tr @onclick="() => OpenDetail(inv.Id)">
                             <td>@inv.Number</td>
                             <td>@inv.OrderNumber</td>
                             <td>@inv.TableName</td>
                             <td><span class="badge">@Loc.T(inv.PaymentMethod.ToString())</span></td>
                             <td>@inv.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")</td>
-                            <td class="ta-r"><strong>@inv.Total.ToString("C")</strong></td>
+                            <td class="ta-r"><strong>@inv.Total.ToString("N2")</strong></td>
                         </tr>
                     }
                 </tbody>
@@ -132,13 +133,108 @@ else
     </div>
 }
 
+<!-- Invoice detail: full itemised breakdown of a single sale, laid out like a real receipt. -->
+<Modal Visible="_detail is not null || _detailLoading" Title="@(_detail is not null ? $"{Loc.T("Invoice")} {_detail.Number}" : Loc.T("Invoice"))" OnClose="CloseDetail" Wide="true">
+    <ChildContent>
+        @if (_detailLoading)
+        {
+            <p class="muted">@Loc.T("Loading…")</p>
+        }
+        else if (_detail is not null)
+        {
+            <div class="invoice">
+                <div class="invoice__head">
+                    <div>
+                        <strong class="invoice__brand">@Branding.Current.Title</strong>
+                        <div class="muted">@_detail.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                    </div>
+                    <div class="invoice__meta">
+                        <div><span class="muted">@Loc.T("Order")</span> @_detail.OrderNumber</div>
+                        <div><span class="muted">@Loc.T("Table")</span> @_detail.TableName</div>
+                        <div><span class="muted">@Loc.T("Waiter")</span> @_detail.WaiterName</div>
+                    </div>
+                </div>
+
+                <table class="table invoice__lines">
+                    <thead>
+                        <tr>
+                            <th>@Loc.T("Product")</th>
+                            <th class="ta-r">@Loc.T("Qty")</th>
+                            <th class="ta-r">@Loc.T("Unit price")</th>
+                            <th class="ta-r">@Loc.T("Line total")</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in _detail.Lines)
+                        {
+                            <tr>
+                                <td>
+                                    @line.ProductName
+                                    @if (line.Extras.Count > 0)
+                                    {
+                                        <div class="invoice__linenote">@string.Join(", ", line.Extras.Select(e => "＋ " + e))</div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(line.Comment))
+                                    {
+                                        <div class="invoice__linenote invoice__linenote--comment">“@line.Comment”</div>
+                                    }
+                                </td>
+                                <td class="ta-r">@line.Quantity</td>
+                                <td class="ta-r">@line.UnitPrice.ToString("N2")</td>
+                                <td class="ta-r"><strong>@line.LineTotal.ToString("N2")</strong></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <div class="invoice__totals">
+                    <div><span>@Loc.T("Subtotal")</span><span>@_detail.Subtotal.ToString("N2")</span></div>
+                    <div><span>@Loc.T("VAT")</span><span>@_detail.VatTotal.ToString("N2")</span></div>
+                    <div class="invoice__grand"><span>@Loc.T("Total")</span><span>@_detail.Total.ToString("N2")</span></div>
+                </div>
+
+                <div class="invoice__payments">
+                    <span class="muted">@Loc.T("Paid with")</span>
+                    @if (_detail.Payments.Count > 0)
+                    {
+                        @foreach (var p in _detail.Payments)
+                        {
+                            <span class="badge badge--primary">@Loc.T(p.Method.ToString()) · @p.Amount.ToString("N2")</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="badge badge--primary">@Loc.T(_detail.PaymentMethod.ToString())</span>
+                    }
+                </div>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="CloseDetail">@Loc.T("Close")</button>
+    </Footer>
+</Modal>
+
 @code {
     private BillingReportDto? _report;
+    private InvoiceDetailDto? _detail;
+    private bool _detailLoading;
     private DateTime _from = DateTime.Today.AddDays(-7);
     private DateTime _to = DateTime.Today;
 
     protected override async Task OnInitializedAsync() => await Load();
     private async Task Load() => _report = await BillingSvc.GetReportAsync(_from, _to);
+
+    private async Task OpenDetail(int invoiceId)
+    {
+        _detail = null;
+        _detailLoading = true;
+        StateHasChanged();
+        _detail = await BillingSvc.GetInvoiceDetailAsync(invoiceId);
+        _detailLoading = false;
+    }
+
+    private void CloseDetail() => _detail = null;
 
     private string ExportUrl(string format) =>
         $"/export/billing?from={_from:yyyy-MM-dd}&to={_to:yyyy-MM-dd}&format={format}";

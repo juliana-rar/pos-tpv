@@ -13,20 +13,10 @@
     transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
 }
 
-/* Accent wash bleeding from the top-left corner. */
-.hub-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 55%);
-    opacity: .9;
-    pointer-events: none;
-}
-
 .hub-card:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow);
-    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    border-color: var(--text-soft);
 }
 
 .hub-card__icon {
@@ -36,10 +26,9 @@
     width: 3.2rem;
     height: 3.2rem;
     flex: none;
-    color: var(--accent);
+    color: var(--text);
     border-radius: 14px;
-    background: color-mix(in srgb, var(--accent) 16%, var(--card-2));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+    background: var(--card-2);
 }
 
 .hub-card__body { position: relative; display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
@@ -52,7 +41,6 @@
     align-self: flex-end;
     font-size: .8rem;
     font-weight: 700;
-    color: var(--accent);
     opacity: 0;
     transform: translateX(-4px);
     transition: opacity var(--transition), transform var(--transition);

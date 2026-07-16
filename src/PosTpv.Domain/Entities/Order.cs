@@ -23,6 +23,9 @@ public class Order : BaseEntity
     /// </summary>
     public DateTime? SecondsFiredAt { get; set; }
 
+    /// <summary>Set the last time all pending drinks of this order were marked as served.</summary>
+    public DateTime? DrinksServedAt { get; set; }
+
     public int TableId { get; set; }
     public RestaurantTable Table { get; set; } = null!;
 

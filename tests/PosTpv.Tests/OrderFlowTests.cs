@@ -19,8 +19,11 @@ namespace PosTpv.Tests;
 /// </summary>
 public class OrderFlowTests
 {
-    private const string TestConnection =
-        "Server=127.0.0.1,14333;Database=PosTpv_Test;User Id=sa;Password=PosTpv!Dev2026;TrustServerCertificate=True;Encrypt=False";
+    // Falls back to the well-known local dev password (see .env.example) so `dotnet test` keeps
+    // working out of the box; override with POSTPV_TEST_CONNECTION for CI/other environments.
+    private static readonly string TestConnection =
+        Environment.GetEnvironmentVariable("POSTPV_TEST_CONNECTION")
+        ?? "Server=127.0.0.1,14333;Database=PosTpv_Test;User Id=sa;Password=PosTpv!Dev2026;TrustServerCertificate=True;Encrypt=False";
 
     private static ServiceProvider BuildProvider()
     {

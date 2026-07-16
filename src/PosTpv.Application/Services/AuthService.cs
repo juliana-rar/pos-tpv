@@ -14,6 +14,10 @@ public interface IAuthService
 
 public class AuthService : IAuthService
 {
+    // After this many consecutive failed attempts, the account is locked for LockoutDuration.
+    private const int MaxFailedAttempts = 5;
+    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(1);
+
     private readonly IUnitOfWork _uow;
     private readonly IPasswordHasher _hasher;
     private readonly IMapper _mapper;
@@ -30,8 +34,32 @@ public class AuthService : IAuthService
         var user = await _uow.Repository<User>().Query()
             .FirstOrDefaultAsync(u => u.Username == username && u.IsActive, ct);
 
-        if (user is null || !_hasher.Verify(password, user.PasswordHash))
+        if (user is null)
             return null;
+
+        if (user.LockedUntil is { } until && until > DateTime.UtcNow)
+            return null;
+
+        if (!_hasher.Verify(password, user.PasswordHash))
+        {
+            user.FailedLoginAttempts++;
+            if (user.FailedLoginAttempts >= MaxFailedAttempts)
+            {
+                user.LockedUntil = DateTime.UtcNow.Add(LockoutDuration);
+                user.FailedLoginAttempts = 0;
+            }
+            _uow.Repository<User>().Update(user);
+            await _uow.SaveChangesAsync(ct);
+            return null;
+        }
+
+        if (user.FailedLoginAttempts != 0 || user.LockedUntil is not null)
+        {
+            user.FailedLoginAttempts = 0;
+            user.LockedUntil = null;
+            _uow.Repository<User>().Update(user);
+            await _uow.SaveChangesAsync(ct);
+        }
 
         return _mapper.Map<UserDto>(user);
     }
