@@ -44,6 +44,7 @@ public class ProductService : IProductService
         var list = await _uow.Repository<Product>().Query()
             .Include(p => p.Category)
             .Include(p => p.Extras)
+            .Include(p => p.Allergens)
             .OrderBy(p => p.Category.DisplayOrder).ThenBy(p => p.DisplayOrder).ThenBy(p => p.Name)
             .ToListAsync(ct);
         return _mapper.Map<List<ProductDto>>(list);
@@ -54,6 +55,7 @@ public class ProductService : IProductService
         var query = _uow.Repository<Product>().Query()
             .Include(p => p.Category)
             .Include(p => p.Extras)
+            .Include(p => p.Allergens)
             .Where(p => p.CategoryId == categoryId);
         if (!includeHidden) query = query.Where(p => p.IsVisible);
         if (onlyAvailable) query = query.Where(p => p.IsAvailable);
@@ -75,7 +77,9 @@ public class ProductService : IProductService
 
     public async Task<ProductFormDto?> GetForEditAsync(int id, CancellationToken ct = default)
     {
-        var entity = await _uow.Repository<Product>().GetByIdAsync(id, ct);
+        var entity = await _uow.Repository<Product>().Query()
+            .Include(p => p.Allergens)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
         return entity is null ? null : _mapper.Map<ProductFormDto>(entity);
     }
 
@@ -83,6 +87,7 @@ public class ProductService : IProductService
     {
         var entity = _mapper.Map<Product>(form);
         entity.Id = 0;
+        entity.Allergens = await ResolveAllergensAsync(form.AllergenIds, ct);
         await _uow.Repository<Product>().AddAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
         return entity.Id;
@@ -90,11 +95,21 @@ public class ProductService : IProductService
 
     public async Task UpdateAsync(ProductFormDto form, CancellationToken ct = default)
     {
-        var entity = await _uow.Repository<Product>().GetByIdAsync(form.Id, ct)
+        var entity = await _uow.Repository<Product>().Query()
+            .Include(p => p.Allergens)
+            .FirstOrDefaultAsync(p => p.Id == form.Id, ct)
             ?? throw new KeyNotFoundException($"Product {form.Id} not found.");
         _mapper.Map(form, entity);
+        entity.Allergens = await ResolveAllergensAsync(form.AllergenIds, ct);
         _uow.Repository<Product>().Update(entity);
         await _uow.SaveChangesAsync(ct);
+    }
+
+    private async Task<List<Allergen>> ResolveAllergensAsync(IEnumerable<int> allergenIds, CancellationToken ct)
+    {
+        var ids = allergenIds.Distinct().ToList();
+        if (ids.Count == 0) return new List<Allergen>();
+        return await _uow.Repository<Allergen>().Query().Where(a => ids.Contains(a.Id)).ToListAsync(ct);
     }
 
     public async Task SetAvailabilityAsync(int id, bool available, CancellationToken ct = default)
@@ -109,7 +124,7 @@ public class ProductService : IProductService
     public async Task<int> DuplicateAsync(int id, CancellationToken ct = default)
     {
         var repo = _uow.Repository<Product>();
-        var source = await repo.Query().Include(p => p.Extras).FirstOrDefaultAsync(p => p.Id == id, ct)
+        var source = await repo.Query().Include(p => p.Extras).Include(p => p.Allergens).FirstOrDefaultAsync(p => p.Id == id, ct)
             ?? throw new KeyNotFoundException($"Product {id} not found.");
 
         var nextOrder = await repo.Query()
@@ -129,10 +144,10 @@ public class ProductService : IProductService
             IsAvailable = source.IsAvailable,
             PreparationMinutes = source.PreparationMinutes,
             Ingredients = source.Ingredients,
-            Allergens = source.Allergens,
             CategoryId = source.CategoryId,
-            // Extras are shared (many-to-many): link the same rows, don't clone them.
+            // Extras/Allergens are shared (many-to-many): link the same rows, don't clone them.
             Extras = source.Extras.ToList(),
+            Allergens = source.Allergens.ToList(),
         };
         await repo.AddAsync(clone, ct);
         await _uow.SaveChangesAsync(ct);

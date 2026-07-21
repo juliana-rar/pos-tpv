@@ -68,6 +68,67 @@
 }
 .mgmt-card__thumb img { width: 100%; height: 100%; object-fit: cover; }
 
+/* --- Allergen tags on a product card --- */
+.mgmt-card__allergens { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; }
+.allergen-tag {
+    display: inline-flex; align-items: center; gap: .25rem;
+    padding: .12rem .5rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--warning) 14%, transparent);
+    color: var(--warning);
+    font-size: .7rem; font-weight: 700;
+}
+.allergen-tag img { width: 14px; height: 14px; border-radius: 50%; object-fit: cover; }
+
+/* --- Allergen manager modal: list of allergens with a thumbnail image --- */
+.allergenManager__list { display: flex; flex-direction: column; gap: .5rem; margin-top: .8rem; }
+.allergenRow {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .5rem .7rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card-2);
+}
+.allergenRow__thumb {
+    display: grid; place-items: center;
+    flex: none;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--warning) 15%, transparent);
+    color: var(--warning);
+    overflow: hidden;
+}
+.allergenRow__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.allergenRow__name { font-weight: 700; }
+
+/* --- Allergen multi-select on the product form: toggle chips with a thumbnail --- */
+.allergen-pick { display: flex; flex-wrap: wrap; gap: .4rem; }
+.allergen-chip {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .3rem .7rem .3rem .3rem;
+    border: 1px solid var(--border); border-radius: 999px;
+    background: var(--card-2); color: var(--text-soft);
+    font: inherit; font-weight: 600; font-size: .82rem; cursor: pointer;
+    transition: transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition);
+}
+.allergen-chip:hover { transform: translateY(-1px); }
+.allergen-chip__thumb {
+    display: grid; place-items: center;
+    flex: none;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--warning) 15%, transparent);
+    color: var(--warning);
+    overflow: hidden;
+}
+.allergen-chip__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.allergen-chip--on {
+    border-color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 14%, var(--card));
+    color: var(--warning);
+    font-weight: 800;
+}
+
 /* --- Category quick comments --- */
 .commentEditor { display: flex; flex-direction: column; gap: .35rem; margin-bottom: .5rem; }
 .commentEditor__row { display: flex; align-items: center; gap: .3rem; }

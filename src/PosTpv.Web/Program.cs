@@ -22,6 +22,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // Real-time transport.
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IKitchenNotifier, SignalRKitchenNotifier>();
+builder.Services.AddScoped<PosTpv.Web.Components.Layout.NavMoreState>();
 
 // Authentication & authorization (cookie + roles).
 builder.Services.AddCascadingAuthenticationState();

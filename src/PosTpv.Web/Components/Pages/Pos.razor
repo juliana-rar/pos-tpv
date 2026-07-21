@@ -70,7 +70,12 @@
                         <button class="productCard @(p.IsAvailable ? "" : "productCard--off") @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? "productCard--img" : "")"
                                 style="--pc:@p.Color; @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? $"background-image:url('{p.ImageUrl}')" : "")"
                                 disabled="@(!p.IsAvailable || _busy)"
-                                @onclick="() => OnProductClick(p)">
+                                @onclick="() => OnProductClick(p)"
+                                @onpointerdown="() => OnProductPointerDown(p)"
+                                @onpointerup="OnProductPointerUp"
+                                @onpointerleave="OnProductPointerUp"
+                                @onpointercancel="OnProductPointerUp"
+                                @oncontextmenu:preventDefault="true">
                             <span class="productCard__price">@p.Price.ToString("N2")</span>
                             <span class="productCard__name"><span class="productCard__dot"></span>@p.Name</span>
                             @if (!p.IsAvailable)
@@ -94,7 +99,12 @@
         {
             <div class="order__head">
                 <span class="badge badge--primary">@Loc.T("Table") @_order.TableName · @_order.Number</span>
-                <span class="badge">@OrderStatusLabel(_order.Status)</span>
+                <div class="order__head-right">
+                    <span class="badge">@OrderStatusLabel(_order.Status)</span>
+                    <button class="btn btn--icon btn--ghost" title="@Loc.T("Send to kitchen")" disabled="@(_order.Items.Count == 0 || _busy)" @onclick="SendToKitchen">
+                        <LucideIcon Name="check" Size="16" />
+                    </button>
+                </div>
             </div>
         }
 
@@ -108,33 +118,37 @@
         else
         {
             <div class="order__items" @ref="_orderItemsEl">
-                @foreach (var it in _order.Items)
+                @foreach (var grp in OrderSections())
                 {
-                    <div class="orderLine">
-                        <div class="orderLine__main">
-                            <span class="orderLine__name">@it.ProductName</span>
-                            <span class="orderLine__price">@it.LineTotal.ToString("N2")</span>
-                        </div>
-                        <div class="orderLine__ctrl">
-                            <button class="btn btn--icon btn--ghost" @onclick="() => ChangeQty(it.Id, -1)">−</button>
-                            <span class="orderLine__qty">@it.Quantity</span>
-                            <button class="btn btn--icon btn--ghost" @onclick="() => ChangeQty(it.Id, 1)">+</button>
-                            @if (it.Status != OrderItemStatus.Pending)
-                            {
-                                <span class="badge @ItemStatusClass(it.Status)">@Loc.T(it.Status.ToString())</span>
-                            }
-                            <span class="spacer"></span>
-                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Extras")" @onclick="() => OpenEditExtras(it)"><LucideIcon Name="list-plus" Size="16" /></button>
-                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Comment")" @onclick="() => OpenComment(it)"><LucideIcon Name="pencil" Size="16" /></button>
-                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Remove")" @onclick="() => RemoveItem(it.Id)"><LucideIcon Name="trash-2" Size="16" /></button>
-                        </div>
-                        @if (it.Extras.Count > 0)
+                    @if (grp.Label is not null)
+                    {
+                        <div class="order__group"><LucideIcon Name="@grp.Icon" Size="14" /> @Loc.T(grp.Label)</div>
+                    }
+                    <div class="@GroupLinesClass(grp)">
+                        @foreach (var it in grp.Items)
                         {
-                            <div class="orderLine__extras">@string.Join(", ", it.Extras.Select(e => "＋ " + e.Name))</div>
-                        }
-                        @if (!string.IsNullOrWhiteSpace(it.Comment))
-                        {
-                            <div class="orderLine__comment">“@it.Comment”</div>
+                            <div class="orderLine">
+                                <div class="orderLine__main">
+                                    <span class="orderLine__name">@it.ProductName</span>
+                                    <span class="spacer"></span>
+                                    <div class="orderLine__ctrl">
+                                        <button class="btn btn--icon btn--ghost orderLine__remove" title="@Loc.T("Remove")" @onclick="() => RemoveItem(it.Id)"><LucideIcon Name="x" Size="13" /></button>
+                                        <button class="btn btn--icon btn--ghost" title="@Loc.T("Edit")" @onclick="() => OpenEditItem(it)"><LucideIcon Name="pencil" Size="16" /></button>
+                                        <button class="btn btn--icon btn--ghost" @onclick="() => ChangeQty(it.Id, -1)">−</button>
+                                        <span class="orderLine__qty">@it.Quantity</span>
+                                        <button class="btn btn--icon btn--ghost" @onclick="() => ChangeQty(it.Id, 1)">+</button>
+                                    </div>
+                                    <span class="orderLine__price">@it.LineTotal.ToString("N2")</span>
+                                </div>
+                                @if (it.Extras.Count > 0)
+                                {
+                                    <div class="orderLine__extras">@string.Join(", ", it.Extras.Select(e => "＋ " + e.Name))</div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(it.Comment))
+                                {
+                                    <div class="orderLine__comment">“@it.Comment”</div>
+                                }
+                            </div>
                         }
                     </div>
                 }
@@ -145,25 +159,24 @@
             </div>
 
             <div class="order__totals">
-                <div class="order__grand"><span>@Loc.T("Total")</span><span>@_order.Total.ToString("N2")</span></div>
-            </div>
-
-            <div class="order__actions">
-                <button class="btn btn--ghost btn--block" disabled="@(_order.Items.Count == 0 || _busy)" @onclick="SendToKitchen">
-                    @Loc.T("Send to kitchen")
-                </button>
-                <div class="order__pay">
-                    <button class="btn btn--success btn--block" disabled="@(_order.Items.Count == 0 || _busy)" @onclick="TogglePayMenu">
-                        <LucideIcon Name="credit-card" Size="16" />@Loc.T("Pay")
-                    </button>
-                    @if (_payMenuOpen)
-                    {
-                        <div class="pay-menu">
-                            <button class="pay-menu__opt" @onclick="() => QuickCheckout(PaymentMethod.Cash)"><LucideIcon Name="banknote" Size="16" />@Loc.T("Cash")</button>
-                            <button class="pay-menu__opt" @onclick="() => QuickCheckout(PaymentMethod.Card)"><LucideIcon Name="credit-card" Size="16" />@Loc.T("Card")</button>
-                            <button class="pay-menu__opt" @onclick="OpenSplitFromMenu"><LucideIcon Name="split" Size="16" />@Loc.T("Split")</button>
+                <div class="order__grand">
+                    <span>@Loc.T("Total")</span>
+                    <span class="order__grand-right">
+                        <span>@_order.Total.ToString("N2")</span>
+                        <div class="order__pay">
+                            <button class="btn btn--success btn--sm" disabled="@(_order.Items.Count == 0 || _busy)" @onclick="TogglePayMenu">
+                                <LucideIcon Name="credit-card" Size="16" />@Loc.T("Pay")
+                            </button>
+                            @if (_payMenuOpen)
+                            {
+                                <div class="pay-menu">
+                                    <button class="pay-menu__opt" @onclick="() => QuickCheckout(PaymentMethod.Cash)"><LucideIcon Name="banknote" Size="16" />@Loc.T("Cash")</button>
+                                    <button class="pay-menu__opt" @onclick="() => QuickCheckout(PaymentMethod.Card)"><LucideIcon Name="credit-card" Size="16" />@Loc.T("Card")</button>
+                                    <button class="pay-menu__opt" @onclick="OpenSplitFromMenu"><LucideIcon Name="split" Size="16" />@Loc.T("Split")</button>
+                                </div>
+                            }
                         </div>
-                    }
+                    </span>
                 </div>
             </div>
         }
@@ -185,7 +198,7 @@
 </Modal>
 
 <!-- Edit extras on an existing order line -->
-<Modal Visible="_editingItem is not null" Title="@(_editingItem?.ProductName ?? string.Empty)" OnClose="() => _editingItem = null">
+<Modal Visible="_editingItem is not null" Title="@(_editingItem?.ProductName ?? string.Empty)" OnClose="() => _editingItem = null" CloseOnBackdrop="false">
     <ChildContent>
         @if (_editingItem is not null)
         {
@@ -217,12 +230,23 @@
                 {
                     <p class="muted">@Loc.T("No extras available for this product.")</p>
                 }
+
+                <div class="field">
+                    <label>@Loc.T("Note for the kitchen")</label>
+                    <textarea class="input" rows="3" @bind="_commentText" placeholder="@Loc.T("No onion, well done, extra sauce…")"></textarea>
+                </div>
+                <div class="comment-presets">
+                    @foreach (var preset in _commentPresets)
+                    {
+                        <button class="btn btn--ghost" @onclick="() => _commentText = preset.Text">@preset.Text</button>
+                    }
+                </div>
             </div>
         }
     </ChildContent>
     <Footer>
         <button class="btn btn--ghost" @onclick="() => _editingItem = null">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" disabled="@(_busy || _extrasLoading)" @onclick="SaveExtras">@Loc.T("Save")</button>
+        <button class="btn btn--primary" disabled="@(_busy || _extrasLoading)" @onclick="SaveItemEdits">@Loc.T("Save")</button>
     </Footer>
 </Modal>
 
@@ -302,25 +326,6 @@
     </Footer>
 </Modal>
 
-<!-- Comment editor -->
-<Modal Visible="_commentItem is not null" Title="@Loc.T("Line comment")" OnClose="() => _commentItem = null">
-    <ChildContent>
-        <div class="field">
-            <label>@Loc.T("Note for the kitchen")</label>
-            <textarea class="input" rows="3" @bind="_commentText" placeholder="@Loc.T("No onion, well done, extra sauce…")"></textarea>
-        </div>
-        <div class="comment-presets">
-            @foreach (var preset in _commentPresets)
-            {
-                <button class="btn btn--ghost" @onclick="() => _commentText = preset.Text">@preset.Text</button>
-            }
-        </div>
-    </ChildContent>
-    <Footer>
-        <button class="btn btn--ghost" @onclick="() => _commentItem = null">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" @onclick="SaveComment">@Loc.T("Save")</button>
-    </Footer>
-</Modal>
 
 @code {
     private List<CategoryCommentDto> _commentPresets = new();
@@ -333,7 +338,6 @@
     private int _userId;
 
     private bool _showTables;
-    private OrderItemDto? _commentItem;
     private string? _commentText;
 
     private OrderItemDto? _editingItem;
@@ -355,6 +359,37 @@
 
     private decimal PaidSoFar => _payments.Sum(p => p.Amount);
     private decimal Remaining => Math.Round((_order?.Total ?? 0m) - PaidSoFar, 2);
+
+    private sealed record OrderSection(string? Icon, string? Label, List<OrderItemDto> Items);
+
+    // Below 5 lines the order is short enough to scan as a flat list. From 5 lines on, it's
+    // grouped under the same Drinks/First/Second/Desserts headers as the kitchen and /orders
+    // screens, so a long ticket reads at a glance instead of as one undifferentiated column.
+    // Each group caps at 6 lines with its own scroll (see .order__group-lines--scroll) instead
+    // of one scrollbar for the whole card, so e.g. a long drinks round doesn't push the food
+    // groups below out of view.
+    private List<OrderSection> OrderSections()
+    {
+        if (_order is null) return new();
+        if (_order.Items.Count < 5)
+            return new() { new OrderSection(null, null, _order.Items.ToList()) };
+
+        var sections = new List<OrderSection>();
+        void AddGroup(string icon, string label, IEnumerable<OrderItemDto> items)
+        {
+            var list = items.ToList();
+            if (list.Count == 0) return;
+            sections.Add(new OrderSection(icon, label, list));
+        }
+        AddGroup("cup-soda", "Drinks", _order.Items.Where(i => i.IsDrink));
+        AddGroup("salad", "First course", _order.Items.Where(i => !i.IsDrink && i.Course == CourseType.Starter));
+        AddGroup("utensils", "Second course", _order.Items.Where(i => !i.IsDrink && i.Course == CourseType.Main));
+        AddGroup("cake-slice", "Desserts", _order.Items.Where(i => !i.IsDrink && i.Course == CourseType.Dessert));
+        return sections;
+    }
+
+    private static string GroupLinesClass(OrderSection section) =>
+        section.Items.Count > 6 ? "order__group-lines order__group-lines--scroll" : "order__group-lines";
 
     private HubConnection? _hub;
 
@@ -421,7 +456,6 @@
             if (_paying) _paying = false;
             else if (_payMenuOpen) _payMenuOpen = false;
             else if (_editingItem is not null) _editingItem = null;
-            else if (_commentItem is not null) _commentItem = null;
             else if (_showTables) _showTables = false;
             StateHasChanged();
             return;
@@ -435,7 +469,7 @@
         }
 
         // Ignore action keys while another modal is open.
-        if (_editingItem is not null || _commentItem is not null || _showTables) return;
+        if (_editingItem is not null || _showTables) return;
 
         switch (key.ToLowerInvariant())
         {
@@ -504,6 +538,10 @@
 
     private Task OnProductClick(ProductDto p)
     {
+        // A long-press already added the item and opened its customize dialog (see
+        // WatchLongPress) — the pointerup that ends the hold still fires this click
+        // afterwards, so swallow that one instead of adding the product a second time.
+        if (_longPressFired) { _longPressFired = false; return Task.CompletedTask; }
         if (_order is null) { _showTables = true; return Task.CompletedTask; }
         var orderId = _order.Id;
         return RunAsync(async () =>
@@ -513,19 +551,63 @@
         });
     }
 
-    private async Task OpenEditExtras(OrderItemDto item)
+    private CancellationTokenSource? _pressCts;
+    private bool _longPressFired;
+
+    private void OnProductPointerDown(ProductDto p)
     {
-        // Show the dialog immediately, then fetch the extras. Awaiting the DB call
-        // before rendering made the button feel frozen on slow round-trips.
+        _pressCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _pressCts = cts;
+        _ = WatchLongPress(p, cts.Token);
+    }
+
+    private void OnProductPointerUp() => _pressCts?.Cancel();
+
+    // Holding a product tile for ~500ms adds it and jumps straight to the same extras/comment
+    // dialog used to edit an existing line, instead of the two-tap "add, then tap the pencil"
+    // path — same long-press convention as the nav icons' tooltip reveal.
+    private async Task WatchLongPress(ProductDto p, CancellationToken token)
+    {
+        try { await Task.Delay(500, token); }
+        catch (TaskCanceledException) { return; }
+        if (token.IsCancellationRequested) return;
+
+        _longPressFired = true;
+        if (_order is null) { await InvokeAsync(() => { _showTables = true; StateHasChanged(); }); return; }
+
+        var orderId = _order.Id;
+        await InvokeAsync(async () =>
+        {
+            await RunAsync(async () =>
+            {
+                _order = await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id, Merge: false));
+                _scrollPending = true;
+                var newItem = _order.Items.LastOrDefault(i => i.ProductId == p.Id);
+                if (newItem is not null) await OpenEditItem(newItem);
+            });
+            StateHasChanged();
+        });
+    }
+
+    private async Task OpenEditItem(OrderItemDto item)
+    {
+        // Show the dialog immediately, then fetch the extras/comment presets. Awaiting the DB
+        // calls before rendering made the button feel frozen on slow round-trips.
         _editingItem = item;
         _customizeExtras = new();
         _selectedExtraIds.Clear();
         foreach (var e in item.Extras.Where(e => e.ExtraId.HasValue))
             _selectedExtraIds.Add(e.ExtraId!.Value);
+        _commentText = item.Comment;
         _extrasLoading = true;
         StateHasChanged();
 
-        try { _customizeExtras = await Products.GetExtrasAsync(item.ProductId); }
+        try
+        {
+            _customizeExtras = await Products.GetExtrasAsync(item.ProductId);
+            _commentPresets = await Categories.GetCommentsAsync(item.CategoryId);
+        }
         catch (Exception ex) { _error = ex.Message; }
         finally { _extrasLoading = false; }
     }
@@ -535,15 +617,18 @@
         if (!_selectedExtraIds.Add(id)) _selectedExtraIds.Remove(id);
     }
 
-    private Task SaveExtras()
+    private Task SaveItemEdits()
     {
         if (_editingItem is null) return Task.CompletedTask;
         var itemId = _editingItem.Id;
         var extraIds = _selectedExtraIds.ToList();
+        var comment = _commentText;
 
         return RunAsync(async () =>
         {
             _order = await Orders.SetItemExtrasAsync(itemId, extraIds) ?? _order;
+            await Orders.SetItemCommentAsync(itemId, comment);
+            _order = await Orders.GetByIdAsync(_order!.Id);
             _editingItem = null;
         });
     }
@@ -560,23 +645,6 @@
 
     private Task RemoveItem(int itemId) =>
         RunAsync(async () => _order = await Orders.RemoveItemAsync(itemId));
-
-    private async Task OpenComment(OrderItemDto item)
-    {
-        _commentItem = item;
-        _commentText = item.Comment;
-        _commentPresets = await Categories.GetCommentsAsync(item.CategoryId);
-    }
-
-    private Task SaveComment() => RunAsync(async () =>
-    {
-        if (_commentItem is not null)
-        {
-            await Orders.SetItemCommentAsync(_commentItem.Id, _commentText);
-            _order = await Orders.GetByIdAsync(_order!.Id);
-        }
-        _commentItem = null;
-    });
 
     private Task SendToKitchen()
     {
@@ -689,14 +757,6 @@
         OrderStatus.Delivered => "Delivered",
         _ => s.ToString()
     });
-
-    private static string ItemStatusClass(OrderItemStatus s) => s switch
-    {
-        OrderItemStatus.Preparing => "badge--warning",
-        OrderItemStatus.Ready => "badge--success",
-        OrderItemStatus.Delivered => "badge--primary",
-        _ => ""
-    };
 
     public async ValueTask DisposeAsync()
     {

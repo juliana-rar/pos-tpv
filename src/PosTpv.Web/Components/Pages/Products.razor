@@ -4,8 +4,10 @@
 @using FluentValidation
 @inject IProductService Service
 @inject ICategoryService CategoryService
+@inject IAllergenService AllergenService
 @inject IValidator<ProductFormDto> Validator
 @inject IValidator<CategoryFormDto> CategoryValidator
+@inject IValidator<AllergenFormDto> AllergenValidator
 @inject AppSettingsCache Branding
 
 <PageTitle>Products · @Branding.Current.Title</PageTitle>
@@ -70,6 +72,9 @@
     <section class="catalog__products">
         <div class="toolbar">
             <h1>@(_selected?.Name ?? Loc.T("Products"))</h1>
+            <button class="btn btn--icon btn--ghost" title="@Loc.T("Manage allergens")" @onclick="OpenAllergenManager">
+                <LucideIcon Name="triangle-alert" Size="18" />
+            </button>
             <span class="spacer"></span>
             @if (_selected is not null)
             {
@@ -99,6 +104,25 @@
                             <span class="badge badge--primary">@p.Price.ToString("N2")</span>
                         </div>
                         <div class="mgmt-card__meta muted">@Loc.T("VAT") @p.VatRate% · @Loc.T("Order:") @p.DisplayOrder</div>
+                        @if (p.Allergens.Count > 0)
+                        {
+                            <div class="mgmt-card__allergens">
+                                @foreach (var a in p.Allergens)
+                                {
+                                    <span class="allergen-tag" title="@a.Name">
+                                        @if (!string.IsNullOrWhiteSpace(a.ImageUrl))
+                                        {
+                                            <img src="@a.ImageUrl" alt="" />
+                                        }
+                                        else
+                                        {
+                                            <LucideIcon Name="triangle-alert" Size="10" />
+                                        }
+                                        @a.Name
+                                    </span>
+                                }
+                            </div>
+                        }
                         <div class="mgmt-card__actions">
                             <label class="switch">
                                 <input type="checkbox" checked="@p.IsAvailable" @onchange="e => ToggleAvailable(p, (bool)e.Value!)" />
@@ -156,7 +180,35 @@
                 <div class="field"><label>@Loc.T("Prep. minutes")</label><input type="number" class="input" @bind="_product.PreparationMinutes" /></div>
                 <div class="field"><label>@Loc.T("Display order")</label><input type="number" class="input" @bind="_product.DisplayOrder" /></div>
             </div>
-            <div class="field"><label>@Loc.T("Allergens")</label><input class="input" @bind="_product.Allergens" placeholder="@Loc.T("gluten, dairy…")" /></div>
+            <div class="field">
+                <label>@Loc.T("Allergens")</label>
+                @if (_allergens.Count > 0)
+                {
+                    <div class="allergen-pick">
+                        @foreach (var a in _allergens)
+                        {
+                            <button type="button" class="allergen-chip @(_product.AllergenIds.Contains(a.Id) ? "allergen-chip--on" : "")"
+                                    @onclick="() => ToggleProductAllergen(a.Id)">
+                                <span class="allergen-chip__thumb">
+                                    @if (!string.IsNullOrWhiteSpace(a.ImageUrl))
+                                    {
+                                        <img src="@a.ImageUrl" alt="" />
+                                    }
+                                    else
+                                    {
+                                        <LucideIcon Name="triangle-alert" Size="12" />
+                                    }
+                                </span>
+                                @a.Name
+                            </button>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="muted">@Loc.T("No allergens defined yet.") <button type="button" class="btn btn--ghost btn--sm" @onclick="OpenAllergenManager">@Loc.T("Add one")</button></p>
+                }
+            </div>
             <div class="row-2">
                 <label class="switch"><input type="checkbox" @bind="_product.IsAvailable" /><span>@Loc.T("Available")</span></label>
                 <label class="switch"><input type="checkbox" @bind="_product.IsVisible" /><span>@Loc.T("Visible")</span></label>
@@ -257,6 +309,59 @@
     </Footer>
 </Modal>
 
+@* ---- Allergen manager: list + create/edit, each with a representative image -------- *@
+<Modal Visible="_showAllergenManager" Title="@Loc.T("Allergens")" OnClose="() => _showAllergenManager = false">
+    <ChildContent>
+        <div class="allergenManager">
+            <button class="btn btn--primary btn--sm" @onclick="() => OpenAllergenForm(null)">+ @Loc.T("New allergen")</button>
+            <div class="allergenManager__list">
+                @foreach (var a in _allergens)
+                {
+                    <div class="allergenRow">
+                        <div class="allergenRow__thumb">
+                            @if (!string.IsNullOrWhiteSpace(a.ImageUrl))
+                            {
+                                <img src="@a.ImageUrl" alt="" />
+                            }
+                            else
+                            {
+                                <LucideIcon Name="triangle-alert" Size="18" />
+                            }
+                        </div>
+                        <span class="allergenRow__name">@a.Name</span>
+                        <span class="spacer"></span>
+                        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")" @onclick="() => OpenAllergenForm(a.Id)"><LucideIcon Name="pencil" Size="16" /></button>
+                        <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")" @onclick="() => DeleteAllergen(a.Id)"><LucideIcon Name="trash-2" Size="16" /></button>
+                    </div>
+                }
+                @if (_allergens.Count == 0) { <p class="empty">@Loc.T("No allergens yet.")</p> }
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="() => _showAllergenManager = false">@Loc.T("Close")</button>
+    </Footer>
+</Modal>
+
+@* ---- Allergen create/edit form (nested over the manager) --------------------------- *@
+<Modal Visible="_allergen is not null" Title="@(_allergen?.Id > 0 ? Loc.T("Edit allergen") : Loc.T("New allergen"))" OnClose="CloseAllergenForm">
+    <ChildContent>
+        @if (_allergen is not null)
+        {
+            <div class="field"><label>@Loc.T("Name")</label><input class="input" @bind="_allergen.Name" /></div>
+            <div class="field">
+                <label>@Loc.T("Image")</label>
+                <ImageUpload Value="_allergen.ImageUrl" ValueChanged="v => _allergen.ImageUrl = v" Folder="allergens" />
+            </div>
+            @if (_allergenError is not null) { <div class="field-error">@_allergenError</div> }
+        }
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="CloseAllergenForm">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="SaveAllergen">@Loc.T("Save")</button>
+    </Footer>
+</Modal>
+
 @code {
     private List<CategoryDto> _categories = new();
     private List<ProductDto> _products = new();
@@ -276,6 +381,11 @@
 
     private string? _notice;
 
+    private List<AllergenDto> _allergens = new();
+    private bool _showAllergenManager;
+    private AllergenFormDto? _allergen;
+    private string? _allergenError;
+
     private CategoryDto? _selected => _categories.FirstOrDefault(c => c.Id == _selectedId);
 
     private List<ProductDto> Filtered => string.IsNullOrWhiteSpace(_search)
@@ -287,9 +397,11 @@
         await LoadCategories();
         _selectedId = _categories.FirstOrDefault()?.Id;
         await LoadProducts();
+        await LoadAllergens();
     }
 
     private async Task LoadCategories() => _categories = await CategoryService.GetAllAsync();
+    private async Task LoadAllergens() => _allergens = await AllergenService.GetAllAsync();
 
     private async Task LoadProducts() =>
         _products = _selectedId is int id
@@ -472,6 +584,48 @@
     {
         await Service.DeleteAsync(id);
         await LoadCategories();
+        await LoadProducts();
+    }
+
+    // ---- Allergens ----------------------------------------------------------
+    private void OpenAllergenManager() => _showAllergenManager = true;
+
+    private void ToggleProductAllergen(int allergenId)
+    {
+        if (_product is null) return;
+        if (!_product.AllergenIds.Remove(allergenId)) _product.AllergenIds.Add(allergenId);
+    }
+
+    private void OpenAllergenForm(int? id) => _ = OpenAllergenFormAsync(id);
+
+    private async Task OpenAllergenFormAsync(int? id)
+    {
+        _allergenError = null;
+        _allergen = id is null
+            ? new AllergenFormDto()
+            : await AllergenService.GetForEditAsync(id.Value) ?? new AllergenFormDto();
+    }
+
+    private void CloseAllergenForm() => _allergen = null;
+
+    private async Task SaveAllergen()
+    {
+        if (_allergen is null) return;
+        var result = await AllergenValidator.ValidateAsync(_allergen);
+        if (!result.IsValid) { _allergenError = result.Errors[0].ErrorMessage; return; }
+
+        if (_allergen.Id > 0) await AllergenService.UpdateAsync(_allergen);
+        else await AllergenService.CreateAsync(_allergen);
+
+        _allergen = null;
+        await LoadAllergens();
+        await LoadProducts(); // product cards show allergen tags, keep them in sync
+    }
+
+    private async Task DeleteAllergen(int id)
+    {
+        await AllergenService.DeleteAsync(id);
+        await LoadAllergens();
         await LoadProducts();
     }
 }

@@ -20,3 +20,6 @@ obj/
 
 ## User-uploaded product/category images (runtime data, not source)
 src/PosTpv.Web/wwwroot/uploads/
+
+## Generated graphify code-graph artifacts (rebuilt via `graphify update .`)
+graphify-out/

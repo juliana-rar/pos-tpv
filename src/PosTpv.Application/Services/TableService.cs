@@ -72,6 +72,16 @@ public class TableService : ITableService
             Shape = form.Shape,
             Zone = form.Zone,
         };
+
+        // Land the new table near the middle of the floor plan instead of the top-left corner
+        // (position 0,0), so it doesn't spawn stacked under the toolbar out of sight. This is a
+        // fixed point rather than an average of existing tables: the floor has no stored canvas
+        // size to compute a true center from, and averaging would drift toward whatever's already
+        // there (including any table still sitting at a stale 0,0).
+        const double centerX = 300, centerY = 160;
+        entity.PositionX = centerX - entity.Width / 2;
+        entity.PositionY = centerY - entity.Height / 2;
+
         await _uow.Repository<RestaurantTable>().AddAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
         return entity.Id;

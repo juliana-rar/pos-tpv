@@ -33,4 +33,22 @@ public interface IKitchenNotifier
     /// refresh so the highlight appears/disappears in real time.
     /// </summary>
     Task SecondCoursesFiredAsync(int orderId);
+
+    /// <summary>
+    /// The waiter fired (or the kitchen cleared) the desserts for an order. Both screens
+    /// refresh so the highlight appears/disappears in real time.
+    /// </summary>
+    Task DessertCoursesFiredAsync(int orderId);
+
+    /// <summary>
+    /// The ready second-course lines of an order were served (or that was undone). A single
+    /// event carrying the order id, so waiter screens refresh just that order's batches.
+    /// </summary>
+    Task SecondCoursesServedAsync(int orderId);
+
+    /// <summary>
+    /// The ready dessert lines of an order were served (or that was undone). A single event
+    /// carrying the order id, so waiter screens refresh just that order's batches.
+    /// </summary>
+    Task DessertCoursesServedAsync(int orderId);
 }

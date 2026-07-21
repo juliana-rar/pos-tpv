@@ -17,6 +17,7 @@ public class PosDbContext : DbContext
     public DbSet<Product> Products => Set<Product>();
     public DbSet<CategoryComment> CategoryComments => Set<CategoryComment>();
     public DbSet<Extra> Extras => Set<Extra>();
+    public DbSet<Allergen> Allergens => Set<Allergen>();
     public DbSet<RestaurantTable> Tables => Set<RestaurantTable>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<Customer> Customers => Set<Customer>();
@@ -56,6 +57,7 @@ public class PosDbContext : DbContext
             e.HasOne(x => x.Category).WithMany(c => c.Products)
                 .HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict);
             e.HasMany(x => x.Extras).WithMany(x => x.Products);
+            e.HasMany(x => x.Allergens).WithMany(x => x.Products);
             e.HasIndex(x => x.CategoryId);
         });
 
@@ -63,6 +65,11 @@ public class PosDbContext : DbContext
         {
             e.Property(x => x.Name).HasMaxLength(80).IsRequired();
             e.Property(x => x.Price).HasPrecision(10, 2);
+        });
+
+        b.Entity<Allergen>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(80).IsRequired();
         });
 
         b.Entity<CategoryComment>(e =>

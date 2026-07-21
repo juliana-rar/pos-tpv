@@ -10,32 +10,52 @@
 
 <PageTitle>Orders · @Branding.Current.Title</PageTitle>
 
-<div class="orders-header">
-    @if (Filtered.Count > 0)
-    {
-        <div class="orders-quicknav">
-            @foreach (var o in Filtered)
-            {
-                <button class="orders-quicknav__chip" data-status="@o.Status.ToString().ToLower()"
-                        title="@o.TableName · @o.Number · @Loc.T(o.Status.ToString())" @onclick="() => OpenEditor(o.Id)">
-                    <LucideIcon Name="@StatusIcon(o.Status)" Size="13" />@o.TableName
-                </button>
-            }
-        </div>
-    }
+<div class="orders-quicknav">
+    <div class="orders-quicknav__chips @(_chipsExpanded ? "orders-quicknav__chips--expanded" : "")">
+        @foreach (var o in Filtered)
+        {
+            <button class="orders-quicknav__chip" data-status="@o.Status.ToString().ToLower()"
+                    title="@o.TableName · @o.Number · @Loc.T(o.Status.ToString())" @onclick="() => OpenEditor(o.Id)">
+                <span class="orders-quicknav__chip-name">@o.TableName</span>
+            </button>
+        }
+    </div>
     <div class="toolbar">
-        <select class="select" style="max-width:170px" @bind="_statusFilter">
-            <option value="">@Loc.T("All statuses")</option>
-            @foreach (var s in new[] { OrderStatus.Open, OrderStatus.Sent, OrderStatus.InPreparation, OrderStatus.Ready, OrderStatus.Delivered })
+        @if (_showFilters)
+        {
+            <select class="select" style="max-width:170px" @bind="_statusFilter">
+                <option value="">@Loc.T("All statuses")</option>
+                @foreach (var s in new[] { OrderStatus.Open, OrderStatus.Sent, OrderStatus.InPreparation, OrderStatus.Ready, OrderStatus.Delivered })
+                {
+                    <option value="@s">@Loc.T(s.ToString())</option>
+                }
+            </select>
+            <select class="select" style="max-width:170px" @bind="_sortOrder">
+                <option value="oldest">@Loc.T("Oldest first")</option>
+                <option value="newest">@Loc.T("Newest first")</option>
+                <option value="number">@Loc.T("Order number")</option>
+            </select>
+            @if (Zones.Count > 0)
             {
-                <option value="@s">@Loc.T(s.ToString())</option>
+                <select class="select" style="max-width:170px" @bind="_zoneFilter">
+                    <option value="">@Loc.T("All zones")</option>
+                    @foreach (var z in Zones)
+                    {
+                        <option value="@z">@z</option>
+                    }
+                </select>
             }
-        </select>
-        <select class="select" style="max-width:170px" @bind="_sortOrder">
-            <option value="oldest">@Loc.T("Oldest first")</option>
-            <option value="newest">@Loc.T("Newest first")</option>
-        </select>
-        <button class="btn btn--ghost" @onclick="Reload"><LucideIcon Name="rotate-cw" Size="16" />@Loc.T("Refresh")</button>
+            <input class="input" style="max-width:170px" placeholder="@Loc.T("Search table…")" @bind="_tableSearch" @bind:event="oninput" />
+        }
+        <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost")" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters">
+            <LucideIcon Name="settings" Size="16" />
+        </button>
+        <button class="btn btn--icon btn--ghost" title="@Loc.T("Refresh")" @onclick="Reload"><LucideIcon Name="rotate-cw" Size="16" /></button>
+        <button class="btn btn--icon @(_chipsExpanded ? "btn--primary" : "btn--ghost")"
+                title="@(_chipsExpanded ? Loc.T("Show fewer tables") : Loc.T("Show all tables"))"
+                @onclick="() => _chipsExpanded = !_chipsExpanded">
+            <LucideIcon Name="@(_chipsExpanded ? "chevron-up" : "chevron-down")" Size="16" />
+        </button>
     </div>
 </div>
 
@@ -52,8 +72,16 @@
                    OnUnserveFirstItem="UnserveFirstItem"
                    OnFireFirsts="FireFirsts"
                    OnUnfireFirsts="UnfireFirsts"
+                   OnServeSeconds="ServeSeconds"
+                   OnUnserveSeconds="UnserveSeconds"
+                   OnUnserveSecondItem="UnserveSecondItem"
                    OnFireSeconds="FireSeconds"
                    OnUnfireSeconds="UnfireSeconds"
+                   OnServeDesserts="ServeDesserts"
+                   OnUnserveDesserts="UnserveDesserts"
+                   OnUnserveDessertItem="UnserveDessertItem"
+                   OnFireDesserts="FireDesserts"
+                   OnUnfireDesserts="UnfireDesserts"
                    OnEdit="OpenEditor"
                    OnPay="OpenPayment" />
     }
@@ -65,21 +93,14 @@
 <PaymentDialog Order="_payingOrder" Visible="_payingOrder is not null" OnClose="ClosePayment" OnConfirm="ConfirmPayment" />
 
 @code {
-    private static string StatusIcon(OrderStatus s) => s switch
-    {
-        OrderStatus.Sent => "send",
-        OrderStatus.InPreparation => "chef-hat",
-        OrderStatus.Ready => "bell",
-        OrderStatus.Delivered => "check-check",
-        _ => "circle"
-    };
-
     private List<OrderDto> _orders = new();
     private OrderStatus? _statusFilterValue;
     private HubConnection? _hub;
 
     private int? _editorOrderId;
     private OrderDto? _payingOrder;
+    private bool _showFilters;
+    private bool _chipsExpanded;
 
     private string _statusFilter
     {
@@ -87,20 +108,30 @@
         set => _statusFilterValue = Enum.TryParse<OrderStatus>(value, out var s) ? s : null;
     }
 
-    private bool _newestFirst = true;
+    private string _sortOrder = "newest"; // "newest" | "oldest" | "number"
 
-    private string _sortOrder
-    {
-        get => _newestFirst ? "newest" : "oldest";
-        set => _newestFirst = value == "newest";
-    }
+    private string _tableSearch = "";
+    private string _zoneFilter = "";
+    private List<string> Zones => _orders
+        .Select(o => o.Zone)
+        .Where(z => !string.IsNullOrWhiteSpace(z))
+        .Distinct()
+        .OrderBy(z => z)
+        .ToList()!;
 
     private List<OrderDto> Filtered
     {
         get
         {
             var list = _statusFilterValue is null ? _orders : _orders.Where(o => o.Status == _statusFilterValue);
-            return (_newestFirst ? list.OrderByDescending(o => o.CreatedAt) : list.OrderBy(o => o.CreatedAt)).ToList();
+            if (!string.IsNullOrEmpty(_zoneFilter)) list = list.Where(o => o.Zone == _zoneFilter);
+            if (!string.IsNullOrWhiteSpace(_tableSearch)) list = list.Where(o => o.TableName.Contains(_tableSearch, StringComparison.OrdinalIgnoreCase));
+            return (_sortOrder switch
+            {
+                "oldest" => list.OrderBy(o => o.CreatedAt),
+                "number" => list.OrderBy(o => o.Number),
+                _ => list.OrderByDescending(o => o.CreatedAt)
+            }).ToList();
         }
     }
 
@@ -116,8 +147,11 @@
         _hub.On<int>(KitchenHub.OrderSent, RefreshOrder);
         _hub.On<int>(KitchenHub.FirstsFired, RefreshOrder);
         _hub.On<int>(KitchenHub.SecondsFired, RefreshOrder);
+        _hub.On<int>(KitchenHub.DessertsFired, RefreshOrder);
         _hub.On<int>(KitchenHub.DrinksServed, RefreshOrder);
         _hub.On<int>(KitchenHub.FirstCoursesServed, RefreshOrder);
+        _hub.On<int>(KitchenHub.SecondCoursesServed, RefreshOrder);
+        _hub.On<int>(KitchenHub.DessertCoursesServed, RefreshOrder);
         await _hub.StartAsync();
     }
 
@@ -185,14 +219,24 @@
     private Task UnserveFirsts(int orderId) => OrderSvc.UnserveFirstCoursesAsync(orderId);
     private Task UnserveFirstItem(int itemId) => OrderSvc.SetItemStatusAsync(itemId, OrderItemStatus.Ready);
 
-    // "Marchar primeros / segundos": alert the kitchen in real time; the echo refreshes the card.
+    // Same green-badge serve/undo pattern, for second courses and desserts.
+    private Task ServeSeconds(int orderId) => OrderSvc.ServeSecondCoursesAsync(orderId);
+    private Task UnserveSeconds(int orderId) => OrderSvc.UnserveSecondCoursesAsync(orderId);
+    private Task UnserveSecondItem(int itemId) => OrderSvc.SetItemStatusAsync(itemId, OrderItemStatus.Ready);
+    private Task ServeDesserts(int orderId) => OrderSvc.ServeDessertCoursesAsync(orderId);
+    private Task UnserveDesserts(int orderId) => OrderSvc.UnserveDessertCoursesAsync(orderId);
+    private Task UnserveDessertItem(int itemId) => OrderSvc.SetItemStatusAsync(itemId, OrderItemStatus.Ready);
+
+    // "Marchar primeros / segundos / postres": alert the kitchen in real time; the echo refreshes the card.
     private Task FireFirsts(int orderId) => OrderSvc.FireFirstCoursesAsync(orderId);
     private Task FireSeconds(int orderId) => OrderSvc.FireSecondCoursesAsync(orderId);
+    private Task FireDesserts(int orderId) => OrderSvc.FireDessertCoursesAsync(orderId);
 
     // Undo path: same "acknowledge" the kitchen uses to clear its alert, reused here so a
     // mis-fired course goes back to unfired instead of staying stuck on both screens.
     private Task UnfireFirsts(int orderId) => OrderSvc.AcknowledgeFirstCoursesAsync(orderId);
     private Task UnfireSeconds(int orderId) => OrderSvc.AcknowledgeSecondCoursesAsync(orderId);
+    private Task UnfireDesserts(int orderId) => OrderSvc.AcknowledgeDessertCoursesAsync(orderId);
 
     public async ValueTask DisposeAsync()
     {

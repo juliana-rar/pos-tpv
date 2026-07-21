@@ -75,7 +75,7 @@ public class ReservationService : IReservationService
         entity.Id = 0;
         entity.Tables = await ResolveTablesAsync(form.TableIds, ct);
         await _uow.Repository<Reservation>().AddAsync(entity, ct);
-        MarkTableReservedIfNeeded(entity);
+        await SyncTableStatusAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
         await AutoJoinIfMultipleAsync(entity, ct);
         return entity.Id;
@@ -88,7 +88,7 @@ public class ReservationService : IReservationService
         _mapper.Map(form, entity);
         entity.Tables = await ResolveTablesAsync(form.TableIds, ct);
         _uow.Repository<Reservation>().Update(entity);
-        MarkTableReservedIfNeeded(entity);
+        await SyncTableStatusAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
         await AutoJoinIfMultipleAsync(entity, ct);
     }
@@ -99,7 +99,7 @@ public class ReservationService : IReservationService
             ?? throw new KeyNotFoundException($"Reservation {reservationId} not found.");
         entity.Tables = await ResolveTablesAsync(tableIds, ct);
         _uow.Repository<Reservation>().Update(entity);
-        MarkTableReservedIfNeeded(entity);
+        await SyncTableStatusAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
         await AutoJoinIfMultipleAsync(entity, ct);
     }
@@ -119,7 +119,7 @@ public class ReservationService : IReservationService
             if (table is not null) entity.Tables.Add(table);
         }
         _uow.Repository<Reservation>().Update(entity);
-        MarkTableReservedIfNeeded(entity);
+        await SyncTableStatusAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
         await AutoJoinIfMultipleAsync(entity, ct);
     }
@@ -138,14 +138,13 @@ public class ReservationService : IReservationService
     {
         var entity = await WithTable().FirstOrDefaultAsync(r => r.Id == id, ct);
         if (entity is null) return;
+
+        if (status == ReservationStatus.Seated && entity.Tables.Count == 0)
+            throw new InvalidOperationException("Assign a table before seating this reservation.");
+
         entity.Status = status;
         _uow.Repository<Reservation>().Update(entity);
-
-        if (status is ReservationStatus.Finished or ReservationStatus.Cancelled)
-            await ReleaseTablesIfFreeAsync(entity, ct);
-        else
-            MarkTableReservedIfNeeded(entity);
-
+        await SyncTableStatusAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
     }
 
@@ -193,5 +192,18 @@ public class ReservationService : IReservationService
             table.Status = TableStatus.Reserved;
             _uow.Repository<RestaurantTable>().Update(table);
         }
+    }
+
+    // Single entry point for keeping a reservation's tables in sync with its current status:
+    // Finished/Cancelled releases them back to Available (unless another active reservation
+    // still needs them), anything else marks still-Available tables as Reserved. Every mutation
+    // path (create, update, assign, toggle, status change) funnels through this so a table can
+    // never get stuck Reserved after its reservation is cancelled or finished.
+    private async Task SyncTableStatusAsync(Reservation reservation, CancellationToken ct)
+    {
+        if (reservation.Status is ReservationStatus.Finished or ReservationStatus.Cancelled)
+            await ReleaseTablesIfFreeAsync(reservation, ct);
+        else
+            MarkTableReservedIfNeeded(reservation);
     }
 }

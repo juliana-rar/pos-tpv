@@ -1,0 +1,59 @@
+.topbar__user { display: flex; align-items: center; gap: .4rem; }
+.topbar__name { font-size: .78rem; font-weight: 700; color: var(--text-soft); }
+
+@media (max-width: 900px) {
+    .topbar__name { display: none; }
+}
+
+/* Logout matched to the compact icon size used across the topbar (nav links, "more" toggle)
+   instead of the larger default .btn--icon, so the revealed group reads as one consistent
+   size instead of mixing a 38px button in with 31px icons. */
+.topbar__logout.btn--icon {
+    width: 1.95rem;
+    height: 1.95rem;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-soft);
+}
+.topbar__logout.btn--icon:hover { background: var(--card-2); color: var(--text); }
+
+/* ---- Brand: only rendered while the "more" group is open, immediately left of the
+   toggle button. ---- */
+.nav__brand { display: flex; align-items: center; gap: .5rem; flex: none; }
+.nav__logo {
+    display: grid; place-items: center;
+    width: 1.6rem; height: 1.6rem;
+    color: var(--on-primary);
+    border-radius: 8px;
+    background: var(--primary);
+}
+.nav__title { font-size: .88rem; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+
+/* "More" toggle: fully self-contained (NOT reusing NavMenu's ::deep .nav__link — that rule
+   compiles to "[nav-scope] .nav__link", requiring an ancestor rendered by NavMenu, which this
+   button, living in a sibling component, never has). A circular pill sets it apart from the
+   square icon links either side as the one control that reveals/hides the rest. */
+.nav__link--more {
+    display: grid;
+    place-items: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-soft);
+    font: inherit;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px var(--border);
+    transition: background var(--transition), color var(--transition), box-shadow var(--transition);
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+}
+.nav__link--more:hover { background: var(--card-2); color: var(--text); }
+.nav__link--more.active {
+    background: var(--primary);
+    color: var(--on-primary);
+    box-shadow: inset 0 0 0 1px var(--primary);
+}

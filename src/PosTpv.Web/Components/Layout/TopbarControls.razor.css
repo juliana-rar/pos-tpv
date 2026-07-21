@@ -1,0 +1,13 @@
+/* Matched to the compact icon size used across the topbar (nav links, logout, "more" toggle)
+   instead of the larger default .btn--icon, so the theme toggle doesn't stick out as the one
+   oversized control in the revealed group. */
+.btn--icon {
+    width: 1.95rem;
+    height: 1.95rem;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-soft);
+}
+.btn--icon:hover { background: var(--card-2); color: var(--text); }

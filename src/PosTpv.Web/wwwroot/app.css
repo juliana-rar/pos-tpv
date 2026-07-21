@@ -259,6 +259,52 @@ a { color: var(--primary); text-decoration: none; }
 .search { max-width: 220px; }
 .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
 
+/* ---- Reservations day picker (used on /tables and the /reservations dashboard) --- */
+/* align-self: center keeps this sized to its content (not stretched full-width) even
+   when its parent is a stretching flex column, so it looks identical on both screens. */
+.resv__day-nav { display: flex; align-items: center; justify-content: center; gap: .5rem; align-self: center; }
+.resv__day-nav .btn--icon { width: 32px; height: 32px; border-radius: 999px; }
+.resv__head-date {
+    max-width: 160px;
+    padding: .55rem .8rem;
+    font-size: .9rem;
+    font-weight: 600;
+    text-align: center;
+    border-radius: 999px;
+    box-shadow: var(--shadow-sm);
+    /* text-align alone doesn't centre a native date input — its digits and calendar icon
+       are internal flex children that pack to flex-start by default, so without an explicit
+       justify-content they hug the left edge regardless of text-align. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+}
+/* Small, unobtrusive icon actions centred right under the date, on both screens.
+   Pulled up to sit right under the date input like .tables-datebar's tight .35rem
+   gap — the panel's own flex gap (1.1rem, shared with the tabs below) is too wide. */
+.resv__stats-actions {
+    display: flex; align-items: center; justify-content: center; gap: .15rem;
+    align-self: center; margin-top: -.75rem;
+    width: 100px;
+    padding: 3px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--card-2);
+}
+.resv__stats-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .3rem;
+    border: none; cursor: pointer;
+    background: transparent;
+    color: var(--text-soft);
+    font-size: .68rem; font-weight: 600;
+    padding: .3rem .55rem;
+    border-radius: 999px;
+    transition: background var(--transition), color var(--transition);
+}
+.resv__stats-btn:hover { color: var(--text); }
+.resv__stats-btn--on { background: var(--primary); color: var(--on-primary); }
+
 /* ---- Section labels (reservation modal, settings panels) ------------------ */
 .modal-section {
     margin: 1.1rem 0 .5rem;

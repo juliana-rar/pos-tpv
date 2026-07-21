@@ -1,5 +1,14 @@
 .kds__head { margin-bottom: .5rem; }
 
+/* Browsers give <input> and <select> slightly different intrinsic heights even with
+   identical padding/border/font — pin both explicitly so the search box and zone select
+   read as the exact same size (same fix as .toolbar .input/.select in Orders.razor.css). */
+.kds__head .input, .kds__head .select {
+    height: 2.15rem;
+    padding: 0 .6rem;
+    box-sizing: border-box;
+}
+
 .kds {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -9,15 +18,23 @@
 
 .ticket {
     display: flex; flex-direction: column;
+    height: 900px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--card);
     box-shadow: var(--shadow-sm);
     overflow: hidden;
-    border-top: 5px solid var(--border);
     animation: pop var(--transition);
 }
 .ticket__status { font-size: .68rem; letter-spacing: .04em; text-transform: uppercase; }
+
+/* Echo of the waiter's fired-course pill (see OrderCard) — always shown (never hidden) so the
+   ticket layout stays stable, and always clickable as a toggle: fires the course if it hasn't
+   gone out yet, or undoes it if it has. On its own row since narrow KDS cards can't fit these
+   pills on the same line as the table/status/time header. */
+.ticket__fired-row { display: flex; flex-wrap: wrap; gap: .4rem; padding: 0 .9rem .5rem; }
+.ticket__fired { white-space: nowrap; }
+.ticket__fired--empty { opacity: .45; }
 
 /* A ticket whose second courses have been fired jumps out with a frame and a pulse. */
 .ticket--seconds {
@@ -44,12 +61,11 @@
 }
 .ticket__fire .btn--icon:hover { background: rgba(255, 255, 255, .35); }
 
-.ticket__head { display: flex; justify-content: space-between; align-items: center; padding: .7rem .9rem .2rem; }
+.ticket__head { display: flex; align-items: center; gap: .4rem; padding: .35rem .9rem .5rem; }
 .ticket__table { font-weight: 800; font-size: 1.05rem; }
-.ticket__time { font-size: .8rem; color: var(--text-soft); font-weight: 700; }
-.ticket__sub { display: flex; gap: .4rem; padding: 0 .9rem .5rem; color: var(--text-soft); font-size: .8rem; }
+.ticket__time { font-size: .68rem; color: var(--text-soft); font-weight: 700; }
 
-.ticket__items { display: flex; flex-direction: column; gap: .3rem; padding: .5rem .7rem; border-top: 1px dashed var(--border); }
+.ticket__items { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: .3rem; padding: .5rem .7rem; border-top: 1px dashed var(--border); }
 
 .kitem { border-radius: var(--radius-sm); padding: .4rem .5rem; background: var(--card-2); }
 .kitem--ready { color: var(--text-soft); }
@@ -60,5 +76,15 @@
 .kitem__extras { margin-top: .25rem; font-size: .8rem; font-weight: 600; }
 .kitem__comment { margin-top: .25rem; font-size: .8rem; font-weight: 700; }
 .kitem .btn--icon { width: 30px; height: 30px; padding: 0; }
+
+/* Course section headers within the item list — same icons/labels as the waiter's OrderCard. */
+.ticket__group {
+    display: flex; align-items: center; gap: .35rem;
+    font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--primary);
+    margin-top: .6rem; padding-top: .5rem;
+    border-top: 1px solid var(--border);
+}
+.ticket__items > .ticket__group:first-child { margin-top: 0; padding-top: 0; border-top: none; }
 
 .ticket__foot { padding: .6rem .7rem; border-top: 1px solid var(--border); margin-top: auto; }

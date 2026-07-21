@@ -14,13 +14,16 @@
 
 <PageTitle>Tables · @Branding.Current.Title</PageTitle>
 
-<div class="tables-datebar">
+<div class="tables-datebar card">
     <div class="resv__day-nav">
         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Previous day")" @onclick="() => ShiftDay(-1)"><LucideIcon Name="arrow-left" Size="15" /></button>
         <input type="date" class="input resv__head-date" @bind="_reserveDate" @bind:after="LoadReservations" />
         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Next day")" @onclick="() => ShiftDay(1)"><LucideIcon Name="arrow-right" Size="15" /></button>
     </div>
-    <button class="resv__stats-btn" title="@Loc.T("Full reservations dashboard")" @onclick="OpenDashboard"><LucideIcon Name="bar-chart-3" Size="12" /></button>
+    <div class="tables-datebar__actions">
+        <button class="resv__stats-btn resv__stats-btn--on" title="@Loc.T("Tables")" @onclick="GoToTables"><LucideIcon Name="calendar" Size="12" /></button>
+        <button class="resv__stats-btn" title="@Loc.T("Reservations")" @onclick="OpenDashboard"><LucideIcon Name="bar-chart-3" Size="12" /></button>
+    </div>
 </div>
 
 <div class="floor-layout floor-layout--split @(_mapExpanded ? "floor-layout--map-expanded" : "")">
@@ -46,14 +49,22 @@
             else
             {
                 <div class="toolbar-actions">
-                    <button class="btn btn--ghost btn--sm" @onclick="() => OpenForm(null)">+ @Loc.T("New table")</button>
-                    <button class="btn btn--ghost btn--sm" @onclick="StartSelect"><LucideIcon Name="link" Size="14" />@Loc.T("Join tables")</button>
-                    <button class="btn btn--primary btn--sm" @onclick="StartEdit"><LucideIcon Name="move" Size="14" />@Loc.T("Edit layout")</button>
+                    @if (_showFilters)
+                    {
+                        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("New table")" @onclick="() => OpenForm(null)"><LucideIcon Name="plus" Size="16" /></button>
+                        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Join tables")" @onclick="StartSelect"><LucideIcon Name="link" Size="16" /></button>
+                        <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Edit layout")" @onclick="StartEdit"><LucideIcon Name="move" Size="16" /></button>
+                    }
+                    <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters"><LucideIcon Name="settings" Size="16" /></button>
+                    <button class="btn btn--icon btn--ghost btn--sm" type="button"
+                            title="@(_mapExpanded ? Loc.T("Minimise map") : Loc.T("Expand map"))" @onclick="() => _mapExpanded = !_mapExpanded">
+                        <LucideIcon Name="@(_mapExpanded ? "minimize-2" : "maximize-2")" Size="16" />
+                    </button>
                 </div>
             }
         </div>
 
-        @if (!_editing && !_selecting && _assignReservationId is null && Zones.Count > 0)
+        @if (!_editing && !_selecting && _assignReservationId is null && _showFilters && Zones.Count > 0)
         {
             <div class="zone-filter">
                 <button class="tbl-chip @(_zoneFilter is null ? "tbl-chip--on" : "")" @onclick="() => _zoneFilter = null">@Loc.T("All zones")</button>
@@ -86,7 +97,8 @@
     <div class="floor @(_editing ? "floor--edit" : "") @(_selecting ? "floor--select" : "") @(_assignReservationId is not null ? "floor--assign" : "")" @ref="_floorEl">
         @foreach (var t in VisibleTables)
         {
-            <div class="@TableClass(t)"
+            ResByTable.TryGetValue(t.Id, out var rv);
+            <div class="@TableClass(t, rv)"
                  data-id="@t.Id"
                  data-x="@N(t.PositionX)" data-y="@N(t.PositionY)"
                  data-w="@N(t.Width)" data-h="@N(t.Height)" data-rot="@N(t.Rotation)"
@@ -94,7 +106,6 @@
                  data-shape="@((int)t.Shape)"
                  style="@TableStyle(t)"
                  @onclick="() => OnTableClick(t)" title="@(t.GroupId is not null ? (t.GroupName ?? t.Name) : t.Name)">
-                @{ ResByTable.TryGetValue(t.Id, out var rv); }
                 <div class="tbl__content">
                     @if (t.GroupId is null || IsGroupAnchor(t))
                     {
@@ -129,29 +140,27 @@
         @if (_tables.Count == 0) { <p class="empty">@Loc.T("No tables yet. Create one to start.")</p> }
         else if (VisibleTables.Count == 0) { <p class="empty">@Loc.T("No tables in this zone.")</p> }
     </div>
-        <button class="btn btn--icon btn--ghost floor__expand" type="button"
-                title="@(_mapExpanded ? Loc.T("Minimise map") : Loc.T("Expand map"))" @onclick="() => _mapExpanded = !_mapExpanded">
-            <LucideIcon Name="@(_mapExpanded ? "minimize-2" : "maximize-2")" Size="18" />
-        </button>
     </div>
     </div>
 
-        <aside class="resv card @(_resCollapsed ? "resv--collapsed" : "")">
-            @if (_resCollapsed)
-            {
-                <button class="resv__rail" @onclick="ToggleCollapse" title="@Loc.T("Show reservations")">
-                    <span class="resv__rail-icon"><LucideIcon Name="calendar" Size="18" /></span>
-                    <span class="resv__rail-label">@Loc.T("Reservations")</span>
-                    @if (_reservations.Count > 0) { <span class="resv__rail-count">@_reservations.Count</span> }
-                </button>
-            }
-            else
-            {
+        <aside class="resv card">
             <div class="resv__head">
-                <h2><LucideIcon Name="calendar" Size="13" /> @Loc.T("Reservations")</h2>
+                <h2>@Loc.T("Reservations")</h2>
                 <span class="spacer"></span>
-                <button class="btn btn--primary btn--sm" @onclick="() => OpenResForm(null)"><LucideIcon Name="plus" Size="13" />@Loc.T("New")</button>
-                <button class="btn btn--icon btn--ghost resv__collapse" title="@Loc.T("Collapse")" @onclick="ToggleCollapse"><LucideIcon Name="panel-left-close" Size="15" /></button>
+                @if (_reservations.Count > 0)
+                {
+                    <div class="tabs resv__head-periods">
+                        <button class="tabs__opt @(_periodFilter == ServicePeriod.Lunch ? "tabs__opt--on" : "")" title="@Loc.T("Lunch")"
+                                @onclick="() => _periodFilter = _periodFilter == ServicePeriod.Lunch ? null : ServicePeriod.Lunch">
+                            <LucideIcon Name="sun" Size="14" />
+                        </button>
+                        <button class="tabs__opt @(_periodFilter == ServicePeriod.Dinner ? "tabs__opt--on" : "")" title="@Loc.T("Dinner")"
+                                @onclick="() => _periodFilter = _periodFilter == ServicePeriod.Dinner ? null : ServicePeriod.Dinner">
+                            <LucideIcon Name="moon" Size="14" />
+                        </button>
+                    </div>
+                }
+                <button class="btn btn--primary btn--icon resv__new-btn" title="@Loc.T("New reservation")" @onclick="() => OpenResForm(null)"><LucideIcon Name="plus" Size="15" /></button>
             </div>
 
             @if (_assignReservationId is not null)
@@ -159,21 +168,6 @@
                 <div class="resv__assigning">
                     <LucideIcon Name="armchair" Size="14" /> @Loc.T("Pick one or more tables on the plan…")
                     <button class="btn btn--primary btn--sm" @onclick="CancelAssign">@Loc.T("Done")</button>
-                </div>
-            }
-
-            @if (_reservations.Count > 0)
-            {
-                <div class="tabs resv__period-tabs">
-                    <button class="tabs__opt @(_periodFilter is null ? "tabs__opt--on" : "")" @onclick="() => _periodFilter = null">
-                        @Loc.T("All") <span class="muted">@_reservations.Count</span>
-                    </button>
-                    <button class="tabs__opt @(_periodFilter == ServicePeriod.Lunch ? "tabs__opt--on" : "")" @onclick="() => _periodFilter = ServicePeriod.Lunch">
-                        <LucideIcon Name="sun" Size="13" />@Loc.T("Lunch") <span class="muted">@_reservations.Count(r => Branding.Current.GetPeriod(r.Time) == ServicePeriod.Lunch)</span>
-                    </button>
-                    <button class="tabs__opt @(_periodFilter == ServicePeriod.Dinner ? "tabs__opt--on" : "")" @onclick="() => _periodFilter = ServicePeriod.Dinner">
-                        <LucideIcon Name="moon" Size="13" />@Loc.T("Dinner") <span class="muted">@_reservations.Count(r => Branding.Current.GetPeriod(r.Time) == ServicePeriod.Dinner)</span>
-                    </button>
                 </div>
             }
 
@@ -186,16 +180,41 @@
                             <strong>@r.Time.ToString("HH:mm")</strong>
                             <span class="resv-card__name">@r.CustomerName</span>
                             <span class="spacer"></span>
-                            <span class="badge @StatusClass(r.Status)">@Loc.T(r.Status.ToString())</span>
+                            <div class="resv-status">
+                                <button type="button" class="badge resv-card__status @StatusClass(r.Status)" title="@Loc.T("Status")" @onclick="() => ToggleStatusMenu(r.Id)">
+                                    @Loc.T(r.Status.ToString())
+                                </button>
+                                @if (_statusMenuOpenId == r.Id)
+                                {
+                                    <div class="resv-status__menu">
+                                        @foreach (var s in Enum.GetValues<ReservationStatus>())
+                                        {
+                                            <button type="button" class="resv-status__opt @(s == r.Status ? "resv-status__opt--on" : "")" @onclick="() => ChooseStatus(r.Id, s)">
+                                                <span class="badge @StatusClass(s)">@Loc.T(s.ToString())</span>
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")" @onclick="() => OpenResForm(r.Id)"><LucideIcon Name="pencil" Size="14" /></button>
+                            <button class="btn btn--icon btn--ghost btn--sm @(_resSettingsOpen.Contains(r.Id) ? "resv-card__settings-btn--on" : "")" title="@Loc.T("Table settings")" @onclick="() => ToggleResSettings(r.Id)"><LucideIcon Name="settings" Size="14" /></button>
                         </div>
                         <div class="resv-card__meta muted">
-                            <LucideIcon Name="users" Size="14" /> @r.PartySize
+                            <LucideIcon Name="users" Size="14" /> @(r.PartySize + r.ChildrenCount)
+                            @if (r.ChildrenCount > 0)
+                            {
+                                <span class="resv-card__stat"><LucideIcon Name="baby" Size="14" /> @r.ChildrenCount</span>
+                            }
+                            @if (r.HighChairCount > 0)
+                            {
+                                <span class="resv-card__stat"><LucideIcon Name="armchair" Size="14" /> @r.HighChairCount</span>
+                            }
                             @if (r.TableNames.Count > 0)
                             {
                                 <span class="resv-card__tables">
                                     @foreach (var name in r.TableNames)
                                     {
-                                        <span class="tbl-chip tbl-chip--sm"><LucideIcon Name="armchair" Size="12" /> @name</span>
+                                        <button type="button" class="tbl-chip tbl-chip--sm" title="@Loc.T("Table settings")" @onclick="() => ToggleResSettings(r.Id)"><LucideIcon Name="armchair" Size="12" /> @name</button>
                                     }
                                 </span>
                             }
@@ -203,29 +222,33 @@
                             {
                                 <span>· @Loc.T("Unassigned")</span>
                             }
-                        </div>
-                        <div class="resv-card__actions">
+                            <span class="spacer"></span>
                             @if (r.Status is ReservationStatus.Pending or ReservationStatus.Confirmed)
                             {
-                                <button class="btn btn--primary btn--sm" @onclick="() => SetResStatus(r.Id, ReservationStatus.Seated)"><LucideIcon Name="check" Size="16" />@Loc.T("Seat")</button>
+                                <button class="btn btn--primary btn--sm" disabled="@(r.TableIds.Count == 0)"
+                                        title="@(r.TableIds.Count == 0 ? Loc.T("Assign a table before seating this reservation.") : null)"
+                                        @onclick="() => SetResStatus(r.Id, ReservationStatus.Seated)"><LucideIcon Name="check" Size="16" />@Loc.T("Seat")</button>
                             }
                             else if (r.Status == ReservationStatus.Seated)
                             {
                                 <button class="btn btn--primary btn--sm" @onclick="() => SetResStatus(r.Id, ReservationStatus.Finished)"><LucideIcon Name="log-out" Size="16" />@Loc.T("Mark as left")</button>
                             }
-                            <button class="btn btn--ghost btn--sm" @onclick="() => StartAssign(r)"><LucideIcon Name="armchair" Size="16" />@(r.TableIds.Count == 0 ? Loc.T("Assign") : Loc.T("Reassign"))</button>
-                            @if (r.TableIds.Count > 0)
+                            @if (_resSettingsOpen.Contains(r.Id))
                             {
-                                <button class="btn btn--ghost btn--sm" @onclick="() => Unassign(r.Id)">@Loc.T("Unassign")</button>
+                                <span class="resv-card__assign-actions">
+                                    <button class="btn @(_assignReservationId == r.Id ? "btn--primary" : "btn--ghost") resv-card__mini-btn" @onclick="() => ToggleAssign(r)">@(r.TableIds.Count == 0 ? Loc.T("Assign") : Loc.T("Reassign"))</button>
+                                    @if (r.TableIds.Count > 0)
+                                    {
+                                        <button class="btn btn--ghost resv-card__mini-btn" @onclick="() => Unassign(r.Id)">@Loc.T("Unassign")</button>
+                                    }
+                                </span>
                             }
-                            <button class="btn btn--ghost btn--sm" @onclick="() => OpenResForm(r.Id)">@Loc.T("Edit")</button>
                         </div>
                     </div>
                 }
                 @if (_reservations.Count == 0) { <p class="empty">@Loc.T("No reservations for this day.")</p> }
                 else if (FilteredReservations.Count == 0) { <p class="empty">@Loc.T("No reservations for this service.")</p> }
             </div>
-            }
         </aside>
 </div>
 
@@ -291,7 +314,7 @@
     </Footer>
 </Modal>
 
-<Modal Visible="_resForm is not null" Title="@(_resForm?.Id > 0 ? Loc.T("Edit reservation") : Loc.T("New reservation"))" OnClose="CloseResForm" FullScreen="true">
+<Modal Visible="_resForm is not null" OnClose="CloseResForm" FullScreen="true">
     <HeaderActions>
         <button class="btn btn--icon btn--primary" title="@Loc.T("Save")" @onclick="SaveRes" type="button"><LucideIcon Name="check" Size="18" /></button>
     </HeaderActions>
@@ -299,6 +322,20 @@
         @if (_resForm is not null)
         {
             <div class="resv-form">
+                <div class="modal-section">@Loc.T("Guest")</div>
+                <div class="resv-row resv-row--guest">
+                    <div class="field"><label>@Loc.T("Customer name")</label><input class="input" @bind="_resForm.CustomerName" /></div>
+                    <div class="field"><label>@Loc.T("Party size")</label><input type="number" min="0" class="input" @bind="_resForm.PartySize" /></div>
+                    <div class="field"><label><LucideIcon Name="baby" Size="12" /> @Loc.T("Children")</label><input type="number" min="0" class="input" @bind="_resForm.ChildrenCount" /></div>
+                    <div class="field"><label><LucideIcon Name="armchair" Size="12" /> @Loc.T("High chairs")</label><input type="number" min="0" class="input" @bind="_resForm.HighChairCount" /></div>
+                    <div class="field"><label>@Loc.T("Total")</label><div class="field-static">@FormTotalGuests</div></div>
+                </div>
+                <div class="resv-row resv-row--phone-when">
+                    <div class="field"><label>@Loc.T("Phone")</label><input class="input" @bind="_resForm.Phone" /></div>
+                    <div class="field"><label>@Loc.T("Date")</label><input type="date" class="input" @bind="_resForm.Date" /></div>
+                    <div class="field"><label>@Loc.T("Time")</label><TimePicker @bind-Value="_resForm.Time" /></div>
+                </div>
+
                 <div class="modal-section">@Loc.T("Tables")</div>
                 <div class="tbl-pick">
                     @foreach (var t in _tables)
@@ -312,32 +349,24 @@
                     @if (_tables.Count == 0) { <p class="muted">@Loc.T("No tables yet. Create one to start.")</p> }
                 </div>
                 <div class="tbl-pick__summary">
-                    <span class="badge @(SelectedSeats >= _resForm.PartySize ? "badge--success" : "badge--warning")">
-                        @SelectedSeats / @_resForm.PartySize @Loc.T("seats selected")
+                    <span class="badge @(SelectedSeats >= FormTotalGuests ? "badge--success" : "badge--warning")">
+                        @SelectedSeats / @FormTotalGuests @Loc.T("seats selected")
                     </span>
                 </div>
 
-                <div class="modal-section">@Loc.T("Guest")</div>
-                <div class="resv-row resv-row--guest">
-                    <div class="field"><label>@Loc.T("Customer name")</label><input class="input" @bind="_resForm.CustomerName" /></div>
-                    <div class="field"><label>@Loc.T("Party size")</label><input type="number" class="input" @bind="_resForm.PartySize" /></div>
-                    <div class="field"><label>@Loc.T("Phone")</label><input class="input" @bind="_resForm.Phone" /></div>
-                </div>
-
                 <div class="modal-section">@Loc.T("When")</div>
-                <div class="resv-row resv-row--3">
-                    <div class="field"><label>@Loc.T("Date")</label><input type="date" class="input" @bind="_resForm.Date" /></div>
-                    <div class="field"><label>@Loc.T("Time")</label><TimePicker @bind-Value="_resForm.Time" /></div>
-                    <div class="field"><label>@Loc.T("Duration (min)")</label><input type="number" class="input" @bind="_resForm.DurationMinutes" /></div>
-                </div>
-                <div class="resv-quick-time">
-                    <button type="button" class="btn btn--sm @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "btn--primary" : "btn--ghost")"
+                <div class="period-picker">
+                    <button type="button" class="period-opt @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "period-opt--on" : "")"
                             @onclick="() => _resForm.Time = Branding.Current.LunchStart">
-                        <LucideIcon Name="sun" Size="14" />@Loc.T("Lunch") · @Branding.Current.LunchStart.ToString("HH:mm")
+                        <LucideIcon Name="sun" Size="24" />
+                        <span class="period-opt__label">@Loc.T("Lunch")</span>
+                        <span class="period-opt__time">@Branding.Current.LunchStart.ToString("HH:mm")</span>
                     </button>
-                    <button type="button" class="btn btn--sm @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Dinner ? "btn--primary" : "btn--ghost")"
+                    <button type="button" class="period-opt @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Dinner ? "period-opt--on" : "")"
                             @onclick="() => _resForm.Time = Branding.Current.DinnerStart">
-                        <LucideIcon Name="moon" Size="14" />@Loc.T("Dinner") · @Branding.Current.DinnerStart.ToString("HH:mm")
+                        <LucideIcon Name="moon" Size="24" />
+                        <span class="period-opt__label">@Loc.T("Dinner")</span>
+                        <span class="period-opt__time">@Branding.Current.DinnerStart.ToString("HH:mm")</span>
                     </button>
                 </div>
                 @if (!Branding.Current.IsInService(_resForm.Time))
@@ -346,25 +375,15 @@
                 }
 
                 <div class="modal-section">@Loc.T("Details")</div>
-                <div class="resv-row">
-                    <div class="field">
-                        <label>@Loc.T("Colour")</label>
-                        <div class="color-pick">
-                            @foreach (var c in GroupColors)
-                            {
-                                <button type="button" class="color-swatch @(_resForm.Color == c ? "color-swatch--on" : "")"
-                                        style="--sw:@c" title="@c" @onclick="() => _resForm.Color = c"></button>
-                            }
-                            <input type="color" class="color-swatch color-swatch--custom" title="@Loc.T("Custom colour")" @bind="_resForm.Color" />
-                        </div>
-                    </div>
-                    <div class="field"><label>@Loc.T("Status")</label>
-                        <select class="select" @bind="_resForm.Status">
-                            @foreach (var s in Enum.GetValues<ReservationStatus>())
-                            {
-                                <option value="@s">@Loc.T(s.ToString())</option>
-                            }
-                        </select>
+                <div class="field">
+                    <label>@Loc.T("Colour")</label>
+                    <div class="color-pick">
+                        @foreach (var c in GroupColors)
+                        {
+                            <button type="button" class="color-swatch @(_resForm.Color == c ? "color-swatch--on" : "")"
+                                    style="--sw:@c" title="@c" @onclick="() => _resForm.Color = c"></button>
+                        }
+                        <input type="color" class="color-swatch color-swatch--custom" title="@Loc.T("Custom colour")" @bind="_resForm.Color" />
                     </div>
                 </div>
                 <div class="field"><label>@Loc.T("Comments")</label><textarea class="input" rows="2" @bind="_resForm.Comments"></textarea></div>
@@ -396,11 +415,11 @@
 
     private bool _editing;
     private bool _selecting;
+    private bool _showFilters;
     private readonly HashSet<int> _selection = new();
 
     // ---- Reservations panel state ----
-    // Docked to the left of the floor plan (visually, via CSS order); can be collapsed to a thin rail.
-    private bool _resCollapsed;
+    // Docked to the left of the floor plan (visually, via CSS order).
     private bool _mapExpanded;
     private DateTime _reserveDate = DateTime.Today;
     private List<ReservationDto> _reservations = new();
@@ -419,6 +438,8 @@
         .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Res.Time).First().Res);
     private int? _assignReservationId;
     private string? _assignName;
+    private readonly HashSet<int> _resSettingsOpen = new();
+    private int? _statusMenuOpenId;
     private ReservationFormDto? _resForm;
     private string? _resError;
 
@@ -452,14 +473,20 @@
             ? _tables
             : _tables.Where(t => t.Zone == _zoneFilter).ToList();
 
-    private string TableClass(TableDto t)
+    private string TableClass(TableDto t, ReservationDto? rv)
     {
-        var c = $"tbl tbl--{t.Shape.ToString().ToLower()} tbl--{t.Status.ToString().ToLower()}";
+        var status = EffectiveTableStatus(t, rv);
+        var c = $"tbl tbl--{t.Shape.ToString().ToLower()} tbl--{status.ToString().ToLower()}";
         if (t.IsLocked) c += " tbl--locked";
         if (t.GroupId is not null) c += " tbl--grouped";
         if (_selecting && _selection.Contains(t.Id)) c += " tbl--selected";
         return c;
     }
+
+    // A seated party reads as "occupied" on the floor plan (yellow, same as a walk-in order) even
+    // though the table's own record is still "Reserved" — the guest is physically there now.
+    private static TableStatus EffectiveTableStatus(TableDto t, ReservationDto? rv) =>
+        rv?.Status == ReservationStatus.Seated ? TableStatus.Occupied : t.Status;
 
     // Icons mirror SHAPE_ICONS in floorplan.js so the button looks identical before and after a JS cycle.
     private static string ShapeIcon(TableShape shape) => shape switch
@@ -569,8 +596,8 @@
     }
 
     // ---- Reservations panel ----
-    private void ToggleCollapse() => _resCollapsed = !_resCollapsed;
     private void OpenDashboard() => Nav.NavigateTo("/reservations");
+    private void GoToTables() => Nav.NavigateTo("/tables");
 
     private Task ShiftDay(int days)
     {
@@ -582,6 +609,21 @@
 
     private void StartAssign(ReservationDto r) { _assignReservationId = r.Id; _assignName = r.CustomerName; }
     private void CancelAssign() { _assignReservationId = null; _assignName = null; }
+
+    // Clicking "Assign" again while already assigning that same reservation cancels it,
+    // instead of just restarting the same picking session.
+    private void ToggleAssign(ReservationDto r)
+    {
+        if (_assignReservationId == r.Id) CancelAssign();
+        else StartAssign(r);
+    }
+
+    // Toggles the per-card table-settings row (Reassign/Unassign), tucked behind a gear icon
+    // instead of always showing on every reservation card.
+    private void ToggleResSettings(int id)
+    {
+        if (!_resSettingsOpen.Add(id)) _resSettingsOpen.Remove(id);
+    }
 
     // Clicking a table while assigning toggles its membership; assign mode stays open so
     // several tables can be picked in one go, and is exited explicitly via "Done".
@@ -602,9 +644,18 @@
 
     private async Task SetResStatus(int reservationId, ReservationStatus status)
     {
-        await ReservationService.SetStatusAsync(reservationId, status);
+        try { await ReservationService.SetStatusAsync(reservationId, status); }
+        catch (InvalidOperationException ex) { _notice = ex.Message; return; }
         await LoadReservations();
         await Load();
+    }
+
+    private void ToggleStatusMenu(int id) => _statusMenuOpenId = _statusMenuOpenId == id ? null : id;
+
+    private async Task ChooseStatus(int reservationId, ReservationStatus status)
+    {
+        _statusMenuOpenId = null;
+        await SetResStatus(reservationId, status);
     }
 
     private async Task OpenResForm(int? id)
@@ -618,6 +669,9 @@
     private void CloseResForm() => _resForm = null;
 
     private int SelectedSeats => _resForm is null ? 0 : _tables.Where(t => _resForm.TableIds.Contains(t.Id)).Sum(t => t.Seats);
+
+    // Seats needed = adults (party size) + children, so the seat-count check accounts for everyone at the table.
+    private int FormTotalGuests => _resForm is null ? 0 : _resForm.PartySize + _resForm.ChildrenCount;
 
     private void ToggleFormTable(int tableId)
     {

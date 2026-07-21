@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PosTpv.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using PosTpv.Infrastructure.Persistence;
 namespace PosTpv.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(PosDbContext))]
-    partial class PosDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260718235215_AddReservationExtrasAndAllergens")]
+    partial class AddReservationExtrasAndAllergens
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -319,19 +322,10 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("DessertsFiredAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("DessertsSentAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<DateTime?>("DrinksServedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("FirstsFiredAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FirstsSentAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Notes")
@@ -343,9 +337,6 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime?>("SecondsFiredAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("SecondsSentAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("Status")

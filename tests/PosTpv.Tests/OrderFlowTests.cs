@@ -357,6 +357,10 @@ public class OrderFlowTests
         public Task OrderReadyAsync(int orderId) => Task.CompletedTask;
         public Task FirstCoursesFiredAsync(int orderId) => Task.CompletedTask;
         public Task SecondCoursesFiredAsync(int orderId) => Task.CompletedTask;
+        public Task DessertCoursesFiredAsync(int orderId) => Task.CompletedTask;
+        public Task SecondCoursesServedAsync(int orderId) => Task.CompletedTask;
+        public Task DessertCoursesServedAsync(int orderId) => Task.CompletedTask;
         public Task DrinksServedAsync(int orderId) => Task.CompletedTask;
+        public Task FirstCoursesServedAsync(int orderId) => Task.CompletedTask;
     }
 }

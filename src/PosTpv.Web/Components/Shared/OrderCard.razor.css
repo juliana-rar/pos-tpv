@@ -1,6 +1,11 @@
 .order-card { height: 640px; padding: 1rem; display: flex; flex-direction: column; gap: .5rem; }
-.order-card__head { flex: none; display: flex; align-items: center; justify-content: space-between; }
-.order-card__meta { flex: none; font-size: .7rem; }
+.order-card__head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: -.6rem; }
+.order-card__title { display: flex; align-items: center; gap: .35rem; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.order-card__title svg { flex: none; color: var(--text-soft); }
+.order-card__head-right { flex: none; display: flex; align-items: center; gap: .4rem; }
+.order-card__head-right .btn--icon { width: 30px; height: 30px; padding: .3rem; }
+.order-card__head-right .badge { font-size: .6rem; padding: .1rem .4rem; }
+.order-card__number { font-size: .68rem; }
 .order-card__body { flex: 1; min-height: 0; overflow-y: auto; }
 .order-card__group {
     display: flex; align-items: center; gap: .4rem;
@@ -25,20 +30,104 @@
     padding: .3rem .5rem;
 }
 .order-card__drink-batch[data-served="true"] .badge { align-self: flex-start; margin-top: .2rem; }
+
+/* Lines ordered in the same minute share one timestamp behind a connecting bracket instead of
+   repeating it per line — mirrors the served-batch frame above, but for "these were ordered
+   together" rather than "these came out together". */
+.order-card__time-group { display: flex; gap: .4rem; }
+.order-card__time-group-time {
+    flex: none;
+    display: flex; align-items: center; justify-content: center;
+    min-width: 1.7rem;
+    font-size: .68rem; font-weight: 700; color: var(--text-soft);
+    border-left: 2px solid var(--border);
+    padding-left: .4rem;
+}
+.order-card__time-group-items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .15rem; }
 .badge--btn { border: none; cursor: pointer; transition: filter .15s; }
 .badge--btn:hover { filter: brightness(0.9); }
-.order-card__actions { flex: none; display: flex; flex-direction: column; gap: .35rem; }
+/* Reserves the height of the 4 typical action rows (Serve drinks / Fire firsts / Fire
+   seconds / Fire desserts) even when an order only shows 1-2, so every card in the grid
+   starts its item list at the same vertical position regardless of which actions apply. */
+.order-card__actions { flex: none; display: flex; flex-direction: column; gap: .3rem; min-height: 8.2rem; margin-top: -.25rem; }
 .order-card__actions .btn {
     width: 100%;
     justify-content: flex-start;
-    gap: .6rem;
-    padding: .55rem .75rem;
-    font-size: .85rem;
+    gap: .5rem;
+    padding: .32rem .6rem;
+    font-size: .68rem;
     font-weight: 700;
     letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-.order-card__actions .btn--primary { box-shadow: var(--shadow-sm); }
-.order-card__actions .btn--ghost { background: var(--card-2); color: var(--text-soft); }
+.order-card__actions .btn svg { flex: none; }
+
+/* Realistic "physical" button, built entirely from shadows rather than a flat colored
+   border-bottom (which read as a harsh drawn line, not a real edge). At rest: a strong ambient
+   shadow lifts it well off the surface, a glossy top highlight catches the light, and a
+   blurred dark shadow hugging the bottom edge gives it rounded thickness. On press: the
+   ambient lift collapses, a deep inset shadow carves the surface inward, and the button drops
+   3px — so it visibly plunges into the surface instead of just swapping color. No blue/primary
+   fill; overrides .btn--primary's purple from app.css via the extra ancestor class. "Pending
+   vs. done" is still conveyed by the label text and the ghost variant's dimmer icon. */
+.order-card__actions .btn,
+.order-card__actions .btn--primary,
+.order-card__actions .btn--ghost {
+    background: linear-gradient(to bottom, color-mix(in srgb, white 14%, var(--card)), var(--card-2) 70%);
+    border: 1px solid var(--border);
+    color: var(--text);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .8) inset,
+        0 -8px 10px -8px color-mix(in srgb, var(--text) 30%, transparent) inset,
+        0 1px 0 rgba(255, 255, 255, .5),
+        0 4px 10px rgba(0, 0, 0, .16);
+    transform: translateY(0);
+    transition: transform 120ms cubic-bezier(.34, 1.56, .64, 1), background 120ms ease, box-shadow 120ms ease;
+}
+.order-card__actions .btn--ghost { color: var(--text-soft); }
 .order-card__actions .btn--ghost .lucide { opacity: .6; }
+
+.order-card__actions .btn:hover,
+.order-card__actions .btn--primary:hover,
+.order-card__actions .btn--ghost:hover {
+    background: linear-gradient(to bottom, color-mix(in srgb, white 18%, var(--card)), color-mix(in srgb, var(--card-2) 90%, black 6%) 70%);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .8) inset,
+        0 -8px 10px -8px color-mix(in srgb, var(--text) 30%, transparent) inset,
+        0 1px 0 rgba(255, 255, 255, .5),
+        0 6px 14px rgba(0, 0, 0, .2);
+    transform: translateY(-1px);
+}
+
+.order-card__actions .btn:active,
+.order-card__actions .btn--primary:active,
+.order-card__actions .btn--ghost:active,
+.order-card__foot .btn:active {
+    background: color-mix(in srgb, var(--text) 24%, var(--card-2));
+    transform: translateY(3px);
+    box-shadow: inset 0 4px 9px rgba(0, 0, 0, .38), inset 0 1px 3px rgba(0, 0, 0, .22);
+    transition-duration: 40ms;
+}
+.order-card__foot .btn--success:active { background: color-mix(in srgb, black 18%, var(--success)); }
+
+.order-card__head-right .btn--icon {
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--card) 98%, white 2%), var(--card-2));
+    border: 1px solid var(--border);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .65) inset,
+        0 -4px 6px -4px color-mix(in srgb, var(--text) 25%, transparent) inset,
+        0 2px 5px rgba(0, 0, 0, .12);
+    transform: translateY(0);
+    transition: transform 110ms ease, background 110ms ease, box-shadow 110ms ease;
+}
+.order-card__head-right .btn--icon:active {
+    transform: translateY(1px);
+    background: color-mix(in srgb, var(--text) 20%, var(--card-2));
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, .3), inset 0 1px 2px rgba(0, 0, 0, .15);
+    transition-duration: 40ms;
+}
+
 .order-card__foot { display: flex; align-items: center; gap: .4rem; border-top: 1px solid var(--border); padding-top: .5rem; margin-top: .2rem; }
 .order-card__foot .btn { padding: .4rem .7rem; }

@@ -39,6 +39,27 @@ public interface IOrderService
     /// <summary>Undoes <see cref="ServeFirstCoursesAsync"/>: puts every served first-course line back to ready.</summary>
     Task UnserveFirstCoursesAsync(int orderId, CancellationToken ct = default);
 
+    /// <summary>Marks every ready-to-serve second-course line of an order as delivered, mirroring <see cref="ServeFirstCoursesAsync"/>.</summary>
+    Task ServeSecondCoursesAsync(int orderId, CancellationToken ct = default);
+
+    /// <summary>Undoes <see cref="ServeSecondCoursesAsync"/>: puts every served second-course line back to ready.</summary>
+    Task UnserveSecondCoursesAsync(int orderId, CancellationToken ct = default);
+
+    /// <summary>Marks every ready-to-serve dessert line of an order as delivered, mirroring <see cref="ServeFirstCoursesAsync"/>.</summary>
+    Task ServeDessertCoursesAsync(int orderId, CancellationToken ct = default);
+
+    /// <summary>Undoes <see cref="ServeDessertCoursesAsync"/>: puts every served dessert line back to ready.</summary>
+    Task UnserveDessertCoursesAsync(int orderId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Marks every preparing food line (any course, drinks excluded) of an order as ready in a
+    /// single round-trip, backing the kitchen display's "Mark all ready" button.
+    /// </summary>
+    Task MarkFoodReadyAsync(int orderId, CancellationToken ct = default);
+
+    /// <summary>Undoes <see cref="MarkFoodReadyAsync"/>: puts every ready (not yet delivered) food line back to preparing.</summary>
+    Task UnmarkFoodReadyAsync(int orderId, CancellationToken ct = default);
+
     Task<List<OrderDto>> GetKitchenOrdersAsync(CancellationToken ct = default);
 
     /// <summary>Waiter fires the first courses for a table, alerting the kitchen in real time.</summary>
@@ -47,11 +68,26 @@ public interface IOrderService
     /// <summary>Kitchen acknowledges the fired first courses, clearing the alert on both screens.</summary>
     Task AcknowledgeFirstCoursesAsync(int orderId, CancellationToken ct = default);
 
+    /// <summary>Reverts a mistaken "first courses fired": clears both the alert and the persistent fired marker.</summary>
+    Task UndoFirstCoursesFiredAsync(int orderId, CancellationToken ct = default);
+
     /// <summary>Waiter fires the second courses for a table, alerting the kitchen in real time.</summary>
     Task FireSecondCoursesAsync(int orderId, CancellationToken ct = default);
 
     /// <summary>Kitchen acknowledges the fired second courses, clearing the alert on both screens.</summary>
     Task AcknowledgeSecondCoursesAsync(int orderId, CancellationToken ct = default);
+
+    /// <summary>Reverts a mistaken "second courses fired": clears both the alert and the persistent fired marker.</summary>
+    Task UndoSecondCoursesFiredAsync(int orderId, CancellationToken ct = default);
+
+    /// <summary>Waiter fires the desserts for a table, alerting the kitchen in real time.</summary>
+    Task FireDessertCoursesAsync(int orderId, CancellationToken ct = default);
+
+    /// <summary>Kitchen acknowledges the fired desserts, clearing the alert on both screens.</summary>
+    Task AcknowledgeDessertCoursesAsync(int orderId, CancellationToken ct = default);
+
+    /// <summary>Reverts a mistaken "desserts fired": clears both the alert and the persistent fired marker.</summary>
+    Task UndoDessertCoursesFiredAsync(int orderId, CancellationToken ct = default);
     Task<int> CheckoutAsync(int orderId, PaymentMethod method, CancellationToken ct = default);
     Task<int> CheckoutAsync(int orderId, IReadOnlyList<PaymentInput> payments, CancellationToken ct = default);
 }
@@ -196,6 +232,15 @@ public class OrderService : IOrderService
             }
 
             await _uow.Repository<OrderItem>().AddAsync(item, ct);
+        }
+
+        // A newly added line is always Pending, i.e. not yet sent to the kitchen. If the order
+        // had already progressed past Open (Sent/InPreparation/Ready/Delivered), flip it back so
+        // the waiter sees it needs another trip to the kitchen instead of a stale "Sent" badge.
+        if (order.Status != OrderStatus.Open)
+        {
+            order.Status = OrderStatus.Open;
+            _uow.Repository<Order>().Update(order);
         }
 
         await _uow.SaveChangesAsync(ct);
@@ -407,6 +452,173 @@ public class OrderService : IOrderService
         await _notifier.FirstCoursesServedAsync(order.Id);
     }
 
+    public async Task ServeSecondCoursesAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().Query()
+            .Include(o => o.Items).ThenInclude(i => i.Product).ThenInclude(p => p.Category)
+            .FirstOrDefaultAsync(o => o.Id == orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        var readySeconds = order.Items
+            .Where(i => i.Product?.Category?.Course == CourseType.Main
+                        && i.Product?.Category?.Kind != CategoryKind.Drink
+                        && i.Status == OrderItemStatus.Ready)
+            .ToList();
+        if (readySeconds.Count == 0) return;
+
+        foreach (var item in readySeconds)
+        {
+            item.Status = OrderItemStatus.Delivered;
+            _uow.Repository<OrderItem>().Update(item);
+        }
+
+        ApplyDerivedStatus(order);
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.SecondCoursesServedAsync(order.Id);
+        if (order.Status == OrderStatus.Ready)
+            await _notifier.OrderReadyAsync(order.Id);
+    }
+
+    public async Task UnserveSecondCoursesAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().Query()
+            .Include(o => o.Items).ThenInclude(i => i.Product).ThenInclude(p => p.Category)
+            .FirstOrDefaultAsync(o => o.Id == orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        var servedSeconds = order.Items
+            .Where(i => i.Product?.Category?.Course == CourseType.Main
+                        && i.Product?.Category?.Kind != CategoryKind.Drink
+                        && i.Status == OrderItemStatus.Delivered)
+            .ToList();
+        if (servedSeconds.Count == 0) return;
+
+        foreach (var item in servedSeconds)
+        {
+            item.Status = OrderItemStatus.Ready;
+            _uow.Repository<OrderItem>().Update(item);
+        }
+
+        ApplyDerivedStatus(order);
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.SecondCoursesServedAsync(order.Id);
+    }
+
+    public async Task ServeDessertCoursesAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().Query()
+            .Include(o => o.Items).ThenInclude(i => i.Product).ThenInclude(p => p.Category)
+            .FirstOrDefaultAsync(o => o.Id == orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        var readyDesserts = order.Items
+            .Where(i => i.Product?.Category?.Course == CourseType.Dessert
+                        && i.Product?.Category?.Kind != CategoryKind.Drink
+                        && i.Status == OrderItemStatus.Ready)
+            .ToList();
+        if (readyDesserts.Count == 0) return;
+
+        foreach (var item in readyDesserts)
+        {
+            item.Status = OrderItemStatus.Delivered;
+            _uow.Repository<OrderItem>().Update(item);
+        }
+
+        ApplyDerivedStatus(order);
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.DessertCoursesServedAsync(order.Id);
+        if (order.Status == OrderStatus.Ready)
+            await _notifier.OrderReadyAsync(order.Id);
+    }
+
+    public async Task UnserveDessertCoursesAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().Query()
+            .Include(o => o.Items).ThenInclude(i => i.Product).ThenInclude(p => p.Category)
+            .FirstOrDefaultAsync(o => o.Id == orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        var servedDesserts = order.Items
+            .Where(i => i.Product?.Category?.Course == CourseType.Dessert
+                        && i.Product?.Category?.Kind != CategoryKind.Drink
+                        && i.Status == OrderItemStatus.Delivered)
+            .ToList();
+        if (servedDesserts.Count == 0) return;
+
+        foreach (var item in servedDesserts)
+        {
+            item.Status = OrderItemStatus.Ready;
+            _uow.Repository<OrderItem>().Update(item);
+        }
+
+        ApplyDerivedStatus(order);
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.DessertCoursesServedAsync(order.Id);
+    }
+
+    public async Task MarkFoodReadyAsync(int orderId, CancellationToken ct = default)
+    {
+        // Same single-round-trip/single-broadcast shape as ServeDrinksAsync: batching the whole
+        // ticket into one SaveChanges avoids the kitchen's SignalR reload racing a per-item loop
+        // on the same DbContext (which throws "a second operation was started on this context").
+        var order = await _uow.Repository<Order>().Query()
+            .Include(o => o.Items).ThenInclude(i => i.Product).ThenInclude(p => p.Category)
+            .FirstOrDefaultAsync(o => o.Id == orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        var preparing = order.Items
+            .Where(i => i.Product?.Category?.Kind != CategoryKind.Drink && i.Status == OrderItemStatus.Preparing)
+            .ToList();
+        if (preparing.Count == 0) return;
+
+        foreach (var item in preparing)
+        {
+            item.Status = OrderItemStatus.Ready;
+            _uow.Repository<OrderItem>().Update(item);
+        }
+
+        ApplyDerivedStatus(order);
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.OrderItemStatusChangedAsync(order.Id, preparing[0].Id);
+        if (order.Status == OrderStatus.Ready)
+            await _notifier.OrderReadyAsync(order.Id);
+    }
+
+    public async Task UnmarkFoodReadyAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().Query()
+            .Include(o => o.Items).ThenInclude(i => i.Product).ThenInclude(p => p.Category)
+            .FirstOrDefaultAsync(o => o.Id == orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        var ready = order.Items
+            .Where(i => i.Product?.Category?.Kind != CategoryKind.Drink && i.Status == OrderItemStatus.Ready)
+            .ToList();
+        if (ready.Count == 0) return;
+
+        foreach (var item in ready)
+        {
+            item.Status = OrderItemStatus.Preparing;
+            _uow.Repository<OrderItem>().Update(item);
+        }
+
+        ApplyDerivedStatus(order);
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.OrderItemStatusChangedAsync(order.Id, ready[0].Id);
+    }
+
     /// <summary>Recomputes an order's rolled-up status from its lines (shared by the serve paths).</summary>
     private static void ApplyDerivedStatus(Order order)
     {
@@ -437,6 +649,7 @@ public class OrderService : IOrderService
             ?? throw new KeyNotFoundException($"Order {orderId} not found.");
 
         order.FirstsFiredAt = DateTime.UtcNow;
+        order.FirstsSentAt ??= order.FirstsFiredAt;
         _uow.Repository<Order>().Update(order);
         await _uow.SaveChangesAsync(ct);
 
@@ -455,12 +668,26 @@ public class OrderService : IOrderService
         await _notifier.FirstCoursesFiredAsync(orderId);
     }
 
+    public async Task UndoFirstCoursesFiredAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().GetByIdAsync(orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        order.FirstsFiredAt = null;
+        order.FirstsSentAt = null;
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.FirstCoursesFiredAsync(orderId);
+    }
+
     public async Task FireSecondCoursesAsync(int orderId, CancellationToken ct = default)
     {
         var order = await _uow.Repository<Order>().GetByIdAsync(orderId, ct)
             ?? throw new KeyNotFoundException($"Order {orderId} not found.");
 
         order.SecondsFiredAt = DateTime.UtcNow;
+        order.SecondsSentAt ??= order.SecondsFiredAt;
         _uow.Repository<Order>().Update(order);
         await _uow.SaveChangesAsync(ct);
 
@@ -477,6 +704,57 @@ public class OrderService : IOrderService
         await _uow.SaveChangesAsync(ct);
 
         await _notifier.SecondCoursesFiredAsync(orderId);
+    }
+
+    public async Task UndoSecondCoursesFiredAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().GetByIdAsync(orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        order.SecondsFiredAt = null;
+        order.SecondsSentAt = null;
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.SecondCoursesFiredAsync(orderId);
+    }
+
+    public async Task FireDessertCoursesAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().GetByIdAsync(orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        order.DessertsFiredAt = DateTime.UtcNow;
+        order.DessertsSentAt ??= order.DessertsFiredAt;
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.DessertCoursesFiredAsync(orderId);
+    }
+
+    public async Task AcknowledgeDessertCoursesAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().GetByIdAsync(orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        order.DessertsFiredAt = null;
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.DessertCoursesFiredAsync(orderId);
+    }
+
+    public async Task UndoDessertCoursesFiredAsync(int orderId, CancellationToken ct = default)
+    {
+        var order = await _uow.Repository<Order>().GetByIdAsync(orderId, ct)
+            ?? throw new KeyNotFoundException($"Order {orderId} not found.");
+
+        order.DessertsFiredAt = null;
+        order.DessertsSentAt = null;
+        _uow.Repository<Order>().Update(order);
+        await _uow.SaveChangesAsync(ct);
+
+        await _notifier.DessertCoursesFiredAsync(orderId);
     }
 
     public async Task<int> CheckoutAsync(int orderId, PaymentMethod method, CancellationToken ct = default)
@@ -568,6 +846,7 @@ public class OrderService : IOrderService
         return new OrderDto(
             o.Id, o.Number, o.Status, o.TableId, o.Table?.Name ?? "?",
             o.WaiterId, o.Waiter?.FullName ?? "?", o.CreatedAt, o.Notes,
-            items, o.Subtotal, o.VatTotal, o.Total, o.FirstsFiredAt, o.SecondsFiredAt, o.DrinksServedAt);
+            items, o.Subtotal, o.VatTotal, o.Total, o.FirstsFiredAt, o.SecondsFiredAt, o.DrinksServedAt,
+            o.FirstsSentAt, o.SecondsSentAt, o.Table?.Zone, o.DessertsFiredAt, o.DessertsSentAt);
     }
 }

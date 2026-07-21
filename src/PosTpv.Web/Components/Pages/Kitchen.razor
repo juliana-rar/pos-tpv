@@ -13,30 +13,62 @@
 
 <div class="kds__head toolbar">
     <span class="spacer"></span>
+    @if (_showFilters)
+    {
+        <input class="input" style="max-width:170px" placeholder="@Loc.T("Search table…")" @bind="_tableSearch" @bind:event="oninput" />
+        @if (Zones.Count > 0)
+        {
+            <select class="select" style="max-width:170px" @bind="_zoneFilter">
+                <option value="">@Loc.T("All zones")</option>
+                @foreach (var z in Zones)
+                {
+                    <option value="@z">@z</option>
+                }
+            </select>
+        }
+    }
     <span class="badge @(_connected ? "badge--success" : "badge--danger")">
         @(_connected ? Loc.T("● Live") : Loc.T("● Offline"))
     </span>
-    <span class="badge">@_orders.Count @Loc.T("active")</span>
+    <span class="badge">@Filtered.Count @Loc.T("active")</span>
+    <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost")" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters">
+        <LucideIcon Name="settings" Size="16" />
+    </button>
 </div>
 
-@if (_orders.Count == 0)
+@if (Filtered.Count == 0)
 {
     <p class="empty">@Loc.T("No orders in the kitchen. Enjoy the calm. ☕")</p>
 }
 else
 {
     <div class="kds">
-        @foreach (var o in _orders)
+        @foreach (var o in Filtered)
         {
-            <div class="ticket @(o.FirstsFiredAt is null && o.SecondsFiredAt is null ? "" : "ticket--seconds")">
+            <div class="ticket @(o.FirstsFiredAt is null && o.SecondsFiredAt is null && o.DessertsFiredAt is null ? "" : "ticket--seconds")">
                 <div class="ticket__head">
                     <span class="ticket__table"><LucideIcon Name="armchair" Size="16" /> @o.TableName</span>
-                    <span class="ticket__time">@Elapsed(o.CreatedAt)</span>
-                </div>
-                <div class="ticket__sub">
-                    <span>@o.Number</span><span>· @o.WaiterName</span>
-                    <span class="spacer"></span>
                     <span class="badge ticket__status">@TicketStatusLabel(o.Status)</span>
+                    <span class="spacer"></span>
+                    <span class="ticket__time">@o.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
+                </div>
+
+                <div class="ticket__fired-row">
+                    <button type="button" class="btn btn--sm btn--ghost ticket__fired @(o.FirstsSentAt is null ? "ticket__fired--empty" : "")"
+                            title="@(o.FirstsSentAt is null ? Loc.T("Click to mark as fired") : Loc.T("Click to mark as not fired"))" @onclick="() => ToggleFirsts(o)">
+                        <LucideIcon Name="bell" Size="14" />
+                        @Loc.T("Firsts prepared")@(o.FirstsSentAt is { } firstsAt ? $" · {firstsAt.ToLocalTime():HH:mm}" : "")
+                    </button>
+                    <button type="button" class="btn btn--sm btn--ghost ticket__fired @(o.SecondsSentAt is null ? "ticket__fired--empty" : "")"
+                            title="@(o.SecondsSentAt is null ? Loc.T("Click to mark as fired") : Loc.T("Click to mark as not fired"))" @onclick="() => ToggleSeconds(o)">
+                        <LucideIcon Name="bell" Size="14" />
+                        @Loc.T("Seconds prepared")@(o.SecondsSentAt is { } secondsAt ? $" · {secondsAt.ToLocalTime():HH:mm}" : "")
+                    </button>
+                    <button type="button" class="btn btn--sm btn--ghost ticket__fired @(o.DessertsSentAt is null ? "ticket__fired--empty" : "")"
+                            title="@(o.DessertsSentAt is null ? Loc.T("Click to mark as fired") : Loc.T("Click to mark as not fired"))" @onclick="() => ToggleDesserts(o)">
+                        <LucideIcon Name="bell" Size="14" />
+                        @Loc.T("Desserts prepared")@(o.DessertsSentAt is { } dessertsAt ? $" · {dessertsAt.ToLocalTime():HH:mm}" : "")
+                    </button>
                 </div>
 
                 @if (o.FirstsFiredAt is not null)
@@ -57,39 +89,74 @@ else
                     </div>
                 }
 
-                <div class="ticket__items">
-                    @foreach (var it in o.Items.Where(i => !i.IsDrink && i.Status != OrderItemStatus.Delivered))
+                @if (o.DessertsFiredAt is not null)
+                {
+                    <div class="ticket__fire">
+                        <span class="ticket__fire-label"><LucideIcon Name="bell" Size="15" /> @Loc.T("Fire desserts")</span>
+                        <button class="btn btn--icon" title="@Loc.T("Got it")"
+                                @onclick="() => AcknowledgeDesserts(o)"><LucideIcon Name="check" Size="18" /></button>
+                    </div>
+                }
+
+                @{
+                    var food = o.Items.Where(i => !i.IsDrink && i.Status != OrderItemStatus.Delivered).ToList();
+                    // Same course grouping/labels as the waiter's OrderCard (First course /
+                    // Second course / Desserts), so the kitchen sees the same vocabulary.
+                    var groups = new List<(string Icon, string Label, List<OrderItemDto> Items)>
                     {
-                        <div class="kitem kitem--@it.Status.ToString().ToLower()">
-                            <div class="kitem__row">
-                                <span class="kitem__qty">@it.Quantity×</span>
-                                <span class="kitem__name">@it.ProductName</span>
-                                <span class="spacer"></span>
-                                @if (it.Status == OrderItemStatus.Preparing)
+                        ("salad", "First course", food.Where(i => i.Course == CourseType.Starter).ToList()),
+                        ("utensils", "Second course", food.Where(i => i.Course == CourseType.Main).ToList()),
+                        ("cake-slice", "Desserts", food.Where(i => i.Course == CourseType.Dessert).ToList()),
+                    }.Where(g => g.Items.Count > 0).ToList();
+                    var allFoodReady = food.Count > 0 && food.All(i => i.Status == OrderItemStatus.Ready);
+                }
+
+                <div class="ticket__items">
+                    @foreach (var group in groups)
+                    {
+                        <div class="ticket__group"><LucideIcon Name="@group.Icon" Size="14" /> @Loc.T(group.Label)</div>
+                        @foreach (var it in group.Items)
+                        {
+                            <div class="kitem kitem--@it.Status.ToString().ToLower()">
+                                <div class="kitem__row">
+                                    <span class="kitem__qty">@it.Quantity×</span>
+                                    <span class="kitem__name">@it.ProductName</span>
+                                    <span class="spacer"></span>
+                                    @if (it.Status == OrderItemStatus.Preparing)
+                                    {
+                                        <button class="btn btn--icon btn--success" title="@Loc.T("Ready")"
+                                                @onclick="() => SetItem(it.Id, OrderItemStatus.Ready)"><LucideIcon Name="arrow-right" Size="18" /></button>
+                                    }
+                                    else
+                                    {
+                                        <LucideIcon Name="check" Size="16" />
+                                    }
+                                </div>
+                                @if (it.Extras.Count > 0)
                                 {
-                                    <button class="btn btn--icon btn--success" title="@Loc.T("Ready")"
-                                            @onclick="() => SetItem(it.Id, OrderItemStatus.Ready)"><LucideIcon Name="arrow-right" Size="18" /></button>
+                                    <div class="kitem__extras">＋ @string.Join(", ", it.Extras.Select(e => e.Name))</div>
                                 }
-                                else
+                                @if (!string.IsNullOrWhiteSpace(it.Comment))
                                 {
-                                    <LucideIcon Name="check" Size="16" />
+                                    <div class="kitem__comment"><LucideIcon Name="triangle-alert" Size="14" /> @it.Comment</div>
                                 }
                             </div>
-                            @if (it.Extras.Count > 0)
-                            {
-                                <div class="kitem__extras">＋ @string.Join(", ", it.Extras.Select(e => e.Name))</div>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(it.Comment))
-                            {
-                                <div class="kitem__comment"><LucideIcon Name="triangle-alert" Size="14" /> @it.Comment</div>
-                            }
-                        </div>
+                        }
                     }
                 </div>
 
-                <div class="ticket__foot">
-                    <button class="btn btn--ghost btn--block" @onclick="() => MarkAllReady(o)">@Loc.T("Mark all ready")</button>
-                </div>
+                @if (food.Count > 0)
+                {
+                    <div class="ticket__foot">
+                        <button class="btn btn--ghost btn--block" title="@(allFoodReady ? Loc.T("Click to undo") : null)" @onclick="() => ToggleAllReady(o)">
+                            @if (allFoodReady)
+                            {
+                                <LucideIcon Name="check" Size="16" />
+                            }
+                            @(allFoodReady ? Loc.T("All ready") : Loc.T("Mark all ready"))
+                        </button>
+                    </div>
+                }
             </div>
         }
     </div>
@@ -99,6 +166,25 @@ else
     private List<OrderDto> _orders = new();
     private HubConnection? _hub;
     private bool _connected;
+
+    private bool _showFilters;
+    private string _zoneFilter = "";
+    private string _tableSearch = "";
+    private List<string> Zones => _orders
+        .Select(o => o.Zone)
+        .Where(z => !string.IsNullOrWhiteSpace(z))
+        .Distinct()
+        .OrderBy(z => z)
+        .ToList()!;
+    private List<OrderDto> Filtered
+    {
+        get
+        {
+            var list = string.IsNullOrEmpty(_zoneFilter) ? _orders : _orders.Where(o => o.Zone == _zoneFilter);
+            if (!string.IsNullOrWhiteSpace(_tableSearch)) list = list.Where(o => o.TableName.Contains(_tableSearch, StringComparison.OrdinalIgnoreCase));
+            return list.ToList();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -120,6 +206,11 @@ else
             await JS.InvokeVoidAsync("posBeep");
         });
         _hub.On<int>(KitchenHub.SecondsFired, async _ =>
+        {
+            await Reload();
+            await JS.InvokeVoidAsync("posBeep");
+        });
+        _hub.On<int>(KitchenHub.DessertsFired, async _ =>
         {
             await Reload();
             await JS.InvokeVoidAsync("posBeep");
@@ -146,10 +237,18 @@ else
         await Load();
     }
 
-    private async Task MarkAllReady(OrderDto o)
+    // Marks every non-delivered food item Ready; once they're all Ready, the same button
+    // flips to undo and puts them all back to Preparing (same toggle pattern as /orders).
+    // Both directions are single-round-trip service calls (not a per-item loop), so they can't
+    // race the page's own SignalR reload on the same DbContext.
+    private async Task ToggleAllReady(OrderDto o)
     {
-        foreach (var it in o.Items.Where(i => !i.IsDrink && i.Status == OrderItemStatus.Preparing))
-            await Orders.SetItemStatusAsync(it.Id, OrderItemStatus.Ready);
+        var food = o.Items.Where(i => !i.IsDrink && i.Status != OrderItemStatus.Delivered).ToList();
+        if (food.Count == 0) return;
+        if (food.All(i => i.Status == OrderItemStatus.Ready))
+            await Orders.UnmarkFoodReadyAsync(o.Id);
+        else
+            await Orders.MarkFoodReadyAsync(o.Id);
         await Load();
     }
 
@@ -165,6 +264,33 @@ else
         await Load();
     }
 
+    private async Task ToggleFirsts(OrderDto o)
+    {
+        if (o.FirstsSentAt is null) await Orders.FireFirstCoursesAsync(o.Id);
+        else await Orders.UndoFirstCoursesFiredAsync(o.Id);
+        await Load();
+    }
+
+    private async Task ToggleSeconds(OrderDto o)
+    {
+        if (o.SecondsSentAt is null) await Orders.FireSecondCoursesAsync(o.Id);
+        else await Orders.UndoSecondCoursesFiredAsync(o.Id);
+        await Load();
+    }
+
+    private async Task AcknowledgeDesserts(OrderDto o)
+    {
+        await Orders.AcknowledgeDessertCoursesAsync(o.Id);
+        await Load();
+    }
+
+    private async Task ToggleDesserts(OrderDto o)
+    {
+        if (o.DessertsSentAt is null) await Orders.FireDessertCoursesAsync(o.Id);
+        else await Orders.UndoDessertCoursesFiredAsync(o.Id);
+        await Load();
+    }
+
     private static string TicketStatusLabel(OrderStatus s) => s switch
     {
         OrderStatus.Ready => Loc.T("Ready"),
@@ -172,11 +298,6 @@ else
         _ => Loc.T("Sent")
     };
 
-    private static string Elapsed(DateTime createdUtc)
-    {
-        var mins = (int)(DateTime.UtcNow - createdUtc).TotalMinutes;
-        return mins <= 0 ? Loc.T("just now") : $"{mins} min";
-    }
 
     public async ValueTask DisposeAsync()
     {

@@ -35,13 +35,22 @@ public class MappingProfile : Profile
             .ForMember(d => d.CreatedAt, o => o.Ignore())
             .ForMember(d => d.UpdatedAt, o => o.Ignore());
 
+        CreateMap<Allergen, AllergenDto>();
+        CreateMap<Allergen, AllergenFormDto>();
+        CreateMap<AllergenFormDto, Allergen>()
+            .ForMember(d => d.Products, o => o.Ignore())
+            .ForMember(d => d.CreatedAt, o => o.Ignore())
+            .ForMember(d => d.UpdatedAt, o => o.Ignore());
+
         CreateMap<Product, ProductDto>()
             .ForCtorParam(nameof(ProductDto.CategoryName), o => o.MapFrom(s => s.Category != null ? s.Category.Name : string.Empty))
             .ForCtorParam(nameof(ProductDto.HasExtras), o => o.MapFrom(s => s.Extras != null && s.Extras.Count > 0));
-        CreateMap<Product, ProductFormDto>();
+        CreateMap<Product, ProductFormDto>()
+            .ForMember(d => d.AllergenIds, o => o.MapFrom(s => s.Allergens.Select(a => a.Id)));
         CreateMap<ProductFormDto, Product>()
             .ForMember(d => d.Category, o => o.Ignore())
             .ForMember(d => d.Extras, o => o.Ignore())
+            .ForMember(d => d.Allergens, o => o.Ignore())
             .ForMember(d => d.CreatedAt, o => o.Ignore())
             .ForMember(d => d.UpdatedAt, o => o.Ignore());
 

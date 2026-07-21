@@ -1,10 +1,21 @@
 /* --- Top: table strip --- */
+/* Card-like container (matches .pos__order's look) so it reads as its own block, bounded to
+   the left column's width — it never extends past the order panel's left edge since it's a
+   flex item inside .pos__left, which is grid column 1 of .pos. */
 .pos__tablebar {
     flex: none;
     display: flex;
+    align-items: center;
     gap: .5rem;
     overflow-x: auto;
-    padding-bottom: .15rem;
+    /* overflow-x: auto with no overflow-y forces overflow-y to auto too (CSS's visible->auto
+       pairing rule), which clips the hover/active box-shadow ring on the chips above and below
+       unless there's padding to give it room. */
+    padding: .5rem .6rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
 }
 .tableChip {
     flex: none;
@@ -20,8 +31,12 @@
     font: inherit;
     cursor: pointer;
     transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
 }
 .tableChip:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.tableChip:active { transform: translateY(0); }
+.tableChip:focus, .tableChip:focus-visible { outline: none; }
 .tableChip:disabled { opacity: .5; cursor: not-allowed; }
 .tableChip__name { font-weight: 800; font-size: .85rem; }
 .tableChip[data-status="occupied"] { border-color: color-mix(in srgb, var(--warning) 55%, var(--border)); }
@@ -37,7 +52,7 @@
 
 .pos {
     display: grid;
-    grid-template-columns: 1fr minmax(340px, 26rem);
+    grid-template-columns: 1fr minmax(280px, 21rem);
     gap: 1rem;
     /* Pulled up to cancel most of the page's own top padding, leaving a
        small gap under the topbar instead of sitting flush against it. */
@@ -50,14 +65,15 @@
    panel on the right can span that whole height and start at the same top
    edge as the table strip (not pushed down below it). */
 .pos__left { display: flex; flex-direction: column; gap: .7rem; min-height: 0; }
-.pos__main { flex: 1; display: grid; grid-template-columns: 84px 1fr; gap: 1rem; min-height: 0; }
+.pos__main { flex: 1; display: grid; grid-template-columns: 118px 1fr; gap: 1rem; min-height: 0; }
 
 /* --- Left rail: categories --- */
-.pos__cats { display: flex; flex-direction: column; gap: .4rem; overflow-y: auto; padding-right: .15rem; }
+.pos__cats { display: flex; flex-direction: column; gap: .25rem; overflow-y: auto; padding-right: .15rem; }
 
 .cat {
-    display: flex; flex-direction: column; align-items: center; gap: .3rem;
-    padding: .7rem .3rem;
+    display: flex; flex-direction: row; align-items: center; gap: .4rem;
+    flex: none;
+    padding: .4rem .5rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--card);
@@ -69,22 +85,23 @@
 .cat--active { border-color: var(--text); background: var(--card-2); }
 .cat__icon {
     display: grid; place-items: center;
-    width: 1.9rem; height: 1.9rem;
+    flex: none;
+    width: 1.6rem; height: 1.6rem;
     border-radius: 999px;
-    font-size: 1.05rem;
+    font-size: .9rem;
     background: color-mix(in srgb, var(--cat, var(--primary)) 15%, transparent);
     overflow: hidden;
 }
 .cat__icon img { width: 100%; height: 100%; object-fit: cover; }
-.cat__name { font-size: .7rem; font-weight: 600; text-align: center; line-height: 1.15; }
+.cat__name { font-size: .7rem; font-weight: 600; text-align: left; line-height: 1.15; white-space: nowrap; }
 
 /* --- Centre: products --- */
 .pos__products { display: flex; flex-direction: column; min-height: 0; }
 
 .product-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-    gap: .6rem;
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: .4rem;
     overflow-y: auto;
     padding: .2rem;
     align-content: start;
@@ -93,16 +110,22 @@
 .productCard {
     position: relative;
     display: flex; flex-direction: column; justify-content: space-between;
-    gap: .4rem;
-    min-height: 80px;
-    padding: .6rem;
+    gap: .25rem;
+    min-height: 64px;
+    padding: .45rem;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     background: var(--card);
     color: var(--text);
     cursor: pointer;
     text-align: left;
     transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+    /* A long-press adds the product and opens its customize dialog (see WatchLongPress in
+       Pos.razor) — these stop that hold from selecting text or popping the browser/OS
+       context menu on touch devices instead. */
+    user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
 }
 .productCard:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--text-soft); }
 .productCard:active { transform: translateY(-1px) scale(.99); }
@@ -122,12 +145,12 @@
 .productCard--img .productCard__name { position: relative; }
 .productCard--img .productCard__price { background: rgba(255, 255, 255, .16); color: #fff; }
 
-.productCard__name { display: flex; align-items: center; gap: .4rem; font-weight: 700; font-size: .88rem; line-height: 1.2; }
-.productCard__dot { flex: none; width: .45rem; height: .45rem; border-radius: 999px; background: var(--pc, var(--primary)); }
+.productCard__name { display: flex; align-items: center; gap: .3rem; font-weight: 700; font-size: .78rem; line-height: 1.2; }
+.productCard__dot { flex: none; width: .4rem; height: .4rem; border-radius: 999px; background: var(--pc, var(--primary)); }
 .productCard__price {
     align-self: flex-start;
-    font-size: .72rem; font-weight: 700;
-    padding: .1rem .45rem; border-radius: 999px;
+    font-size: .66rem; font-weight: 700;
+    padding: .08rem .4rem; border-radius: 999px;
     background: var(--card-2);
     color: var(--text-soft);
 }
@@ -138,23 +161,53 @@
 .pos__order { display: flex; flex-direction: column; min-height: 0; padding: .5rem .6rem; }
 .order__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .25rem; }
 .order__head h2 { margin: 0; }
+.order__head-right { display: flex; align-items: center; gap: .4rem; }
+.order__head-right .btn--icon { width: 26px; height: 26px; padding: 0; }
 .order__empty { display: grid; place-content: center; gap: .8rem; flex: 1; text-align: center; }
 
-.order__items { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: .3rem; }
+/* Fills all the space the order card has to give (totals stay pinned below via their own
+   margin-top: auto). Each group's own lines block scrolls independently once it passes 6
+   lines (see .order__group-lines--scroll below) instead of this outer box capping/scrolling
+   the whole list. */
+.order__items { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: .3rem; }
+
+.order__group-lines { display: flex; flex-direction: column; gap: .22rem; }
+
+/* Capped to 6 order lines tall (6 * line height + 5 * gap) so a long round within one course
+   scrolls on its own instead of pushing the other course groups out of view — same
+   max-height/overflow pattern as .order-card__lines--scroll in OrderCard.razor.css. */
+.order__group-lines--scroll { max-height: 12.5rem; overflow-y: auto; padding-right: .2rem; }
+
+/* Course headers shown once the ticket reaches 5 lines (see OrderSections in Pos.razor) — same
+   icon/label convention as OrderCard's .order-card__group, sized down to match this panel's
+   compact line list. */
+.order__group {
+    display: flex; align-items: center; gap: .3rem;
+    font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--primary);
+    margin-top: .3rem; padding-top: .3rem;
+    border-top: 1px solid var(--border);
+}
+.order__items > .order__group:first-child { margin-top: 0; padding-top: 0; border-top: none; }
 
 .orderLine {
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: .3rem .5rem;
+    padding: .2rem .45rem;
     background: var(--card-2);
 }
-.orderLine__main { display: flex; justify-content: space-between; font-weight: 700; font-size: .88rem; }
-.orderLine__price { font-size: .82rem; font-weight: 600; color: var(--text-soft); }
-.orderLine__ctrl { display: flex; align-items: center; gap: .25rem; margin-top: .25rem; }
-.orderLine__ctrl .btn--icon { width: 26px; height: 26px; padding: 0; }
-.orderLine__qty { min-width: 1.3rem; text-align: center; font-weight: 700; font-size: .88rem; }
-.orderLine__comment { margin-top: .25rem; font-size: .78rem; font-style: italic; }
-.orderLine__extras { margin-top: .2rem; font-size: .76rem; font-weight: 600; }
+.orderLine__main { display: flex; align-items: center; gap: .35rem; font-weight: 700; font-size: .78rem; }
+.orderLine__main .btn--icon { flex: none; width: 22px; height: 22px; padding: 0; }
+.orderLine__name { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.orderLine__price { flex: none; font-size: .74rem; font-weight: 600; color: color-mix(in srgb, var(--text-soft) 65%, transparent); }
+.orderLine__ctrl { flex: none; display: flex; align-items: center; gap: 0; }
+.orderLine__ctrl .btn--icon { width: 22px; height: 22px; padding: 0; margin-left: .2rem; }
+.orderLine__ctrl .btn--icon:first-child { margin-left: 0; }
+.orderLine__remove { width: 15px !important; height: 15px !important; }
+.orderLine__remove + .btn--icon { margin-left: 0; }
+.orderLine__qty { margin-left: .2rem; min-width: 1.1rem; text-align: center; font-weight: 700; font-size: .78rem; }
+.orderLine__comment { margin-top: .15rem; font-size: .7rem; font-style: italic; }
+.orderLine__extras { margin-top: .15rem; font-size: .68rem; font-weight: 600; }
 
 /* --- Product customization modal --- */
 .customize { display: flex; flex-direction: column; gap: 1rem; }
@@ -219,19 +272,20 @@
 }
 .pay__balance--due, .pay__balance--ok { background: var(--card-2); border: 1px solid var(--border); color: var(--text); }
 
-.order__totals { border-top: 1px solid var(--border); margin-top: .25rem; padding-top: .25rem; display: grid; gap: .15rem; }
-.order__totals > div { display: flex; justify-content: space-between; color: var(--text-soft); font-size: .82rem; }
+/* Now that .order__items is height-capped instead of flex-growing, this needs its own
+   push to stay pinned at the card's bottom edge rather than trailing right after a short list. */
+.order__totals { border-top: 1px solid var(--border); margin-top: auto; padding-top: .25rem; display: grid; gap: .15rem; }
+.order__totals > div { display: flex; justify-content: space-between; align-items: center; color: var(--text-soft); font-size: .82rem; }
 .order__grand { font-size: .92rem; font-weight: 800; color: var(--text) !important; }
+.order__grand-right { display: flex; align-items: center; gap: .6rem; }
 
-.order__actions { margin-top: .35rem; display: grid; gap: .3rem; }
 .order__pay { position: relative; }
-.order__pay .btn { padding: .45rem; }
-.order__actions .btn { padding: .45rem; font-size: .88rem; }
 
 /* Single "Pay" button opens a small menu instead of showing Cash/Card/Split side by side. */
 .pay-menu {
     position: absolute;
-    left: 0; right: 0; bottom: calc(100% + .4rem);
+    right: 0; bottom: calc(100% + .4rem);
+    min-width: 150px;
     display: flex; flex-direction: column; gap: .25rem;
     padding: .4rem;
     background: var(--card);
@@ -265,8 +319,12 @@
     color: var(--text);
     cursor: pointer;
     transition: transform var(--transition), box-shadow var(--transition);
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
 }
 .tablePick:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.tablePick:active { transform: translateY(0); }
+.tablePick:focus, .tablePick:focus-visible { outline: none; }
 .tablePick__name { font-weight: 800; font-size: 1.3rem; }
 .tablePick__seats { font-size: .8rem; color: var(--text-soft); }
 .tablePick--locked { opacity: .5; }
@@ -275,7 +333,7 @@
 
 @media (max-width: 1100px) {
     .pos { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
-    .pos__order { max-height: 46vh; }
+    .pos__order { max-height: 70vh; }
 }
 @media (max-width: 640px) {
     .pos__main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }

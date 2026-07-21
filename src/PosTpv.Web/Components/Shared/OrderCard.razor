@@ -5,18 +5,21 @@
 
 <div class="card order-card">
     <div class="order-card__head">
-        <div>
-            <strong><LucideIcon Name="armchair" Size="16" /> @Order.TableName</strong>
-            <span class="muted"> · @Order.Number</span>
+        <div class="order-card__title">
+            <LucideIcon Name="armchair" Size="16" />
+            <strong>@Order.TableName</strong>
+            <span class="muted order-card__number"> · @Order.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
         </div>
-        <span class="badge @StatusClass(Order.Status)">@Loc.T(Order.Status.ToString())</span>
+        <div class="order-card__head-right">
+            <span class="badge @StatusClass(Order.Status)">@Loc.T(Order.Status.ToString())</span>
+            <button class="btn btn--icon btn--ghost" title="@Loc.T("Edit")" @onclick="OnEditClick"><LucideIcon Name="pencil" Size="15" /></button>
+        </div>
     </div>
-    <div class="order-card__meta muted">@Order.WaiterName · @_itemCount @Loc.T("items") · @Order.CreatedAt.ToLocalTime().ToString("HH:mm")</div>
 
     @* All fire/serve actions grouped together, right under the meta line.
        None of them disappear once done — they switch to a muted, disabled state that keeps
        showing what happened and at what time, instead of vanishing from the card. *@
-    @if (_drinks.Count > 0 || _hasFirsts || _hasSeconds || _showServeFirsts)
+    @if (_drinks.Count > 0 || _hasFirsts || _hasSeconds || _hasDesserts || _showServeFirsts)
     {
         <div class="order-card__actions">
             @if (_drinks.Count > 0)
@@ -43,12 +46,36 @@
                     <LucideIcon Name="bell" Size="14" />@CourseLabel("Fire firsts", "Firsts fired", Order.FirstsFiredAt)
                 </button>
             }
+            @if (_showServeSeconds)
+            {
+                <button class="btn btn--sm @(_secondsPendingToServe ? "btn--primary" : "btn--ghost")"
+                        title="@(_secondsPendingToServe ? null : Loc.T("Click to undo"))"
+                        @onclick="OnToggleServeSecondsClick">
+                    <LucideIcon Name="utensils" Size="14" />@SecondsServeLabel()
+                </button>
+            }
             @if (_hasSeconds)
             {
                 <button class="btn btn--sm @(Order.SecondsFiredAt is null ? "btn--primary" : "btn--ghost")"
                         title="@(Order.SecondsFiredAt is null ? Loc.T("Tell the kitchen to start the second courses") : Loc.T("Click to undo"))"
                         @onclick="OnToggleSecondsClick">
                     <LucideIcon Name="bell" Size="14" />@CourseLabel("Fire seconds", "Seconds fired", Order.SecondsFiredAt)
+                </button>
+            }
+            @if (_showServeDesserts)
+            {
+                <button class="btn btn--sm @(_dessertsPendingToServe ? "btn--primary" : "btn--ghost")"
+                        title="@(_dessertsPendingToServe ? null : Loc.T("Click to undo"))"
+                        @onclick="OnToggleServeDessertsClick">
+                    <LucideIcon Name="cake-slice" Size="14" />@DessertsServeLabel()
+                </button>
+            }
+            @if (_hasDesserts)
+            {
+                <button class="btn btn--sm @(Order.DessertsFiredAt is null ? "btn--primary" : "btn--ghost")"
+                        title="@(Order.DessertsFiredAt is null ? Loc.T("Tell the kitchen to start the desserts") : Loc.T("Click to undo"))"
+                        @onclick="OnToggleDessertsClick">
+                    <LucideIcon Name="bell" Size="14" />@CourseLabel("Fire desserts", "Desserts fired", Order.DessertsFiredAt)
                 </button>
             }
         </div>
@@ -63,11 +90,27 @@
             @foreach (var group in _drinkGroups)
             {
                 <div class="order-card__drink-batch" data-served="@(group.ServedAt is not null ? "true" : "false")">
-                    @foreach (var it in group.Items)
+                    @foreach (var timeGroup in GroupByOrderTime(group.Items))
                     {
-                        <div class="order-card__line">
-                            <span>@it.Quantity× @it.ProductName <span class="order-card__time">@it.CreatedAt.ToLocalTime().ToString("HH:mm")</span></span>
-                        </div>
+                        @if (timeGroup.Items.Count > 1)
+                        {
+                            <div class="order-card__time-group">
+                                <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
+                                <div class="order-card__time-group-items">
+                                    @foreach (var it in timeGroup.Items)
+                                    {
+                                        <div class="order-card__line"><span>@it.Quantity× @it.ProductName</span></div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            var it = timeGroup.Items[0];
+                            <div class="order-card__line">
+                                <span>@it.Quantity× @it.ProductName <span class="order-card__time">@it.CreatedAt.ToLocalTime().ToString("HH:mm")</span></span>
+                            </div>
+                        }
                     }
                     @if (group.ServedAt is { } at)
                     {
@@ -88,12 +131,31 @@
             @foreach (var group in _starterGroups)
             {
                 <div class="order-card__drink-batch" data-served="@(group.ServedAt is not null ? "true" : "false")">
-                    @foreach (var it in group.Items)
+                    @foreach (var timeGroup in GroupByOrderTime(group.Items))
                     {
-                        <div class="order-card__line">
-                            <span>@it.Quantity× @it.ProductName <span class="order-card__time">@it.CreatedAt.ToLocalTime().ToString("HH:mm")</span></span>
-                            <span>@it.LineTotal.ToString("N2")</span>
-                        </div>
+                        @if (timeGroup.Items.Count > 1)
+                        {
+                            <div class="order-card__time-group">
+                                <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
+                                <div class="order-card__time-group-items">
+                                    @foreach (var it in timeGroup.Items)
+                                    {
+                                        <div class="order-card__line">
+                                            <span>@it.Quantity× @it.ProductName</span>
+                                            <span>@it.LineTotal.ToString("N2")</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            var it = timeGroup.Items[0];
+                            <div class="order-card__line">
+                                <span>@it.Quantity× @it.ProductName <span class="order-card__time">@it.CreatedAt.ToLocalTime().ToString("HH:mm")</span></span>
+                                <span>@it.LineTotal.ToString("N2")</span>
+                            </div>
+                        }
                     }
                     @if (group.ServedAt is { } at)
                     {
@@ -106,16 +168,91 @@
         </div>
     }
 
-    @* ---- Food, one block per remaining course (only non-empty blocks are shown) ---- *@
-    @foreach (var block in _foodBlocks)
+    @* ---- Second course: same served-batch/green-badge pattern as first course ---- *@
+    @if (_mains.Count > 0)
     {
-        <div class="order-card__group"><LucideIcon Name="@block.Icon" Size="16" /> @Loc.T(block.Label)</div>
+        <div class="order-card__group"><LucideIcon Name="utensils" Size="16" /> @Loc.T("Second course")</div>
         <div class="order-card__lines">
-            @foreach (var it in block.Items)
+            @foreach (var group in _mainGroups)
             {
-                <div class="order-card__line">
-                    <span>@it.Quantity× @it.ProductName <span class="order-card__time">@it.CreatedAt.ToLocalTime().ToString("HH:mm")</span></span>
-                    <span>@it.LineTotal.ToString("N2")</span>
+                <div class="order-card__drink-batch" data-served="@(group.ServedAt is not null ? "true" : "false")">
+                    @foreach (var timeGroup in GroupByOrderTime(group.Items))
+                    {
+                        @if (timeGroup.Items.Count > 1)
+                        {
+                            <div class="order-card__time-group">
+                                <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
+                                <div class="order-card__time-group-items">
+                                    @foreach (var it in timeGroup.Items)
+                                    {
+                                        <div class="order-card__line">
+                                            <span>@it.Quantity× @it.ProductName</span>
+                                            <span>@it.LineTotal.ToString("N2")</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            var it = timeGroup.Items[0];
+                            <div class="order-card__line">
+                                <span>@it.Quantity× @it.ProductName <span class="order-card__time">@it.CreatedAt.ToLocalTime().ToString("HH:mm")</span></span>
+                                <span>@it.LineTotal.ToString("N2")</span>
+                            </div>
+                        }
+                    }
+                    @if (group.ServedAt is { } at)
+                    {
+                        <button class="badge badge--success badge--btn" title="@Loc.T("Mark as not served")" @onclick="() => OnUnserveSecondBatchClick(group)">
+                            <LucideIcon Name="rotate-ccw" Size="11" />@Loc.T("Served") · @at.ToLocalTime().ToString("HH:mm")
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    @* ---- Desserts: same served-batch/green-badge pattern as first course ---- *@
+    @if (_desserts.Count > 0)
+    {
+        <div class="order-card__group"><LucideIcon Name="cake-slice" Size="16" /> @Loc.T("Desserts")</div>
+        <div class="order-card__lines">
+            @foreach (var group in _dessertGroups)
+            {
+                <div class="order-card__drink-batch" data-served="@(group.ServedAt is not null ? "true" : "false")">
+                    @foreach (var timeGroup in GroupByOrderTime(group.Items))
+                    {
+                        @if (timeGroup.Items.Count > 1)
+                        {
+                            <div class="order-card__time-group">
+                                <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
+                                <div class="order-card__time-group-items">
+                                    @foreach (var it in timeGroup.Items)
+                                    {
+                                        <div class="order-card__line">
+                                            <span>@it.Quantity× @it.ProductName</span>
+                                            <span>@it.LineTotal.ToString("N2")</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            var it = timeGroup.Items[0];
+                            <div class="order-card__line">
+                                <span>@it.Quantity× @it.ProductName <span class="order-card__time">@it.CreatedAt.ToLocalTime().ToString("HH:mm")</span></span>
+                                <span>@it.LineTotal.ToString("N2")</span>
+                            </div>
+                        }
+                    }
+                    @if (group.ServedAt is { } at)
+                    {
+                        <button class="badge badge--success badge--btn" title="@Loc.T("Mark as not served")" @onclick="() => OnUnserveDessertBatchClick(group)">
+                            <LucideIcon Name="rotate-ccw" Size="11" />@Loc.T("Served") · @at.ToLocalTime().ToString("HH:mm")
+                        </button>
+                    }
                 </div>
             }
         </div>
@@ -123,9 +260,8 @@
     </div>
 
     <div class="order-card__foot">
-        <button class="btn btn--ghost btn--sm" @onclick="OnEditClick"><LucideIcon Name="pencil" Size="15" />@Loc.T("Edit")</button>
-        <span class="spacer"></span>
         <strong>@Order.Total.ToString("N2")</strong>
+        <span class="spacer"></span>
         <button class="btn btn--success" @onclick="OnPayClick"><LucideIcon Name="credit-card" Size="16" />@Loc.T("Charge")</button>
     </div>
 </div>
@@ -149,10 +285,26 @@
     [Parameter] public EventCallback<int> OnFireFirsts { get; set; }
     /// <summary>Undo firing the first courses (carries the order id).</summary>
     [Parameter] public EventCallback<int> OnUnfireFirsts { get; set; }
+    /// <summary>Serve every ready second-course line of this order (carries the order id).</summary>
+    [Parameter] public EventCallback<int> OnServeSeconds { get; set; }
+    /// <summary>Undo serving every second-course line of this order at once (carries the order id).</summary>
+    [Parameter] public EventCallback<int> OnUnserveSeconds { get; set; }
+    /// <summary>Undo serving a single second-course line (carries the order item id).</summary>
+    [Parameter] public EventCallback<int> OnUnserveSecondItem { get; set; }
     /// <summary>Fire the second courses for this order (carries the order id).</summary>
     [Parameter] public EventCallback<int> OnFireSeconds { get; set; }
     /// <summary>Undo firing the second courses (carries the order id).</summary>
     [Parameter] public EventCallback<int> OnUnfireSeconds { get; set; }
+    /// <summary>Serve every ready dessert line of this order (carries the order id).</summary>
+    [Parameter] public EventCallback<int> OnServeDesserts { get; set; }
+    /// <summary>Undo serving every dessert line of this order at once (carries the order id).</summary>
+    [Parameter] public EventCallback<int> OnUnserveDesserts { get; set; }
+    /// <summary>Undo serving a single dessert line (carries the order item id).</summary>
+    [Parameter] public EventCallback<int> OnUnserveDessertItem { get; set; }
+    /// <summary>Fire the desserts for this order (carries the order id).</summary>
+    [Parameter] public EventCallback<int> OnFireDesserts { get; set; }
+    /// <summary>Undo firing the desserts (carries the order id).</summary>
+    [Parameter] public EventCallback<int> OnUnfireDesserts { get; set; }
     /// <summary>Open the editor for this order (carries the order id).</summary>
     [Parameter] public EventCallback<int> OnEdit { get; set; }
     /// <summary>Open the payment dialog for this order (carries the order id).</summary>
@@ -167,9 +319,16 @@
     private bool _firstsPendingToServe;                 // has ready-but-not-served first courses
     private bool _showServeFirsts;                      // something ready or already served, so the button is relevant
     private bool _hasFirsts;                            // has first courses (drives the "Fire firsts" button)
+    private List<OrderItemDto> _mains = new();
+    private List<DrinkGroup> _mainGroups = new();
+    private bool _secondsPendingToServe;                // has ready-but-not-served second courses
+    private bool _showServeSeconds;                     // something ready or already served, so the button is relevant
     private bool _hasSeconds;                           // has second courses (drives the "Fire seconds" button)
-    private List<FoodBlock> _foodBlocks = new();
-    private int _itemCount;
+    private List<OrderItemDto> _desserts = new();
+    private List<DrinkGroup> _dessertGroups = new();
+    private bool _dessertsPendingToServe;               // has ready-but-not-served desserts
+    private bool _showServeDesserts;                    // something ready or already served, so the button is relevant
+    private bool _hasDesserts;                          // has desserts (drives the "Fire desserts" button)
 
     protected override void OnParametersSet()
     {
@@ -186,11 +345,9 @@
 
     private void Repartition()
     {
-        _itemCount = 0;
         List<OrderItemDto> drinks = new(), starters = new(), mains = new(), desserts = new();
         foreach (var it in Order.Items)
         {
-            _itemCount += it.Quantity;
             if (it.IsDrink) { drinks.Add(it); continue; }
             switch (it.Course)
             {
@@ -210,12 +367,18 @@
         _showServeFirsts = starters.Any(s => s.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered);
 
         _hasFirsts = starters.Count > 0;
+
+        _mains = mains;
+        _mainGroups = GroupByServeBatch(mains);
+        _secondsPendingToServe = mains.Any(s => s.Status == OrderItemStatus.Ready);
+        _showServeSeconds = mains.Any(s => s.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered);
         _hasSeconds = mains.Count > 0;
 
-        // Fixed order: Second course → Desserts (First course renders separately, above). Empty blocks are omitted.
-        _foodBlocks = new(2);
-        if (mains.Count > 0) _foodBlocks.Add(new("utensils", "Second course", mains));
-        if (desserts.Count > 0) _foodBlocks.Add(new("cake-slice", "Desserts", desserts));
+        _desserts = desserts;
+        _dessertGroups = GroupByServeBatch(desserts);
+        _dessertsPendingToServe = desserts.Any(s => s.Status == OrderItemStatus.Ready);
+        _showServeDesserts = desserts.Any(s => s.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered);
+        _hasDesserts = desserts.Count > 0;
     }
 
     // A "Serve drinks" click stamps every drink it touches with the exact same UpdatedAt (one
@@ -231,6 +394,24 @@
                 groups[^1].Items.Add(it);
             else
                 groups.Add(new DrinkGroup(servedAt, new List<OrderItemDto> { it }));
+        }
+        return groups;
+    }
+
+    // Groups consecutive lines that were ordered in the same minute — e.g. three waters tapped
+    // one after another — under one shared timestamp with a connecting bracket, instead of
+    // repeating the same "12:44" on every line, so it reads at a glance as "these 3 were
+    // ordered together" rather than three coincidentally-identical times.
+    private static List<TimeGroup> GroupByOrderTime(List<OrderItemDto> items)
+    {
+        var groups = new List<TimeGroup>();
+        foreach (var it in items)
+        {
+            var minute = new DateTime(it.CreatedAt.Year, it.CreatedAt.Month, it.CreatedAt.Day, it.CreatedAt.Hour, it.CreatedAt.Minute, 0, it.CreatedAt.Kind);
+            if (groups.Count > 0 && groups[^1].Time == minute)
+                groups[^1].Items.Add(it);
+            else
+                groups.Add(new TimeGroup(minute, new List<OrderItemDto> { it }));
         }
         return groups;
     }
@@ -251,6 +432,20 @@
         if (_firstsPendingToServe) return Loc.T("Serve firsts");
         var lastServedAt = _starters.Where(s => s.Status == OrderItemStatus.Delivered).Max(s => (DateTime?)s.UpdatedAt);
         return lastServedAt is null ? Loc.T("Firsts served") : $"{Loc.T("Firsts served")} · {lastServedAt.Value.ToLocalTime():HH:mm}";
+    }
+
+    private string SecondsServeLabel()
+    {
+        if (_secondsPendingToServe) return Loc.T("Serve seconds");
+        var lastServedAt = _mains.Where(s => s.Status == OrderItemStatus.Delivered).Max(s => (DateTime?)s.UpdatedAt);
+        return lastServedAt is null ? Loc.T("Seconds served") : $"{Loc.T("Seconds served")} · {lastServedAt.Value.ToLocalTime():HH:mm}";
+    }
+
+    private string DessertsServeLabel()
+    {
+        if (_dessertsPendingToServe) return Loc.T("Serve desserts");
+        var lastServedAt = _desserts.Where(s => s.Status == OrderItemStatus.Delivered).Max(s => (DateTime?)s.UpdatedAt);
+        return lastServedAt is null ? Loc.T("Desserts served") : $"{Loc.T("Desserts served")} · {lastServedAt.Value.ToLocalTime():HH:mm}";
     }
 
     // Clicking the grouped drinks button toggles: serve every pending drink, or — once they're
@@ -276,6 +471,26 @@
     {
         foreach (var it in group.Items) await OnUnserveFirstItem.InvokeAsync(it.Id);
     }
+
+    // Same toggle/badge pattern as firsts: serve every ready second course, or — once they're
+    // all served — undo and put them all back to ready.
+    private Task OnToggleServeSecondsClick() => _secondsPendingToServe
+        ? OnServeSeconds.InvokeAsync(Order.Id)
+        : OnUnserveSeconds.InvokeAsync(Order.Id);
+    private async Task OnUnserveSecondBatchClick(DrinkGroup group)
+    {
+        foreach (var it in group.Items) await OnUnserveSecondItem.InvokeAsync(it.Id);
+    }
+
+    // Same toggle/badge pattern as firsts: serve every ready dessert, or — once they're
+    // all served — undo and put them all back to ready.
+    private Task OnToggleServeDessertsClick() => _dessertsPendingToServe
+        ? OnServeDesserts.InvokeAsync(Order.Id)
+        : OnUnserveDesserts.InvokeAsync(Order.Id);
+    private async Task OnUnserveDessertBatchClick(DrinkGroup group)
+    {
+        foreach (var it in group.Items) await OnUnserveDessertItem.InvokeAsync(it.Id);
+    }
     // Same toggle pattern as the drinks button: click to fire, click again to undo.
     private Task OnToggleFirstsClick() => Order.FirstsFiredAt is null
         ? OnFireFirsts.InvokeAsync(Order.Id)
@@ -283,6 +498,9 @@
     private Task OnToggleSecondsClick() => Order.SecondsFiredAt is null
         ? OnFireSeconds.InvokeAsync(Order.Id)
         : OnUnfireSeconds.InvokeAsync(Order.Id);
+    private Task OnToggleDessertsClick() => Order.DessertsFiredAt is null
+        ? OnFireDesserts.InvokeAsync(Order.Id)
+        : OnUnfireDesserts.InvokeAsync(Order.Id);
     private Task OnEditClick() => OnEdit.InvokeAsync(Order.Id);
     private Task OnPayClick() => OnPay.InvokeAsync(Order.Id);
 
@@ -294,6 +512,6 @@
         _ => ""
     };
 
-    private sealed record FoodBlock(string Icon, string Label, List<OrderItemDto> Items);
     private sealed record DrinkGroup(DateTime? ServedAt, List<OrderItemDto> Items);
+    private sealed record TimeGroup(DateTime Time, List<OrderItemDto> Items);
 }

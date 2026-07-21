@@ -19,6 +19,15 @@ public class UserFormDto
 
 public record ExtraDto(int Id, string Name, decimal Price);
 
+public record AllergenDto(int Id, string Name, string? ImageUrl);
+
+public class AllergenFormDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
+}
+
 public record CategoryDto(int Id, string Name, string? Icon, string Color, string? ImageUrl, int DisplayOrder, bool IsVisible, CategoryKind Kind = CategoryKind.Food, int ProductCount = 0);
 
 public class CategoryFormDto
@@ -45,7 +54,7 @@ public class CategoryCommentDto
 public record ProductDto(
     int Id, string Name, string? Description, decimal Price, decimal VatRate,
     string Color, string? ImageUrl, int DisplayOrder, bool IsVisible, bool IsAvailable,
-    int PreparationMinutes, string? Ingredients, string? Allergens, int CategoryId, string CategoryName,
+    int PreparationMinutes, string? Ingredients, IReadOnlyList<AllergenDto> Allergens, int CategoryId, string CategoryName,
     bool HasExtras);
 
 public class ProductFormDto
@@ -62,6 +71,6 @@ public class ProductFormDto
     public bool IsAvailable { get; set; } = true;
     public int PreparationMinutes { get; set; }
     public string? Ingredients { get; set; }
-    public string? Allergens { get; set; }
+    public List<int> AllergenIds { get; set; } = new();
     public int CategoryId { get; set; }
 }

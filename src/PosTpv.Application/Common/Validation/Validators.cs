@@ -27,6 +27,15 @@ public class ProductFormValidator : AbstractValidator<ProductFormDto>
     }
 }
 
+public class AllergenFormValidator : AbstractValidator<AllergenFormDto>
+{
+    public AllergenFormValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(80);
+        RuleFor(x => x.ImageUrl).MaximumLength(300);
+    }
+}
+
 public class TableFormValidator : AbstractValidator<TableFormDto>
 {
     public TableFormValidator()

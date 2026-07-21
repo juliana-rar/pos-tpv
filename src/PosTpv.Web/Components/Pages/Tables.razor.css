@@ -6,8 +6,23 @@
     flex-direction: column;
     align-items: center;
     gap: .35rem;
+    padding: .6rem 1rem;
     /* Pull it up against the topbar, cancelling most of the page's own top padding. */
-    margin: -1rem auto .8rem;
+    margin: -1rem 0 .8rem;
+}
+/* Narrower than .resv__head-date on purpose — full date-pill width left too much empty
+   space around just two icons. Bordered pill, same shape as .resv__stats-actions
+   (app.css) on the /reservations dashboard. */
+.tables-datebar__actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .15rem;
+    width: 100px;
+    padding: 3px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--card-2);
 }
 
 .floor-panel {
@@ -26,7 +41,8 @@
 /* Kept as one flex item so the three buttons wrap onto their own line together
    instead of splitting — "Edit layout" landing alone below "Join tables" on narrow screens. */
 .toolbar-actions { display: flex; gap: .5rem; flex-wrap: nowrap; }
-.legend__item { display: inline-flex; align-items: center; gap: .3rem; font-size: .74rem; color: var(--text-soft); font-weight: 600; }
+.toolbar-actions .btn--icon { width: 32px; height: 32px; padding: 0; }
+.legend__item { display: inline-flex; align-items: center; gap: .3rem; font-size: .74rem; line-height: 1; color: var(--text-soft); font-weight: 600; }
 .dot { width: .55rem; height: .55rem; border-radius: 50%; display: inline-block; }
 .dot--available { background: var(--success); }
 .dot--occupied { background: var(--warning); }
@@ -36,11 +52,7 @@
 
 .zone-filter { display: flex; flex-wrap: wrap; gap: .4rem; }
 
-/* .floor-wrap doesn't scroll itself — it just gives the expand button a fixed
-   frame to anchor to, so it stays in the top-right corner no matter how far
-   .floor is scrolled inside it (an absolutely-positioned child of .floor would
-   scroll away with the floor plan content instead). */
-.floor-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+.floor-wrap { flex: 1 1 auto; min-height: 0; display: flex; }
 
 .floor {
     position: relative;
@@ -70,6 +82,11 @@
 .tbl--round { border-radius: 50%; }
 .tbl--oval { border-radius: 50%; }
 
+/* Border colour mirrors the Free/Occupied/Reserved legend dots at the top of the map. */
+.tbl--available { border-color: color-mix(in srgb, var(--success) 45%, var(--border)); }
+.tbl--occupied { border-color: var(--warning); }
+.tbl--reserved { border-color: var(--secondary); }
+
 .tbl--locked { opacity: .6; }
 
 /* Text content is counter-rotated so labels stay upright/centred even when the
@@ -83,7 +100,9 @@
 .tbl__name { font-weight: 800; }
 .tbl__name--group { font-size: .78rem; line-height: 1.1; text-align: center; max-width: 100%; }
 .tbl__seats { font-size: .72rem; color: var(--text-soft); }
-.tbl__total { font-size: .74rem; font-weight: 700; color: var(--primary); }
+/* Extra clearance from the reservation-time badge (.tbl__resv), which hangs off the bottom
+   edge of the table box — without this the customer name crowds right up against it. */
+.tbl__total { font-size: .74rem; font-weight: 700; color: var(--primary); margin-bottom: .35rem; }
 
 /* ---- Edit mode ------------------------------------------------------------ */
 .floor-hint { margin: 0 0 .8rem; font-size: .85rem; }
@@ -207,20 +226,18 @@
 /* Visually place the reservations panel before the floor plan (left side) without
    reordering the markup, so the drag/resize JS (keyed off the .floor element) is untouched. */
 .floor-layout--split .resv { order: -1; }
-
-/* Expand/minimise toggle sitting in the map's own top-right corner. It's a
-   sibling of the scrolling .floor (inside the non-scrolling .floor-wrap), so it
-   stays anchored to the visible viewport instead of scrolling away with the
-   floor plan content when the map is panned horizontally or vertically. */
-.floor__expand {
-    position: absolute;
-    top: .6rem;
-    right: .6rem;
-    z-index: 5;
-    background: var(--card);
-}
 .floor-layout--map-expanded .resv { display: none; }
-.floor-layout--map-expanded .floor-panel { height: calc(100vh - 160px); }
+/* Fixed + covers the whole viewport (topbar included) so the map reads as truly
+   fullscreen instead of just growing within the page's own padding. */
+.floor-layout--map-expanded {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: var(--background);
+    padding: .8rem;
+    margin: 0;
+}
+.floor-layout--map-expanded .floor-panel { height: 100%; }
 
 /* Assign mode: clicking a table books the selected reservation onto it. */
 .floor-hint--assign { display: flex; align-items: center; gap: .6rem; font-weight: 600; }
@@ -248,26 +265,7 @@
     overflow: hidden;
     padding: 0;
 }
-/* Collapsed to a thin rail — click anywhere on it to expand. */
-.resv--collapsed { flex: 0 0 46px; }
-.resv__rail {
-    flex: 1 1 auto;
-    display: flex; flex-direction: column; align-items: center; gap: .8rem;
-    padding: .9rem .2rem;
-    border: none; background: none; cursor: pointer;
-    color: var(--text); font: inherit;
-}
-.resv__rail:hover { background: var(--card-2); }
-.resv__rail-icon { font-size: 1.15rem; }
-.resv__rail-label { writing-mode: vertical-rl; font-weight: 600; font-size: .85rem; letter-spacing: .02em; }
-.resv__rail-count {
-    display: inline-flex; align-items: center; justify-content: center;
-    min-width: 1.4rem; height: 1.4rem; padding: 0 .35rem;
-    border-radius: 999px; background: var(--primary); color: #fff;
-    font-size: .75rem; font-weight: 700;
-}
-
-.resv__head { display: flex; align-items: center; gap: .4rem; padding: .55rem .75rem; border-bottom: 1px solid var(--border); }
+.resv__head { display: flex; align-items: center; gap: .5rem; padding: .55rem .75rem; border-bottom: 1px solid var(--border); }
 .resv__head h2 {
     display: flex; align-items: center; gap: .35rem;
     margin: 0;
@@ -275,31 +273,14 @@
     color: var(--text-soft);
     white-space: nowrap;
 }
-.resv__head .btn--primary { padding: .4rem .6rem; font-size: .78rem; }
-.resv__collapse { width: 30px; height: 30px; padding: 0; }
+/* Compact Lunch/Dinner toggle to the left of "New reservation" — click the active one
+   again to clear the filter, so no separate "All" option is needed in this tight space. */
+.resv__head-periods { margin: 0; padding: 2px; flex: none; }
+.resv__head-periods .tabs__opt { padding: .32rem .5rem; }
+.resv__new-btn { flex: none; box-shadow: var(--shadow-sm); }
 
-/* Day nav + stats link, now living in the page-wide .tables-datebar. */
-.resv__day-nav { display: flex; align-items: center; justify-content: center; gap: .5rem; }
-.resv__day-nav .btn--icon { width: 32px; height: 32px; border-radius: 999px; }
-.resv__head-date {
-    max-width: 160px;
-    padding: .55rem .8rem;
-    font-size: .9rem;
-    font-weight: 600;
-    text-align: center;
-    border-radius: 999px;
-    box-shadow: var(--shadow-sm);
-}
-/* Small, unobtrusive link to the full dashboard, centred right under the date. */
-.resv__stats-btn {
-    display: inline-flex; align-items: center; gap: .3rem;
-    border: none; background: none; cursor: pointer;
-    color: var(--text-soft);
-    font-size: .68rem; font-weight: 600;
-    padding: 0;
-    transition: color var(--transition);
-}
-.resv__stats-btn:hover { color: var(--primary); }
+/* Day nav (.resv__day-nav / .resv__head-date) and the small icon actions under it
+   (.resv__stats-btn) now live in app.css — shared with the reservations dashboard. */
 .resv__assigning {
     display: flex; align-items: center; gap: .5rem; justify-content: space-between;
     margin: 0 1rem .6rem;
@@ -311,12 +292,7 @@
     font-weight: 600; font-size: .82rem;
 }
 
-/* Lunch/Dinner service filter for the day's reservation list — reuses the shared .tabs
-   component (Settings page) but tightened to fit the sidebar's width. */
-.resv__period-tabs { margin: .6rem 1rem; }
-.resv__period-tabs .tabs__opt { padding: .35rem .65rem; font-size: .78rem; gap: .3rem; }
-.resv__period-tabs .tabs__opt--on .muted { color: inherit; opacity: .8; }
-.resv__list { flex: 1 1 auto; overflow: auto; padding: .1rem 1rem 1rem; display: flex; flex-direction: column; gap: .4rem; }
+.resv__list { flex: 1 1 auto; overflow: auto; padding: .6rem 1rem 1rem; display: flex; flex-direction: column; gap: .4rem; }
 
 .resv-card {
     padding: .4rem .55rem;
@@ -327,12 +303,66 @@
 }
 .resv-card--active { box-shadow: 0 0 0 2px var(--text); }
 .resv-card__top { display: flex; align-items: center; gap: .4rem; font-size: .8rem; }
+.resv-card__top .btn--icon { flex: none; width: 24px; height: 24px; padding: 0; }
+.resv-card__settings-btn--on { background: var(--card); color: var(--text); }
 .resv-card__period { display: inline-flex; color: var(--text-soft); }
 .resv-card__name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.resv-card__meta { display: flex; align-items: center; gap: .25rem; flex-wrap: wrap; font-size: .7rem; margin: .2rem 0 .35rem; }
+.resv-card__meta { display: flex; align-items: center; gap: .2rem; flex-wrap: wrap; font-size: .7rem; margin: .2rem 0 .35rem; }
+.resv-card__stat { display: inline-flex; align-items: center; gap: .1rem; }
+/* Reassign/Unassign: much smaller than the card's other .btn--sm actions (Seat, Mark as
+   left), so both fit on the same line as those instead of wrapping to a second row. Grouped
+   in their own flex span so that if the line does run out of room, the pair wraps together
+   instead of splitting Unassign onto its own row away from Reassign. */
+.resv-card__assign-actions { display: inline-flex; flex: none; gap: .2rem; }
+.resv-card__mini-btn { flex: none; padding: .1rem .35rem; font-size: .6rem; font-weight: 600; }
+/* Status badge doubles as a <select> so it can be changed right from the card,
+   without opening the edit modal — same pill look as .badge, no native chrome. */
+.resv-card__status {
+    border: none;
+    -webkit-appearance: none;
+    appearance: none;
+    font: inherit;
+    letter-spacing: .01em;
+    cursor: pointer;
+    transition: transform var(--transition), box-shadow var(--transition), filter var(--transition);
+}
+.resv-card__status:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); filter: brightness(0.96); }
+.resv-card__status:active { transform: translateY(0); }
+.resv-card__status:focus, .resv-card__status:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 35%, transparent);
+}
+
+/* Custom status dropdown: a plain <select>'s option list is native browser chrome and can't
+   follow the app's light/dark theme, so this is a small card-styled menu instead (same pattern
+   as .pay-menu in Pos.razor.css) — it always matches the current theme via the --card/--border
+   variables. */
+.resv-status { position: relative; }
+.resv-status__menu {
+    position: absolute;
+    top: calc(100% + .3rem);
+    right: 0;
+    min-width: 130px;
+    display: flex; flex-direction: column; gap: .15rem;
+    padding: .35rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    z-index: 20;
+    animation: pop var(--transition);
+}
+.resv-status__opt {
+    display: flex;
+    padding: .2rem;
+    border: none; border-radius: var(--radius-sm);
+    background: transparent;
+    cursor: pointer;
+    transition: background var(--transition);
+}
+.resv-status__opt:hover { background: var(--card-2); }
+.resv-status__opt--on { box-shadow: inset 0 0 0 1px var(--border); }
 .resv-card__tables { display: inline-flex; flex-wrap: wrap; gap: .25rem; }
-.resv-card__actions { display: flex; gap: .25rem; flex-wrap: wrap; }
-.resv-card__actions .btn--sm { padding: .25rem .5rem; font-size: .72rem; }
 
 /* ---- Reservation form: a single flowing column, tables first --------------- */
 /* Deliberately narrower than a two-column layout — a single readable column
@@ -342,16 +372,46 @@
 /* Field rows: auto-fit collapses to one column on narrow/mobile screens with
    no extra media query needed. */
 .resv-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; }
-.resv-row--3 { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
-/* Guest row: name, party size (narrow) and phone side by side on one line —
-   kept in one row even on narrow screens (that's the point), just with a
+.resv-row--phone-when { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+/* Guest row: name, party size, children, high chairs and the computed total side by side
+   on one line — kept in one row even on narrow screens (that's the point), just with a
    tighter ratio so the inputs still have breathing room. */
-.resv-row--guest { grid-template-columns: 1.8fr 1fr 1.3fr; }
-@media (max-width: 480px) {
-    .resv-row--guest { grid-template-columns: 1.6fr .8fr 1.1fr; gap: .4rem; }
+.resv-row--guest { grid-template-columns: 1.6fr .6fr .6fr .6fr .6fr; }
+@media (max-width: 700px) {
+    /* Five fields no longer fit legibly in one row on a phone — wrap instead of squeezing. */
+    .resv-row--guest { grid-template-columns: 1fr 1fr; gap: .5rem; }
 }
 
-.resv-quick-time { display: flex; gap: .4rem; margin: -.15rem 0 .5rem; }
+/* ---- Lunch/Dinner picker: big, tappable service cards, not a small button row ------- */
+.period-picker { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-bottom: .6rem; }
+.period-opt {
+    display: flex; flex-direction: column; align-items: center; gap: .3rem;
+    padding: .9rem .6rem;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--card-2); color: var(--text-soft);
+    font: inherit; cursor: pointer;
+    transition: transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition), box-shadow var(--transition);
+}
+.period-opt:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.period-opt__label { font-weight: 800; font-size: 1rem; color: var(--text); }
+.period-opt__time { font-size: .8rem; }
+.period-opt--on {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 12%, var(--card));
+    color: var(--primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent);
+}
+.period-opt--on .period-opt__label { color: var(--primary); }
+
+/* ---- Read-only field: same box as .input, used for the computed guest total ---------- */
+.field-static {
+    display: flex; align-items: center;
+    min-height: 2.4rem;
+    padding: .5rem .8rem;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--card-2); color: var(--text);
+    font-weight: 800;
+}
 
 /* Tighter vertical rhythm so the whole form fits without scrolling on most screens. */
 .resv-form .modal-section { margin-top: .4rem; padding-top: .3rem; }
@@ -372,7 +432,7 @@
 .tbl-chip--on { border-color: var(--text); background: var(--card); color: var(--text); font-weight: 800; }
 .tbl-chip__seats { display: inline-flex; align-items: center; gap: .15rem; font-size: .76rem; color: var(--text-soft); }
 .tbl-chip--on .tbl-chip__seats { color: var(--text); }
-.tbl-chip--sm { padding: .12rem .5rem; font-size: .72rem; font-weight: 700; background: var(--card); border-color: var(--border); cursor: default; }
+.tbl-chip--sm { padding: .12rem .5rem; font-size: .72rem; font-weight: 700; background: var(--card); border-color: var(--border); }
 .tbl-pick__summary { margin-bottom: .3rem; }
 
 .field-hint { display: flex; align-items: center; gap: .4rem; margin: -.5rem 0 .9rem; font-size: .8rem; }
@@ -391,8 +451,4 @@
 @media (max-width: 900px) {
     .floor-layout--split { flex-direction: column; }
     .resv { flex-basis: auto; height: 420px; }
-    /* Collapsed panel becomes a short horizontal bar on narrow screens. */
-    .resv--collapsed { flex: 0 0 auto; height: auto; }
-    .resv--collapsed .resv__rail { flex-direction: row; padding: .7rem 1rem; }
-    .resv--collapsed .resv__rail-label { writing-mode: horizontal-tb; }
 }

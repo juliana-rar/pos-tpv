@@ -1,0 +1,53 @@
+@* Interactive island, mirroring NavMenu's mechanism (MainLayout itself is static so pages
+   that opt out of interactivity, like Login, keep working). The toggle button lives here
+   (the topbar's far right corner, after the spacer) rather than in NavMenu, so it always
+   sits at the true top-right edge of the bar; NavMenu still holds the shared NavMoreState
+   and reacts to it for the admin-ish links it reveals. The brand logo/title sit last in the
+   revealed group, immediately to the left of the toggle. *@
+@rendermode InteractiveServer
+@implements IDisposable
+@inject NavMoreState More
+@inject AppSettingsCache Branding
+
+@if (More.IsOpen)
+{
+    <TopbarControls />
+
+    <AuthorizeView>
+        <Authorized>
+            <div class="topbar__user">
+                <span class="topbar__name">@context.User.Identity?.Name</span>
+            </div>
+            <form method="post" action="/account/logout">
+                <button class="btn btn--ghost btn--icon topbar__logout" type="submit" title="@Loc.T("Sign out")"><LucideIcon Name="log-out" Size="16" /></button>
+            </form>
+        </Authorized>
+    </AuthorizeView>
+
+    <div class="nav__brand">
+        <span class="nav__logo"><LucideIcon Name="pizza" Size="18" /></span>
+        <span class="nav__title">@Branding.Current.Title</span>
+    </div>
+}
+
+<button type="button" class="nav__link--more @(More.IsOpen ? "active" : "")"
+        @onclick="() => More.Toggle()" title="@Loc.T("More options")">
+    <LucideIcon Name="sliders-horizontal" Size="15" />
+</button>
+
+@code {
+    protected override void OnInitialized()
+    {
+        More.Changed += OnMoreChanged;
+        Branding.Changed += OnBrandingChanged;
+    }
+
+    private void OnMoreChanged() => InvokeAsync(StateHasChanged);
+    private void OnBrandingChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        More.Changed -= OnMoreChanged;
+        Branding.Changed -= OnBrandingChanged;
+    }
+}

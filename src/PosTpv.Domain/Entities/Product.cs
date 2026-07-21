@@ -16,10 +16,10 @@ public class Product : BaseEntity
     public bool IsAvailable { get; set; } = true;
     public int PreparationMinutes { get; set; }
     public string? Ingredients { get; set; }
-    public string? Allergens { get; set; }
 
     public int CategoryId { get; set; }
     public Category Category { get; set; } = null!;
 
     public ICollection<Extra> Extras { get; set; } = new List<Extra>();
+    public ICollection<Allergen> Allergens { get; set; } = new List<Allergen>();
 }

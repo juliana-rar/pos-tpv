@@ -1,21 +1,21 @@
 @* Role-aware navigation, rendered inline inside the topbar (no separate sidebar column).
    Icon-only: labels are dropped everywhere (desktop and mobile) and shown as a title tooltip
-   instead, to keep the bar compact. Interactive (like TopbarControls) so the brand title can
-   live-update when Settings saves, and NavLink's active-route highlighting doesn't need a full
-   page reload. Safe to make interactive directly (unlike MainLayout) since NavMenu takes no
-   RenderFragment parameters. *@
+   instead, to keep the bar compact. Interactive so NavLink's active-route highlighting doesn't
+   need a full page reload. Safe to make interactive directly (unlike MainLayout) since NavMenu
+   takes no RenderFragment parameters. The brand logo/title live in TopbarExtras now, next to
+   the "more" toggle, since both only show while it's open. *@
 @rendermode InteractiveServer
 @implements IDisposable
-@inject AppSettingsCache Branding
-
-<div class="nav__brand">
-    <span class="nav__logo"><LucideIcon Name="pizza" Size="18" /></span>
-    <span class="nav__title">@Branding.Current.Title</span>
-</div>
+@inject NavMoreState More
 
 <button class="nav__burger btn btn--icon btn--ghost" @onclick="() => _mobileOpen = !_mobileOpen" title="@Loc.T("Menu")">
     <LucideIcon Name="@(_mobileOpen ? "x" : "menu")" Size="20" />
 </button>
+
+@if (_mobileOpen)
+{
+    <button type="button" class="nav__scrim" @onclick="CloseMobile" aria-label="@Loc.T("Close menu")"></button>
+}
 
 <nav class="nav__links @(_mobileOpen ? "nav__links--open" : "")">
     <NavLink class="nav__link" href="/" Match="NavLinkMatch.All" title="@Loc.T("Home")" @onclick="CloseMobile">
@@ -38,32 +38,36 @@
         <NavLink class="nav__link" href="/kitchen" title="@Loc.T("Kitchen")" @onclick="CloseMobile"><LucideIcon Name="chef-hat" Size="18" /></NavLink>
     </AuthorizeView>
 
-    <AuthorizeView Roles="Admin" Context="a">
+    @if (More.IsOpen)
+    {
         <span class="nav__divider"></span>
-        <NavLink class="nav__link" href="/products" title="@Loc.T("Products")" @onclick="CloseMobile"><LucideIcon Name="utensils-crossed" Size="18" /></NavLink>
-    </AuthorizeView>
 
-    <NavLink class="nav__link" href="/dashboard" title="@Loc.T("Dashboard")" @onclick="CloseMobile">
-        <LucideIcon Name="layout-dashboard" Size="18" />
-    </NavLink>
+        <AuthorizeView Roles="Admin" Context="a">
+            <NavLink class="nav__link" href="/products" title="@Loc.T("Products")" @onclick="CloseMobile"><LucideIcon Name="utensils-crossed" Size="18" /></NavLink>
+        </AuthorizeView>
 
-    <AuthorizeView Roles="Admin,Cashier" Context="a">
-        <NavLink class="nav__link" href="/billing" title="@Loc.T("Billing")" @onclick="CloseMobile"><LucideIcon Name="banknote" Size="18" /></NavLink>
-    </AuthorizeView>
+        <NavLink class="nav__link" href="/dashboard" title="@Loc.T("Dashboard")" @onclick="CloseMobile">
+            <LucideIcon Name="layout-dashboard" Size="18" />
+        </NavLink>
 
-    <AuthorizeView Roles="Admin" Context="a">
-        <NavLink class="nav__link" href="/settings" title="@Loc.T("Settings")" @onclick="CloseMobile"><LucideIcon Name="settings" Size="18" /></NavLink>
-    </AuthorizeView>
+        <AuthorizeView Roles="Admin,Cashier" Context="a">
+            <NavLink class="nav__link" href="/billing" title="@Loc.T("Billing")" @onclick="CloseMobile"><LucideIcon Name="banknote" Size="18" /></NavLink>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin" Context="a">
+            <NavLink class="nav__link" href="/settings" title="@Loc.T("Settings")" @onclick="CloseMobile"><LucideIcon Name="settings" Size="18" /></NavLink>
+        </AuthorizeView>
+    }
 </nav>
 
 @code {
     private bool _mobileOpen;
 
-    protected override void OnInitialized() => Branding.Changed += OnBrandingChanged;
+    protected override void OnInitialized() => More.Changed += OnMoreChanged;
 
-    private void OnBrandingChanged() => InvokeAsync(StateHasChanged);
+    private void OnMoreChanged() => InvokeAsync(StateHasChanged);
 
     private void CloseMobile() => _mobileOpen = false;
 
-    public void Dispose() => Branding.Changed -= OnBrandingChanged;
+    public void Dispose() => More.Changed -= OnMoreChanged;
 }
