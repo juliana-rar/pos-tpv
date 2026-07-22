@@ -40,14 +40,14 @@
     display: flex; align-items: center; justify-content: center;
     min-width: 1.7rem;
     font-size: .68rem; font-weight: 700; color: var(--text-soft);
-    border-left: 2px solid var(--border);
-    padding-left: .4rem;
+    border-right: 2px solid var(--border);
+    padding-right: .4rem;
 }
 .order-card__time-group-items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .15rem; }
 .badge--btn { border: none; cursor: pointer; transition: filter .15s; }
 .badge--btn:hover { filter: brightness(0.9); }
-/* Reserves the height of the 4 typical action rows (Serve drinks / Fire firsts / Fire
-   seconds / Fire desserts) even when an order only shows 1-2, so every card in the grid
+/* Reserves the height of the typical action rows (Serve drinks / Serve firsts / Fire
+   seconds / Serve desserts) even when an order only shows 1-2, so every card in the grid
    starts its item list at the same vertical position regardless of which actions apply. */
 .order-card__actions { flex: none; display: flex; flex-direction: column; gap: .3rem; min-height: 8.2rem; margin-top: -.25rem; }
 .order-card__actions .btn {

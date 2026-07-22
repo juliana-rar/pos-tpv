@@ -15,4 +15,7 @@ public class AppSetting : BaseEntity
     public TimeOnly LunchEnd { get; set; } = new(16, 0);
     public TimeOnly DinnerStart { get; set; } = new(20, 0);
     public TimeOnly DinnerEnd { get; set; } = new(23, 30);
+
+    /// <summary>Floor-plan background style on /tables ("grid", "wood", "tile", "concrete").</summary>
+    public string FloorTexture { get; set; } = "grid";
 }

@@ -12,12 +12,6 @@ public class Order : BaseEntity
     public DateTime? ClosedAt { get; set; }
 
     /// <summary>
-    /// Set when the waiter "fires the first courses" for this table, signalling the kitchen to
-    /// start the starters. Cleared (back to null) once the kitchen acknowledges it.
-    /// </summary>
-    public DateTime? FirstsFiredAt { get; set; }
-
-    /// <summary>
     /// Set when the waiter "fires the second courses" for this table, signalling the kitchen to
     /// start the mains. Cleared (back to null) once the kitchen acknowledges it.
     /// </summary>
@@ -27,22 +21,10 @@ public class Order : BaseEntity
     public DateTime? DrinksServedAt { get; set; }
 
     /// <summary>
-    /// Set once the first time firsts are fired and never cleared, so the kitchen can tell at a
-    /// glance whether firsts already went out even after acknowledging the <see cref="FirstsFiredAt"/> bell.
+    /// Set once the first time seconds are fired and never cleared, so the kitchen can tell at a
+    /// glance whether seconds already went out even after acknowledging the <see cref="SecondsFiredAt"/> bell.
     /// </summary>
-    public DateTime? FirstsSentAt { get; set; }
-
-    /// <summary>Same as <see cref="FirstsSentAt"/> but for second courses.</summary>
     public DateTime? SecondsSentAt { get; set; }
-
-    /// <summary>
-    /// Set when the waiter "fires the desserts" for this table, signalling the kitchen to
-    /// start them. Cleared (back to null) once the kitchen acknowledges it.
-    /// </summary>
-    public DateTime? DessertsFiredAt { get; set; }
-
-    /// <summary>Same as <see cref="FirstsSentAt"/> but for desserts.</summary>
-    public DateTime? DessertsSentAt { get; set; }
 
     public int TableId { get; set; }
     public RestaurantTable Table { get; set; } = null!;

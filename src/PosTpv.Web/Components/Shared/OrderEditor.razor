@@ -8,22 +8,6 @@
 @if (OrderId is not null)
 {
     <div class="order-editor-page">
-        <header class="order-editor-page__head">
-            <h1>@(_order is null ? Loc.T("Edit order") : $"{Loc.T("Edit order")} · {_order.TableName}")</h1>
-            <span class="spacer"></span>
-            @* Top-right cluster: total, confirm tick and close — all in one place. *@
-            @if (_order is not null)
-            {
-                <strong class="order-editor-page__total">@_order.Total.ToString("N2")</strong>
-                @* Single confirm tick: sends food to the kitchen (skipped for a drinks-only order) and closes. *@
-                <button class="btn btn--success btn--tick"
-                        title="@(HasKitchenItems ? Loc.T("Send to kitchen and close") : Loc.T("Confirm and close"))"
-                        disabled="@_busy" @onclick="ConfirmAndClose" type="button"><LucideIcon Name="check" Size="20" /></button>
-            }
-            @* X closes the editor without discarding anything — added lines are already saved. *@
-            <button class="btn btn--icon btn--ghost" title="@Loc.T("Close")" @onclick="OnClose" type="button"><LucideIcon Name="x" Size="20" /></button>
-        </header>
-
         <div class="order-editor-page__body">
         @if (_order is null)
         {
@@ -37,59 +21,168 @@
                     <div class="editor__error" @onclick="() => _error = null">@_error <LucideIcon Name="x" Size="14" /></div>
                 }
 
-                <div class="editor__cats">
-                    @foreach (var c in _categories)
-                    {
-                        <button class="editor__cat @(c.Id == _selectedCategoryId ? "editor__cat--on" : "")"
-                                style="--cat:@c.Color" @onclick="() => SelectCategory(c.Id)" type="button">
-                            <span>@c.Icon</span><span>@c.Name</span>
-                        </button>
-                    }
-                </div>
-
-                <div class="product-grid">
-                    @foreach (var p in _products)
-                    {
-                        <button class="productCard @(p.IsAvailable ? "" : "productCard--off")" style="--pc:@p.Color"
-                                disabled="@(!p.IsAvailable || _busy)" @onclick="() => OnProductClick(p)" type="button">
-                            <span class="productCard__name">@p.Name</span>
-                            <span class="productCard__price">@p.Price.ToString("N2")</span>
-                            @if (!p.IsAvailable) { <span class="productCard__off">@Loc.T("Unavailable")</span> }
-                        </button>
-                    }
-                    @if (_products.Count == 0) { <p class="empty">@Loc.T("No products in this category.")</p> }
-                </div>
-
-                <div class="editor__lines">
-                    <h3>@Loc.T("Current lines")</h3>
-                    @foreach (var it in _order.Items)
-                    {
-                        <div class="orderLine">
-                            <div class="orderLine__main">
-                                <span class="orderLine__name">@it.ProductName</span>
-                                <span class="orderLine__price">@it.LineTotal.ToString("N2")</span>
-                            </div>
-                            <div class="orderLine__ctrl">
-                                <button class="btn btn--icon btn--ghost" disabled="@_busy" @onclick="() => ChangeQty(it.Id, -1)">−</button>
-                                <span class="orderLine__qty">@it.Quantity</span>
-                                <button class="btn btn--icon btn--ghost" disabled="@_busy" @onclick="() => ChangeQty(it.Id, 1)">+</button>
-                                <span class="badge @ItemStatusClass(it.Status)">@Loc.T(it.Status.ToString())</span>
-                                <span class="spacer"></span>
-                                <button class="btn btn--icon btn--ghost" title="@Loc.T("Extras")" disabled="@_busy" @onclick="() => OpenEditExtras(it)"><LucideIcon Name="list-plus" Size="16" /></button>
-                                <button class="btn btn--icon btn--ghost" title="@Loc.T("Comment")" disabled="@_busy" @onclick="() => OpenComment(it)"><LucideIcon Name="pencil" Size="16" /></button>
-                                <button class="btn btn--icon btn--ghost" title="@Loc.T("Remove")" disabled="@_busy" @onclick="() => RemoveItem(it.Id)"><LucideIcon Name="trash-2" Size="16" /></button>
-                            </div>
-                            @if (it.Extras.Count > 0)
+                <div class="pos editor__pos">
+                    <div class="pos__main">
+                        <!-- Left: categories, same vertical rail as /pos -->
+                        <div class="pos__cats">
+                            @foreach (var c in _categories)
                             {
-                                <div class="orderLine__extras">@string.Join(", ", it.Extras.Select(e => "＋ " + e.Name))</div>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(it.Comment))
-                            {
-                                <div class="orderLine__comment">“@it.Comment”</div>
+                                <button class="cat @(c.Id == _selectedCategoryId ? "cat--active" : "")"
+                                        style="--cat:@c.Color" @onclick="() => SelectCategory(c.Id)" type="button">
+                                    <span class="cat__icon">
+                                        @if (!string.IsNullOrWhiteSpace(c.ImageUrl))
+                                        {
+                                            <img src="@c.ImageUrl" alt="" />
+                                        }
+                                        else
+                                        {
+                                            @c.Icon
+                                        }
+                                    </span>
+                                    <span class="cat__name">@c.Name</span>
+                                </button>
                             }
                         </div>
-                    }
-                    @if (_order.Items.Count == 0) { <p class="empty">@Loc.T("Tap a product to add it.")</p> }
+
+                        <!-- Centre: product grid, same look as /pos -->
+                        <div class="pos__products">
+                            <div class="product-grid">
+                                @foreach (var p in _products)
+                                {
+                                    <button class="productCard @(p.IsAvailable ? "" : "productCard--off") @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? "productCard--img" : "")"
+                                            style="--pc:@p.Color; @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? $"background-image:url('{p.ImageUrl}')" : "")"
+                                            disabled="@(!p.IsAvailable || _busy)" @onclick="() => OnProductClick(p)" type="button">
+                                        <span class="productCard__price">@p.Price.ToString("N2")</span>
+                                        <span class="productCard__name"><span class="productCard__dot"></span>@p.Name</span>
+                                        @if (!p.IsAvailable) { <span class="productCard__off">@Loc.T("Unavailable")</span> }
+                                    </button>
+                                }
+                                @if (_products.Count == 0) { <p class="empty">@Loc.T("No products in this category.")</p> }
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: current order, same panel as /pos -->
+                    <div class="pos__order card">
+                        <div class="order__head">
+                            <div class="order__head-left">
+                                <span class="badge badge--primary">@Loc.T("Table") @_order.TableName · @_order.Number</span>
+                                <span class="badge">@OrderStatusLabel(_order.Status)</span>
+                            </div>
+                            <div class="order__head-right">
+                                @* X closes the editor without discarding anything — added lines are already saved. *@
+                                <button class="btn btn--icon btn--ghost" title="@Loc.T("Close")" @onclick="OnClose" type="button"><LucideIcon Name="x" Size="14" /></button>
+                                @* Single confirm tick: sends food to the kitchen (skipped for a drinks-only order) and closes. *@
+                                <button class="btn btn--success btn--tick"
+                                        title="@(HasKitchenItems ? Loc.T("Send to kitchen and close") : Loc.T("Confirm and close"))"
+                                        disabled="@_busy" @onclick="ConfirmAndClose" type="button"><LucideIcon Name="check" Size="14" /></button>
+                            </div>
+                        </div>
+
+                        @* Same Serve/Fire actions row as the board card (OrderCard.razor), so editing an
+                           order doesn't lose access to these. *@
+                        @if (_drinks.Count > 0 || _hasSeconds || _showServeFirsts)
+                        {
+                            <div class="order-card__actions">
+                                <div class="order-card__actions-row">
+                                    @if (_drinks.Count > 0)
+                                    {
+                                        <button class="btn btn--sm @(_hasPendingDrinks ? "btn--primary" : "btn--ghost")"
+                                                title="@(_hasPendingDrinks ? null : Loc.T("Click to undo"))" disabled="@_busy"
+                                                @onclick="OnToggleDrinksClick" type="button">
+                                            <LucideIcon Name="cup-soda" Size="14" />@DrinksLabel()
+                                        </button>
+                                    }
+                                    @if (_hasSeconds)
+                                    {
+                                        <button class="btn btn--sm @(SecondsAlreadyDone ? "btn--ghost" : "btn--primary")"
+                                                title="@(SecondsAlreadyDone ? null : Loc.T("Tell the kitchen to start the second courses"))"
+                                                disabled="@(_busy || SecondsAlreadyDone)"
+                                                @onclick="OnToggleSecondsClick" type="button">
+                                            <LucideIcon Name="bell" Size="14" />@SecondsSentLabel()
+                                        </button>
+                                    }
+                                </div>
+                                @if (_showServeFirsts)
+                                {
+                                    <button class="btn btn--sm @(_firstsPendingToServe ? "btn--primary" : "btn--ghost")"
+                                            title="@(_firstsPendingToServe ? null : Loc.T("Click to undo"))" disabled="@_busy"
+                                            @onclick="OnToggleServeFirstsClick" type="button">
+                                        <LucideIcon Name="salad" Size="14" />@FirstsServeLabel()
+                                    </button>
+                                }
+                                @if (_showServeSeconds)
+                                {
+                                    <button class="btn btn--sm @(_secondsPendingToServe ? "btn--primary" : "btn--ghost")"
+                                            title="@(_secondsPendingToServe ? null : Loc.T("Click to undo"))" disabled="@_busy"
+                                            @onclick="OnToggleServeSecondsClick" type="button">
+                                        <LucideIcon Name="utensils" Size="14" />@SecondsServeLabel()
+                                    </button>
+                                }
+                            </div>
+                        }
+
+                        <div class="order__items">
+                            @foreach (var grp in OrderSections())
+                            {
+                                @if (grp.Label is not null)
+                                {
+                                    <div class="order__group"><LucideIcon Name="@grp.Icon" Size="14" /> @Loc.T(grp.Label)</div>
+                                }
+                                <div class="@GroupLinesClass(grp)">
+                                    @foreach (var batch in GroupByServeBatch(grp.Items))
+                                    {
+                                        <div class="order-card__drink-batch" data-served="@(batch.ServedAt is not null ? "true" : "false")">
+                                        @foreach (var timeGroup in GroupByOrderTime(batch.Items))
+                                        {
+                                            <div class="order__time-group">
+                                                <span class="order__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
+                                                <div class="order__time-group-items">
+                                                    @foreach (var it in timeGroup.Items)
+                                                    {
+                                                        <div class="orderLine">
+                                                            <div class="orderLine__main">
+                                                                <span class="orderLine__name">@it.ProductName</span>
+                                                                <span class="spacer"></span>
+                                                                <div class="orderLine__ctrl">
+                                                                    <button class="btn btn--icon btn--ghost orderLine__remove" title="@Loc.T("Remove")" disabled="@_busy" @onclick="() => RemoveItem(it.Id)"><LucideIcon Name="x" Size="13" /></button>
+                                                                    <button class="btn btn--icon btn--ghost" title="@Loc.T("Edit")" disabled="@_busy" @onclick="() => OpenEditItem(it)"><LucideIcon Name="pencil" Size="16" /></button>
+                                                                    <button class="btn btn--icon btn--ghost" disabled="@_busy" @onclick="() => ChangeQty(it.Id, -1)">−</button>
+                                                                    <span class="orderLine__qty">@it.Quantity</span>
+                                                                    <button class="btn btn--icon btn--ghost" disabled="@_busy" @onclick="() => ChangeQty(it.Id, 1)">+</button>
+                                                                </div>
+                                                            </div>
+                                                            @if (it.Extras.Count > 0)
+                                                            {
+                                                                <div class="orderLine__extras">@string.Join(", ", it.Extras.Select(e => "＋ " + e.Name))</div>
+                                                            }
+                                                            @if (!string.IsNullOrWhiteSpace(it.Comment))
+                                                            {
+                                                                <div class="orderLine__comment">“@it.Comment”</div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            @if (_order.Items.Count == 0) { <p class="empty">@Loc.T("Tap a product to add it.")</p> }
+                        </div>
+                        <div class="order__totals">
+                            <div class="order__grand">
+                                <span>@Loc.T("Total")</span>
+                                <div class="order__grand-right">
+                                    <span>@_order.Total.ToString("N2")</span>
+                                    <button class="btn btn--pay" title="@Loc.T("Charge")" @onclick="OpenPayment" type="button">
+                                        <LucideIcon Name="credit-card" Size="16" />@Loc.T("Charge")
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         }
@@ -97,28 +190,9 @@
     </div>
 }
 
-@* Comment editor for an existing line (any product, drinks included). *@
-<Modal Visible="_commentItem is not null" Title="@Loc.T("Line comment")" OnClose="() => _commentItem = null">
-    <ChildContent>
-        <div class="field">
-            <label>@Loc.T("Note for the kitchen")</label>
-            <textarea class="input" rows="3" @bind="_commentText" placeholder="@Loc.T("No onion, well done, extra sauce…")"></textarea>
-        </div>
-        <div class="comment-presets">
-            @foreach (var preset in _commentPresets)
-            {
-                <button class="btn btn--ghost" type="button" @onclick="() => _commentText = preset.Text">@preset.Text</button>
-            }
-        </div>
-    </ChildContent>
-    <Footer>
-        <button class="btn btn--ghost" @onclick="() => _commentItem = null">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" disabled="@_busy" @onclick="SaveComment">@Loc.T("Save")</button>
-    </Footer>
-</Modal>
-
-@* Edit the extras of an already-added line (tapping a product adds it straight away). *@
-<Modal Visible="_editingItem is not null" Title="@(_editingItem?.ProductName ?? string.Empty)" OnClose="() => _editingItem = null">
+@* Edit an already-added line: extras and the kitchen note together in one dialog, same as
+   the customize modal in Pos.razor (OpenEditItem). *@
+<Modal Visible="_editingItem is not null" Title="@(_editingItem?.ProductName ?? string.Empty)" OnClose="() => _editingItem = null" CloseOnBackdrop="false">
     <ChildContent>
         @if (_editingItem is not null)
         {
@@ -150,14 +224,27 @@
                 {
                     <p class="muted">@Loc.T("No extras available for this product.")</p>
                 }
+
+                <div class="field">
+                    <label>@Loc.T("Note for the kitchen")</label>
+                    <textarea class="input" rows="3" @bind="_commentText" placeholder="@Loc.T("No onion, well done, extra sauce…")"></textarea>
+                </div>
+                <div class="comment-presets">
+                    @foreach (var preset in _commentPresets)
+                    {
+                        <button class="btn btn--ghost" type="button" @onclick="() => _commentText = preset.Text">@preset.Text</button>
+                    }
+                </div>
             </div>
         }
     </ChildContent>
     <Footer>
         <button class="btn btn--ghost" @onclick="() => _editingItem = null">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" disabled="@(_busy || _extrasLoading)" @onclick="SaveExtras">@Loc.T("Save")</button>
+        <button class="btn btn--primary" disabled="@(_busy || _extrasLoading)" @onclick="SaveItemEdits">@Loc.T("Save")</button>
     </Footer>
 </Modal>
+
+<PaymentDialog Order="_order" Visible="_showPayment" OnClose="ClosePayment" OnConfirm="ConfirmPayment" />
 
 @code {
     /// <summary>Id of the order to edit; the dialog is shown while this is non-null.</summary>
@@ -174,15 +261,26 @@
     private int? _loadedOrderId;
     private bool _busy;
     private string? _error;
+    private bool _showPayment;
 
     private List<CategoryCommentDto> _commentPresets = new();
-    private OrderItemDto? _commentItem;
     private string? _commentText;
 
     private OrderItemDto? _editingItem;
     private List<ExtraDto> _customizeExtras = new();
     private readonly HashSet<int> _selectedExtraIds = new();
     private bool _extrasLoading;
+
+    // Same Serve/Fire action-row state as OrderCard.razor (see Repartition below).
+    private List<OrderItemDto> _drinks = new();
+    private bool _hasPendingDrinks;
+    private List<OrderItemDto> _starters = new();
+    private bool _firstsPendingToServe;
+    private bool _showServeFirsts;
+    private List<OrderItemDto> _mains = new();
+    private bool _secondsPendingToServe;
+    private bool _showServeSeconds;
+    private bool _hasSeconds;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -193,6 +291,7 @@
         if (OrderId is null) { _order = null; return; }
 
         _order = await Orders.GetByIdAsync(OrderId.Value);
+        Repartition();
         if (_categories.Count == 0)
         {
             _categories = await Categories.GetAllAsync(onlyVisible: true);
@@ -200,6 +299,102 @@
         }
         await LoadProducts();
     }
+
+    // Same partitioning as OrderCard.razor, so the Serve/Fire action row here matches the
+    // board card exactly (drives both the buttons and the Drinks/First/Second/Desserts headers).
+    private void Repartition()
+    {
+        if (_order is null) return;
+        List<OrderItemDto> drinks = new(), starters = new(), mains = new(), desserts = new();
+        foreach (var it in _order.Items)
+        {
+            if (it.IsDrink) { drinks.Add(it); continue; }
+            switch (it.Course)
+            {
+                case CourseType.Starter: starters.Add(it); break;
+                case CourseType.Dessert: desserts.Add(it); break;
+                default: mains.Add(it); break;   // CourseType.Main
+            }
+        }
+
+        _drinks = drinks;
+        _hasPendingDrinks = drinks.Any(d => d.Status != OrderItemStatus.Delivered);
+
+        _starters = starters;
+        _firstsPendingToServe = starters.Any(s => s.Status == OrderItemStatus.Ready);
+        _showServeFirsts = starters.Any(s => s.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered);
+
+        _mains = mains;
+        _secondsPendingToServe = mains.Any(s => s.Status == OrderItemStatus.Ready);
+        _showServeSeconds = mains.Any(s => s.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered);
+        _hasSeconds = mains.Count > 0;
+    }
+
+    private string DrinksLabel() => _hasPendingDrinks
+        ? Loc.T("Serve drinks")
+        : _order?.DrinksServedAt is null
+            ? Loc.T("Drinks served")
+            : $"{Loc.T("Drinks served")} · {_order.DrinksServedAt.Value.ToLocalTime():HH:mm}";
+
+    private string FirstsServeLabel()
+    {
+        if (_firstsPendingToServe) return Loc.T("Serve firsts");
+        var lastServedAt = _starters.Where(s => s.Status == OrderItemStatus.Delivered).Max(s => (DateTime?)s.UpdatedAt);
+        return lastServedAt is null ? Loc.T("Firsts served") : $"{Loc.T("Firsts served")} · {lastServedAt.Value.ToLocalTime():HH:mm}";
+    }
+
+    private string SecondsServeLabel()
+    {
+        if (_secondsPendingToServe) return Loc.T("Serve seconds");
+        var lastServedAt = _mains.Where(s => s.Status == OrderItemStatus.Delivered).Max(s => (DateTime?)s.UpdatedAt);
+        return lastServedAt is null ? Loc.T("Seconds served") : $"{Loc.T("Seconds served")} · {lastServedAt.Value.ToLocalTime():HH:mm}";
+    }
+
+    // Once the kitchen has fired seconds (from here or from its own "Seconds prepared" pill in
+    // /kitchen), SecondsSentAt never clears on its own — so the button locks into this label
+    // instead of flipping back to "Fire seconds" every time the kitchen acknowledges its alert.
+    // Seconds can also reach the customer without ever being fired (e.g. auto-served the moment
+    // a dessert is ordered) — in that case SecondsSentAt is still null, but it's still wrong to
+    // keep inviting a "Fire seconds" click, so this also locks once every main is delivered.
+    private bool SecondsAlreadyDone => _order!.SecondsSentAt is not null || (_showServeSeconds && !_secondsPendingToServe);
+
+    private string SecondsSentLabel()
+    {
+        if (_order!.SecondsSentAt is not null)
+            return $"{Loc.T("Seconds prepared")} · {_order.SecondsSentAt.Value.ToLocalTime():HH:mm}";
+        if (_showServeSeconds && !_secondsPendingToServe)
+            return Loc.T("Seconds served");
+        return Loc.T("Fire seconds");
+    }
+
+    private Task OnToggleDrinksClick() => Mutate(async () =>
+    {
+        if (_hasPendingDrinks) await Orders.ServeDrinksAsync(_order!.Id);
+        else await Orders.UnserveDrinksAsync(_order!.Id);
+        return await Orders.GetByIdAsync(_order!.Id);
+    });
+
+    private Task OnToggleServeFirstsClick() => Mutate(async () =>
+    {
+        if (_firstsPendingToServe) await Orders.ServeFirstCoursesAsync(_order!.Id);
+        else await Orders.UnserveFirstCoursesAsync(_order!.Id);
+        return await Orders.GetByIdAsync(_order!.Id);
+    });
+
+    private Task OnToggleServeSecondsClick() => Mutate(async () =>
+    {
+        if (_secondsPendingToServe) await Orders.ServeSecondCoursesAsync(_order!.Id);
+        else await Orders.UnserveSecondCoursesAsync(_order!.Id);
+        return await Orders.GetByIdAsync(_order!.Id);
+    });
+
+    // Button is disabled once seconds are already fired or served, so this only ever fires
+    // (never undoes) — undoing is left to the kitchen's own "Seconds prepared" toggle in /kitchen.
+    private Task OnToggleSecondsClick() => Mutate(async () =>
+    {
+        if (!SecondsAlreadyDone) await Orders.FireSecondCoursesAsync(_order!.Id);
+        return await Orders.GetByIdAsync(_order!.Id);
+    });
 
     private async Task SelectCategory(int id)
     {
@@ -221,6 +416,7 @@
         {
             var updated = await op();
             if (updated is not null) _order = updated;
+            Repartition();
             await OnChanged.InvokeAsync();
         }
         catch (Exception ex) { _error = ex.Message; }
@@ -236,18 +432,24 @@
         return Mutate(async () => await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id, Merge: false)));
     }
 
-    // Extras editor for an already-added line.
-    private async Task OpenEditExtras(OrderItemDto item)
+    // Edit an already-added line: extras and the kitchen note together, same as OpenEditItem
+    // in Pos.razor. Shows the dialog immediately, then fetches extras/comment presets.
+    private async Task OpenEditItem(OrderItemDto item)
     {
         _editingItem = item;
         _customizeExtras = new();
         _selectedExtraIds.Clear();
         foreach (var e in item.Extras.Where(e => e.ExtraId.HasValue))
             _selectedExtraIds.Add(e.ExtraId!.Value);
+        _commentText = item.Comment;
         _extrasLoading = true;
         StateHasChanged();
 
-        try { _customizeExtras = await Products.GetExtrasAsync(item.ProductId); }
+        try
+        {
+            _customizeExtras = await Products.GetExtrasAsync(item.ProductId);
+            _commentPresets = await Categories.GetCommentsAsync(item.CategoryId);
+        }
         catch (Exception ex) { _error = ex.Message; }
         finally { _extrasLoading = false; }
     }
@@ -257,39 +459,19 @@
         if (!_selectedExtraIds.Add(id)) _selectedExtraIds.Remove(id);
     }
 
-    private Task SaveExtras()
+    private Task SaveItemEdits()
     {
         if (_editingItem is null) return Task.CompletedTask;
         var itemId = _editingItem.Id;
         var extraIds = _selectedExtraIds.ToList();
+        var comment = _commentText;
 
         return Mutate(async () =>
         {
             var updated = await Orders.SetItemExtrasAsync(itemId, extraIds);
+            await Orders.SetItemCommentAsync(itemId, comment);
             _editingItem = null;
-            return updated;
-        });
-    }
-
-    // Open the comment editor for an existing line (works for drinks too, so more of the same
-    // drink can carry a note without going back through the product grid).
-    private async Task OpenComment(OrderItemDto item)
-    {
-        _commentItem = item;
-        _commentText = item.Comment;
-        _commentPresets = await Categories.GetCommentsAsync(item.CategoryId);
-    }
-
-    private Task SaveComment()
-    {
-        if (_commentItem is null) return Task.CompletedTask;
-        var itemId = _commentItem.Id;
-        var text = _commentText;
-        return Mutate(async () =>
-        {
-            await Orders.SetItemCommentAsync(itemId, text);
-            _commentItem = null;
-            return _order is null ? null : await Orders.GetByIdAsync(_order.Id);
+            return updated is null ? null : await Orders.GetByIdAsync(updated.Id);
         });
     }
 
@@ -310,6 +492,19 @@
         await OnClose.InvokeAsync();
     }
 
+    private void OpenPayment() => _showPayment = true;
+    private void ClosePayment() => _showPayment = false;
+
+    private async Task ConfirmPayment(IReadOnlyList<PaymentInput> payments)
+    {
+        if (_order is null) return;
+        var orderId = _order.Id;
+        await Orders.CheckoutAsync(orderId, payments);
+        _showPayment = false;
+        await OnChanged.InvokeAsync();
+        await OnClose.InvokeAsync();
+    }
+
     private Task SendToKitchen()
     {
         if (_order is null) return Task.CompletedTask;
@@ -321,11 +516,77 @@
         });
     }
 
-    private static string ItemStatusClass(OrderItemStatus s) => s switch
+    private static string OrderStatusLabel(OrderStatus s) => Loc.T(s switch
     {
-        OrderItemStatus.Preparing => "badge--warning",
-        OrderItemStatus.Ready => "badge--success",
-        OrderItemStatus.Delivered => "badge--primary",
-        _ => ""
-    };
+        OrderStatus.Open => "Open",
+        OrderStatus.Sent => "Sent",
+        OrderStatus.InPreparation => "Cooking",
+        OrderStatus.Ready => "Ready",
+        OrderStatus.Delivered => "Delivered",
+        _ => s.ToString()
+    });
+
+    private sealed record OrderSection(string? Icon, string? Label, List<OrderItemDto> Items);
+
+    // Same Drinks/First/Second/Desserts grouping as /pos (see OrderSections in Pos.razor), so
+    // editing an order reads the same way instead of one undifferentiated column.
+    private List<OrderSection> OrderSections()
+    {
+        if (_order is null) return new();
+        if (_order.Items.Count < 5)
+            return new() { new OrderSection(null, null, _order.Items.ToList()) };
+
+        var sections = new List<OrderSection>();
+        void AddGroup(string icon, string label, IEnumerable<OrderItemDto> items)
+        {
+            var list = items.ToList();
+            if (list.Count == 0) return;
+            sections.Add(new OrderSection(icon, label, list));
+        }
+        AddGroup("cup-soda", "Drinks", _order.Items.Where(i => i.IsDrink));
+        AddGroup("salad", "First course", _order.Items.Where(i => !i.IsDrink && i.Course == CourseType.Starter));
+        AddGroup("utensils", "Second course", _order.Items.Where(i => !i.IsDrink && i.Course == CourseType.Main));
+        AddGroup("cake-slice", "Desserts", _order.Items.Where(i => !i.IsDrink && i.Course == CourseType.Dessert));
+        return sections;
+    }
+
+    private static string GroupLinesClass(OrderSection section) =>
+        section.Items.Count > 6 ? "order__group-lines order__group-lines--scroll" : "order__group-lines";
+
+    private sealed record ServeBatch(DateTime? ServedAt, List<OrderItemDto> Items);
+
+    // Same "served together" batching as OrderCard.razor's GroupByServeBatch, so a batch
+    // already marked served gets the same green shaded frame here while editing.
+    private static List<ServeBatch> GroupByServeBatch(List<OrderItemDto> items)
+    {
+        var groups = new List<ServeBatch>();
+        foreach (var it in items)
+        {
+            var servedAt = it.Status == OrderItemStatus.Delivered ? it.UpdatedAt : null;
+            if (groups.Count > 0 && groups[^1].ServedAt == servedAt)
+                groups[^1].Items.Add(it);
+            else
+                groups.Add(new ServeBatch(servedAt, new List<OrderItemDto> { it }));
+        }
+        return groups;
+    }
+
+    private sealed record TimeGroup(DateTime Time, List<OrderItemDto> Items);
+
+    // Same "ordered in the same minute" grouping as OrderCard.razor's GroupByOrderTime, so a
+    // long ticket edited here reads the same way (shared timestamp + connecting bracket
+    // instead of repeating it per line).
+    private static List<TimeGroup> GroupByOrderTime(List<OrderItemDto> items)
+    {
+        var groups = new List<TimeGroup>();
+        foreach (var it in items)
+        {
+            var minute = new DateTime(it.CreatedAt.Year, it.CreatedAt.Month, it.CreatedAt.Day, it.CreatedAt.Hour, it.CreatedAt.Minute, 0, it.CreatedAt.Kind);
+            if (groups.Count > 0 && groups[^1].Time == minute)
+                groups[^1].Items.Add(it);
+            else
+                groups.Add(new TimeGroup(minute, new List<OrderItemDto> { it }));
+        }
+        return groups;
+    }
 }

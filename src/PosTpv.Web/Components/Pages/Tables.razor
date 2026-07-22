@@ -6,75 +6,18 @@
 @implements IAsyncDisposable
 @inject ITableService Service
 @inject IReservationService ReservationService
+@inject IOrderService OrderSvc
 @inject IValidator<TableFormDto> Validator
 @inject IValidator<ReservationFormDto> ResValidator
 @inject IJSRuntime JS
 @inject AppSettingsCache Branding
+@inject ISettingsService Settings
 @inject NavigationManager Nav
 
 <PageTitle>Tables · @Branding.Current.Title</PageTitle>
 
-<div class="tables-datebar card">
-    <div class="resv__day-nav">
-        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Previous day")" @onclick="() => ShiftDay(-1)"><LucideIcon Name="arrow-left" Size="15" /></button>
-        <input type="date" class="input resv__head-date" @bind="_reserveDate" @bind:after="LoadReservations" />
-        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Next day")" @onclick="() => ShiftDay(1)"><LucideIcon Name="arrow-right" Size="15" /></button>
-    </div>
-    <div class="tables-datebar__actions">
-        <button class="resv__stats-btn resv__stats-btn--on" title="@Loc.T("Tables")" @onclick="GoToTables"><LucideIcon Name="calendar" Size="12" /></button>
-        <button class="resv__stats-btn" title="@Loc.T("Reservations")" @onclick="OpenDashboard"><LucideIcon Name="bar-chart-3" Size="12" /></button>
-    </div>
-</div>
-
 <div class="floor-layout floor-layout--split @(_mapExpanded ? "floor-layout--map-expanded" : "")">
     <div class="floor-panel card">
-        <div class="toolbar toolbar--tables">
-            <div class="legend">
-                <span class="legend__item"><i class="dot dot--available"></i>@Loc.T("Free")</span>
-                <span class="legend__item"><i class="dot dot--occupied"></i>@Loc.T("Occupied")</span>
-                <span class="legend__item"><i class="dot dot--reserved"></i>@Loc.T("Reserved")</span>
-            </div>
-            <span class="spacer"></span>
-            @if (_editing)
-            {
-                <button class="btn btn--ghost btn--sm" @onclick="CancelEdit">@Loc.T("Cancel")</button>
-                <button class="btn btn--primary btn--sm" @onclick="SaveLayout"><LucideIcon Name="save" Size="14" />@Loc.T("Save layout")</button>
-            }
-            else if (_selecting)
-            {
-                <span class="badge badge--primary">@_selection.Count @Loc.T("selected")</span>
-                <button class="btn btn--ghost btn--sm" @onclick="CancelSelect">@Loc.T("Cancel")</button>
-                <button class="btn btn--primary btn--sm" disabled="@(_selection.Count < 2)" @onclick="OpenJoinNamePrompt"><LucideIcon Name="link" Size="14" />@Loc.T("Join")</button>
-            }
-            else
-            {
-                <div class="toolbar-actions">
-                    @if (_showFilters)
-                    {
-                        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("New table")" @onclick="() => OpenForm(null)"><LucideIcon Name="plus" Size="16" /></button>
-                        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Join tables")" @onclick="StartSelect"><LucideIcon Name="link" Size="16" /></button>
-                        <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Edit layout")" @onclick="StartEdit"><LucideIcon Name="move" Size="16" /></button>
-                    }
-                    <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters"><LucideIcon Name="settings" Size="16" /></button>
-                    <button class="btn btn--icon btn--ghost btn--sm" type="button"
-                            title="@(_mapExpanded ? Loc.T("Minimise map") : Loc.T("Expand map"))" @onclick="() => _mapExpanded = !_mapExpanded">
-                        <LucideIcon Name="@(_mapExpanded ? "minimize-2" : "maximize-2")" Size="16" />
-                    </button>
-                </div>
-            }
-        </div>
-
-        @if (!_editing && !_selecting && _assignReservationId is null && _showFilters && Zones.Count > 0)
-        {
-            <div class="zone-filter">
-                <button class="tbl-chip @(_zoneFilter is null ? "tbl-chip--on" : "")" @onclick="() => _zoneFilter = null">@Loc.T("All zones")</button>
-                @foreach (var z in Zones)
-                {
-                    <button class="tbl-chip @(_zoneFilter == z ? "tbl-chip--on" : "")" @onclick="() => _zoneFilter = z">@z</button>
-                }
-            </div>
-        }
-
         @if (_notice is not null)
         {
             <p class="floor-notice">@_notice</p>
@@ -94,7 +37,95 @@
         }
 
     <div class="floor-wrap">
-    <div class="floor @(_editing ? "floor--edit" : "") @(_selecting ? "floor--select" : "") @(_assignReservationId is not null ? "floor--assign" : "")" @ref="_floorEl">
+    @* Floats over the map's top-right corner instead of taking its own row, so the map
+       fills the whole panel height. *@
+    <div class="toolbar toolbar--tables @(_showFilters && !_editing && !_selecting && !_reassigning && _assignReservationId is null ? "toolbar--tables-joined" : "")">
+        <span class="spacer"></span>
+        @if (_editing)
+        {
+            <button class="btn btn--ghost btn--sm" @onclick="CancelEdit">@Loc.T("Cancel")</button>
+            <button class="btn btn--primary btn--sm" @onclick="SaveLayout"><LucideIcon Name="save" Size="14" />@Loc.T("Save layout")</button>
+        }
+        else if (_selecting)
+        {
+            <span class="badge badge--primary">@_selection.Count @Loc.T("selected")</span>
+            <button class="btn btn--ghost btn--sm" @onclick="CancelSelect">@Loc.T("Cancel")</button>
+            <button class="btn btn--primary btn--sm" disabled="@(_selection.Count < 2)" @onclick="OpenJoinNamePrompt"><LucideIcon Name="link" Size="14" />@Loc.T("Join")</button>
+        }
+        else if (_reassigning)
+        {
+            <button class="btn btn--ghost btn--sm" @onclick="CancelReassign">@Loc.T("Cancel")</button>
+        }
+        else
+        {
+            <div class="toolbar-actions">
+                @if (_showFilters)
+                {
+                    <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("New table")" @onclick="() => OpenForm(null)"><LucideIcon Name="plus" Size="16" /></button>
+                    <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Join tables")" @onclick="StartSelect"><LucideIcon Name="link" Size="16" /></button>
+                    <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Assign tables")" @onclick="StartReassign"><LucideIcon Name="arrow-right-left" Size="16" /></button>
+                    <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Edit layout")" @onclick="StartEdit"><LucideIcon Name="move" Size="16" /></button>
+                }
+                <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters"><LucideIcon Name="settings" Size="16" /></button>
+                <button class="btn btn--icon btn--ghost btn--sm" type="button"
+                        title="@(_mapExpanded ? Loc.T("Minimise map") : Loc.T("Expand map"))" @onclick="() => _mapExpanded = !_mapExpanded">
+                    <LucideIcon Name="@(_mapExpanded ? "minimize-2" : "maximize-2")" Size="16" />
+                </button>
+            </div>
+        }
+        @if (_showFilters && !_editing && !_selecting && !_reassigning && _assignReservationId is null)
+        {
+            <div class="floor-tex-widget">
+                <button class="btn btn--icon @(_floorMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Floor style")" @onclick="ToggleFloorMenu"><LucideIcon Name="image" Size="16" /></button>
+                @if (_floorMenuOpen)
+                {
+                    <div class="floor-tex-menu">
+                        @foreach (var tex in FloorTextures)
+                        {
+                            <button type="button" class="floor-tex-opt @(Branding.Current.FloorTexture == tex ? "floor-tex-opt--on" : "")" @onclick="() => ChooseFloorTexture(tex)">
+                                <span class="floor-tex-swatch floor-tex-swatch--@tex"></span>
+                                @Loc.T(TextureLabel(tex))
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+    @if (!_editing && !_selecting && _assignReservationId is null && _showFilters && Zones.Count > 0)
+    {
+        <div class="tabs zone-filter">
+            <button class="tabs__opt @(_zoneFilter is null ? "tabs__opt--on" : "")" @onclick="() => _zoneFilter = null">@Loc.T("All zones")</button>
+            @foreach (var z in Zones)
+            {
+                <button class="tabs__opt @(_zoneFilter == z ? "tabs__opt--on" : "")" @onclick="() => _zoneFilter = z">@z</button>
+            }
+        </div>
+    }
+    @if (_reassigning && _reassignSource is null)
+    {
+        <div class="floor-hint floor-hint--assign floor-hint--floating">
+            <LucideIcon Name="arrow-right-left" Size="16" /> @Loc.T("Click the occupied table whose order you want to move.")
+        </div>
+    }
+    @if (_reassignSource is not null)
+    {
+        <div class="reassign-popover">
+            <div class="reassign-popover__title"><LucideIcon Name="arrow-right-left" Size="15" /> @Loc.T("Reassign") @(_reassignSource.GroupId is not null ? (_reassignSource.GroupName ?? _reassignSource.Name) : _reassignSource.Name)?</div>
+            <select class="select" @bind="_reassignDestId">
+                <option value="">@Loc.T("Choose a table")</option>
+                @foreach (var dest in VisibleTables.Where(x => x.Id != _reassignSource.Id && x.ActiveOrderId is null && x.GroupId is null))
+                {
+                    <option value="@dest.Id">@dest.Name</option>
+                }
+            </select>
+            <div class="reassign-popover__actions">
+                <button class="btn btn--ghost btn--sm" @onclick="CancelReassign">@Loc.T("Cancel")</button>
+                <button class="btn btn--primary btn--sm" disabled="@(_reassignDestId is null)" @onclick="ConfirmReassign">@Loc.T("Confirm")</button>
+            </div>
+        </div>
+    }
+    <div class="floor floor--tex-@Branding.Current.FloorTexture @(_editing ? "floor--edit" : "") @(_selecting ? "floor--select" : "") @(_assignReservationId is not null ? "floor--assign" : "") @(_reassigning ? "floor--assign" : "")" @ref="_floorEl">
         @foreach (var t in VisibleTables)
         {
             ResByTable.TryGetValue(t.Id, out var rv);
@@ -106,6 +137,14 @@
                  data-shape="@((int)t.Shape)"
                  style="@TableStyle(t)"
                  @onclick="() => OnTableClick(t)" title="@(t.GroupId is not null ? (t.GroupName ?? t.Name) : t.Name)">
+                @if (t.Color is not null) { <span class="tbl__accent"></span> }
+                @if (!_editing && t.GroupId is null)
+                {
+                    @foreach (var chairStyle in ChairStyles(t))
+                    {
+                        <span class="tbl__chair @(EffectiveTableStatus(t, rv) == TableStatus.Occupied ? "tbl__chair--seated" : "")" style="@chairStyle"></span>
+                    }
+                }
                 <div class="tbl__content">
                     @if (t.GroupId is null || IsGroupAnchor(t))
                     {
@@ -140,9 +179,27 @@
         @if (_tables.Count == 0) { <p class="empty">@Loc.T("No tables yet. Create one to start.")</p> }
         else if (VisibleTables.Count == 0) { <p class="empty">@Loc.T("No tables in this zone.")</p> }
     </div>
+    @* Floats over the map's bottom-right corner instead of sharing the toolbar's line. *@
+    <div class="legend">
+        <span class="legend__item"><i class="dot dot--available"></i>@Loc.T("Free")</span>
+        <span class="legend__item"><i class="dot dot--occupied"></i>@Loc.T("Occupied")</span>
+        <span class="legend__item"><i class="dot dot--reserved"></i>@Loc.T("Reserved")</span>
+    </div>
     </div>
     </div>
 
+        <div class="resv-col">
+        <div class="tables-datebar card">
+            <div class="resv__day-nav">
+                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Previous day")" @onclick="() => ShiftDay(-1)"><LucideIcon Name="arrow-left" Size="15" /></button>
+                <input type="date" class="input resv__head-date" @bind="_reserveDate" @bind:after="LoadReservations" />
+                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Next day")" @onclick="() => ShiftDay(1)"><LucideIcon Name="arrow-right" Size="15" /></button>
+            </div>
+            <div class="tables-datebar__actions">
+                <button class="resv__stats-btn resv__stats-btn--on" title="@Loc.T("Tables")" @onclick="GoToTables"><LucideIcon Name="calendar" Size="12" /></button>
+                <button class="resv__stats-btn" title="@Loc.T("Reservations")" @onclick="OpenDashboard"><LucideIcon Name="bar-chart-3" Size="12" /></button>
+            </div>
+        </div>
         <aside class="resv card">
             <div class="resv__head">
                 <h2>@Loc.T("Reservations")</h2>
@@ -250,6 +307,7 @@
                 else if (FilteredReservations.Count == 0) { <p class="empty">@Loc.T("No reservations for this service.")</p> }
             </div>
         </aside>
+        </div>
 </div>
 
 <Modal Visible="_form is not null" Title="@(_form?.Id > 0 ? Loc.T("Edit table") : Loc.T("New table"))" OnClose="Close">
@@ -277,6 +335,20 @@
                         <option value="@z"></option>
                     }
                 </datalist>
+            </div>
+            <div class="field">
+                <label>@Loc.T("Accent colour")</label>
+                <div class="color-pick">
+                    <button type="button" class="color-swatch @(_form.Color is null ? "color-swatch--on" : "")" style="--sw:var(--card-2)" title="@Loc.T("None")" @onclick="() => _form.Color = null">
+                        <LucideIcon Name="x" Size="12" />
+                    </button>
+                    @foreach (var c in GroupColors)
+                    {
+                        <button type="button" class="color-swatch @(_form.Color == c ? "color-swatch--on" : "")"
+                                style="--sw:@c" title="@c" @onclick="() => _form.Color = c"></button>
+                    }
+                    <input type="color" class="color-swatch color-swatch--custom" title="@Loc.T("Custom colour")" @bind="_form.Color" />
+                </div>
             </div>
             @if (_groupMembers.Count > 0)
             {
@@ -418,6 +490,33 @@
     private bool _showFilters;
     private readonly HashSet<int> _selection = new();
 
+    // ---- Reassign order to another table ----
+    private bool _reassigning;
+    private TableDto? _reassignSource;   // set once the occupied table to move is clicked
+    private int? _reassignDestId;
+
+    // ---- Floor style (background texture) ----
+    private static readonly string[] FloorTextures = { "grid", "wood", "tile", "concrete", "marble", "terracotta" };
+    private bool _floorMenuOpen;
+    private void ToggleFloorMenu() => _floorMenuOpen = !_floorMenuOpen;
+    private static string TextureLabel(string tex) => tex switch
+    {
+        "wood" => "Wood",
+        "tile" => "Tile",
+        "concrete" => "Concrete",
+        "marble" => "Marble",
+        "terracotta" => "Terracotta",
+        _ => "Grid",
+    };
+    private async Task ChooseFloorTexture(string texture)
+    {
+        _floorMenuOpen = false;
+        if (Branding.Current.FloorTexture == texture) return;
+        var form = await Settings.GetForEditAsync();
+        form.FloorTexture = texture;
+        await Settings.UpdateAsync(form);
+    }
+
     // ---- Reservations panel state ----
     // Docked to the left of the floor plan (visually, via CSS order).
     private bool _mapExpanded;
@@ -501,7 +600,46 @@
     {
         var s = $"left:{N(t.PositionX)}px; top:{N(t.PositionY)}px; width:{N(t.Width)}px; height:{N(t.Height)}px; transform:rotate({N(t.Rotation)}deg); --rot:{N(t.Rotation)}deg";
         if (t.GroupId is not null) s += $"; --grp:{GroupColor(t.GroupId.Value)}";
+        if (t.Color is not null) s += $"; --tcolor:{t.Color}";
         return s;
+    }
+
+    // One small chair mark per seat, ringed around the table so it reads as a real table
+    // instead of a bare labelled box. Round/oval tables get an even circular ring; square/
+    // rectangular tables get chairs walked around the four edges (proportionally, so a long
+    // side naturally picks up more chairs than a short one), matching how a real dining table
+    // is actually laid out. Percentages can fall outside 0–100 on purpose — that's what pushes
+    // the chair beyond the table's own edge instead of sitting on top of it.
+    private static IEnumerable<string> ChairStyles(TableDto t)
+    {
+        const double outset = 15;
+        var n = t.Seats;
+        if (n <= 0 || n > 16) yield break;
+
+        if (t.Shape is TableShape.Round or TableShape.Oval)
+        {
+            for (var i = 0; i < n; i++)
+            {
+                var angle = 2 * Math.PI * i / n - Math.PI / 2;
+                var left = 50 + 50 * (1 + outset / 50) * Math.Cos(angle);
+                var top = 50 + 50 * (1 + outset / 50) * Math.Sin(angle);
+                yield return $"left:{left:0.#}%; top:{top:0.#}%;";
+            }
+            yield break;
+        }
+
+        double w = t.Width, h = t.Height;
+        var perim = 2 * (w + h);
+        for (var i = 0; i < n; i++)
+        {
+            var d = perim * (i + 0.5) / n;
+            double left, top;
+            if (d < w) { left = d / w * 100; top = -outset; }
+            else if (d < w + h) { left = 100 + outset; top = (d - w) / h * 100; }
+            else if (d < w + h + w) { left = 100 - (d - w - h) / w * 100; top = 100 + outset; }
+            else { left = -outset; top = 100 - (d - w - h - w) / h * 100; }
+            yield return $"left:{left:0.#}%; top:{top:0.#}%;";
+        }
     }
 
     protected override bool ShouldRender() => !_suppressRender;
@@ -525,7 +663,7 @@
     }
 
     // ---- Layout editing (drag / resize / rotate) ----
-    private void StartEdit() { CancelAssign(); _editing = true; }
+    private void StartEdit() { CancelAssign(); CancelReassign(); _editing = true; }
 
     private async Task SaveLayout()
     {
@@ -556,8 +694,20 @@
     }
 
     // ---- Join / separate ----
-    private void StartSelect() { CancelAssign(); _selecting = true; _selection.Clear(); _notice = null; }
+    private void StartSelect() { CancelAssign(); CancelReassign(); _selecting = true; _selection.Clear(); _notice = null; }
     private void CancelSelect() { _selecting = false; _selection.Clear(); }
+
+    // ---- Reassign an open order to another table ----
+    private void StartReassign() { CancelAssign(); _reassigning = true; _reassignSource = null; _reassignDestId = null; _notice = null; }
+    private void CancelReassign() { _reassigning = false; _reassignSource = null; _reassignDestId = null; }
+
+    private async Task ConfirmReassign()
+    {
+        if (_reassignSource?.ActiveOrderId is null || _reassignDestId is null) return;
+        await OrderSvc.MoveOrderToTableAsync(_reassignSource.ActiveOrderId.Value, _reassignDestId.Value);
+        CancelReassign();
+        await Load();
+    }
 
     // Joining asks for a name first (defaulting to "T1 + T2") so the group reads as one table
     // everywhere, instead of leaving each member's own name showing.
@@ -607,7 +757,7 @@
 
     private async Task LoadReservations() => _reservations = await ReservationService.GetByDateAsync(_reserveDate);
 
-    private void StartAssign(ReservationDto r) { _assignReservationId = r.Id; _assignName = r.CustomerName; }
+    private void StartAssign(ReservationDto r) { CancelReassign(); _assignReservationId = r.Id; _assignName = r.CustomerName; }
     private void CancelAssign() { _assignReservationId = null; _assignName = null; }
 
     // Clicking "Assign" again while already assigning that same reservation cancels it,
@@ -736,6 +886,13 @@
             return;
         }
         if (_assignReservationId is not null) { await AssignToTable(t.Id); return; }
+        if (_reassigning)
+        {
+            // Only an occupied table (with an order to move) opens the inline confirm+destination
+            // picker; clicking a free table while reassigning does nothing.
+            if (t.ActiveOrderId is not null) { _reassignSource = t; _reassignDestId = null; }
+            return;
+        }
         OpenForm(t.Id);
     }
 
@@ -745,7 +902,7 @@
         if (id is null) { _form = new TableFormDto { Zone = _zoneFilter }; _groupMembers = new(); _groupId = null; _groupNameEdit = ""; return; }
 
         var t = _tables.First(x => x.Id == id);
-        _form = new TableFormDto { Id = t.Id, Name = t.Name, Seats = t.Seats, Shape = t.Shape, Zone = t.Zone };
+        _form = new TableFormDto { Id = t.Id, Name = t.Name, Seats = t.Seats, Shape = t.Shape, Zone = t.Zone, Color = t.Color };
         _groupId = t.GroupId;
         _groupNameEdit = t.GroupName ?? "";
         _groupMembers = t.GroupId is null

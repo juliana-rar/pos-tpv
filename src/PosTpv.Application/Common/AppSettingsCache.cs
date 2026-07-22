@@ -11,7 +11,7 @@ namespace PosTpv.Application.Common;
 public class AppSettingsCache
 {
     public AppSettingsDto Current { get; private set; } =
-        new("PosTPV", new TimeOnly(13, 0), new TimeOnly(16, 0), new TimeOnly(20, 0), new TimeOnly(23, 30));
+        new("PosTPV", new TimeOnly(13, 0), new TimeOnly(16, 0), new TimeOnly(20, 0), new TimeOnly(23, 30), "grid");
 
     /// <summary>Raised whenever settings are saved, so long-lived components (e.g. the sidebar
     /// brand, which persists across in-app navigation) can refresh without waiting for the

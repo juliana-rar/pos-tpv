@@ -11,29 +11,73 @@
 
 <PageTitle>Kitchen · @Branding.Current.Title</PageTitle>
 
-<div class="kds__head toolbar">
-    <span class="spacer"></span>
-    @if (_showFilters)
-    {
-        <input class="input" style="max-width:170px" placeholder="@Loc.T("Search table…")" @bind="_tableSearch" @bind:event="oninput" />
-        @if (Zones.Count > 0)
+@* Same quick-jump chip strip as /orders (.orders-quicknav in Orders.razor.css) — one chip per
+   ticket on screen, click to scroll straight to it instead of hunting across the board. *@
+<div class="orders-quicknav @(_showFilters ? "orders-quicknav--filters-open" : "")">
+    <div class="orders-quicknav__chips @(_chipsExpanded ? "orders-quicknav__chips--expanded" : "")">
+        @foreach (var o in Filtered)
         {
-            <select class="select" style="max-width:170px" @bind="_zoneFilter">
-                <option value="">@Loc.T("All zones")</option>
-                @foreach (var z in Zones)
-                {
-                    <option value="@z">@z</option>
-                }
-            </select>
+            <button class="orders-quicknav__chip" data-status="@o.Status.ToString().ToLower()"
+                    title="@o.TableName · @Loc.T(o.Status.ToString())" @onclick="() => JumpToTicket(o.Id)" type="button">
+                <span class="orders-quicknav__chip-name">@o.TableName</span>
+            </button>
         }
-    }
-    <span class="badge @(_connected ? "badge--success" : "badge--danger")">
-        @(_connected ? Loc.T("● Live") : Loc.T("● Offline"))
-    </span>
-    <span class="badge">@Filtered.Count @Loc.T("active")</span>
-    <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost")" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters">
-        <LucideIcon Name="settings" Size="16" />
-    </button>
+    </div>
+    <div class="kds__head toolbar">
+        @if (_showFilters)
+        {
+            <div class="dd">
+                <button type="button" class="select dd__trigger" style="max-width:130px" @onclick="ToggleStatusMenu">@StatusFilterLabel()</button>
+                @if (_statusMenuOpen)
+                {
+                    <div class="dd__menu">
+                        <button type="button" class="dd__opt @(_statusFilterValue is null ? "dd__opt--on" : "")" @onclick='() => ChooseStatusFilter(null)'>@Loc.T("All statuses")</button>
+                        @foreach (var s in new[] { OrderStatus.Open, OrderStatus.Sent, OrderStatus.InPreparation, OrderStatus.Ready, OrderStatus.Delivered })
+                        {
+                            <button type="button" class="dd__opt @(_statusFilterValue == s ? "dd__opt--on" : "")" @onclick="() => ChooseStatusFilter(s)">@Loc.T(s.ToString())</button>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="dd">
+                <button type="button" class="select dd__trigger" style="max-width:130px" @onclick="ToggleSortMenu">@SortLabel(_sortOrder)</button>
+                @if (_sortMenuOpen)
+                {
+                    <div class="dd__menu">
+                        <button type="button" class="dd__opt @(_sortOrder == "oldest" ? "dd__opt--on" : "")" @onclick='() => ChooseSort("oldest")'>@Loc.T("Oldest first")</button>
+                        <button type="button" class="dd__opt @(_sortOrder == "newest" ? "dd__opt--on" : "")" @onclick='() => ChooseSort("newest")'>@Loc.T("Newest first")</button>
+                        <button type="button" class="dd__opt @(_sortOrder == "number" ? "dd__opt--on" : "")" @onclick='() => ChooseSort("number")'>@Loc.T("Order number")</button>
+                    </div>
+                }
+            </div>
+            @if (Zones.Count > 0)
+            {
+                <div class="dd">
+                    <button type="button" class="select dd__trigger" style="max-width:130px" @onclick="ToggleZoneMenu">@(string.IsNullOrEmpty(_zoneFilter) ? Loc.T("All zones") : _zoneFilter)</button>
+                    @if (_zoneMenuOpen)
+                    {
+                        <div class="dd__menu">
+                            <button type="button" class="dd__opt @(string.IsNullOrEmpty(_zoneFilter) ? "dd__opt--on" : "")" @onclick='() => ChooseZone("")'>@Loc.T("All zones")</button>
+                            @foreach (var z in Zones)
+                            {
+                                <button type="button" class="dd__opt @(_zoneFilter == z ? "dd__opt--on" : "")" @onclick="() => ChooseZone(z)">@z</button>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            <input class="input" style="max-width:130px" placeholder="@Loc.T("Search table…")" @bind="_tableSearch" @bind:event="oninput" />
+        }
+        <button class="btn btn--icon btn--ghost" title="@Loc.T("Refresh")" @onclick="Reload"><LucideIcon Name="rotate-cw" Size="16" /></button>
+        <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost")" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters">
+            <LucideIcon Name="settings" Size="16" />
+        </button>
+        <button class="btn btn--icon @(_chipsExpanded ? "btn--primary" : "btn--ghost")"
+                title="@(_chipsExpanded ? Loc.T("Show fewer tables") : Loc.T("Show all tables"))"
+                @onclick="() => _chipsExpanded = !_chipsExpanded">
+            <LucideIcon Name="@(_chipsExpanded ? "chevron-up" : "chevron-down")" Size="16" />
+        </button>
+    </div>
 </div>
 
 @if (Filtered.Count == 0)
@@ -45,7 +89,7 @@ else
     <div class="kds">
         @foreach (var o in Filtered)
         {
-            <div class="ticket @(o.FirstsFiredAt is null && o.SecondsFiredAt is null && o.DessertsFiredAt is null ? "" : "ticket--seconds")">
+            <div id="ticket-@o.Id" class="ticket @(o.SecondsFiredAt is null ? "" : "ticket--seconds")">
                 <div class="ticket__head">
                     <span class="ticket__table"><LucideIcon Name="armchair" Size="16" /> @o.TableName</span>
                     <span class="badge ticket__status">@TicketStatusLabel(o.Status)</span>
@@ -54,31 +98,12 @@ else
                 </div>
 
                 <div class="ticket__fired-row">
-                    <button type="button" class="btn btn--sm btn--ghost ticket__fired @(o.FirstsSentAt is null ? "ticket__fired--empty" : "")"
-                            title="@(o.FirstsSentAt is null ? Loc.T("Click to mark as fired") : Loc.T("Click to mark as not fired"))" @onclick="() => ToggleFirsts(o)">
-                        <LucideIcon Name="bell" Size="14" />
-                        @Loc.T("Firsts prepared")@(o.FirstsSentAt is { } firstsAt ? $" · {firstsAt.ToLocalTime():HH:mm}" : "")
-                    </button>
                     <button type="button" class="btn btn--sm btn--ghost ticket__fired @(o.SecondsSentAt is null ? "ticket__fired--empty" : "")"
                             title="@(o.SecondsSentAt is null ? Loc.T("Click to mark as fired") : Loc.T("Click to mark as not fired"))" @onclick="() => ToggleSeconds(o)">
                         <LucideIcon Name="bell" Size="14" />
                         @Loc.T("Seconds prepared")@(o.SecondsSentAt is { } secondsAt ? $" · {secondsAt.ToLocalTime():HH:mm}" : "")
                     </button>
-                    <button type="button" class="btn btn--sm btn--ghost ticket__fired @(o.DessertsSentAt is null ? "ticket__fired--empty" : "")"
-                            title="@(o.DessertsSentAt is null ? Loc.T("Click to mark as fired") : Loc.T("Click to mark as not fired"))" @onclick="() => ToggleDesserts(o)">
-                        <LucideIcon Name="bell" Size="14" />
-                        @Loc.T("Desserts prepared")@(o.DessertsSentAt is { } dessertsAt ? $" · {dessertsAt.ToLocalTime():HH:mm}" : "")
-                    </button>
                 </div>
-
-                @if (o.FirstsFiredAt is not null)
-                {
-                    <div class="ticket__fire">
-                        <span class="ticket__fire-label"><LucideIcon Name="bell" Size="15" /> @Loc.T("Fire first courses")</span>
-                        <button class="btn btn--icon" title="@Loc.T("Got it")"
-                                @onclick="() => AcknowledgeFirsts(o)"><LucideIcon Name="check" Size="18" /></button>
-                    </div>
-                }
 
                 @if (o.SecondsFiredAt is not null)
                 {
@@ -86,15 +111,6 @@ else
                         <span class="ticket__fire-label"><LucideIcon Name="bell" Size="15" /> @Loc.T("Fire second courses")</span>
                         <button class="btn btn--icon" title="@Loc.T("Got it")"
                                 @onclick="() => AcknowledgeSeconds(o)"><LucideIcon Name="check" Size="18" /></button>
-                    </div>
-                }
-
-                @if (o.DessertsFiredAt is not null)
-                {
-                    <div class="ticket__fire">
-                        <span class="ticket__fire-label"><LucideIcon Name="bell" Size="15" /> @Loc.T("Fire desserts")</span>
-                        <button class="btn btn--icon" title="@Loc.T("Got it")"
-                                @onclick="() => AcknowledgeDesserts(o)"><LucideIcon Name="check" Size="18" /></button>
                     </div>
                 }
 
@@ -115,31 +131,41 @@ else
                     @foreach (var group in groups)
                     {
                         <div class="ticket__group"><LucideIcon Name="@group.Icon" Size="14" /> @Loc.T(group.Label)</div>
-                        @foreach (var it in group.Items)
+                        @* Same ordered-together bracket as /orders (OrderCard.razor's GroupByOrderTime): items tapped
+                           in the same minute share one timestamp behind a connecting bar instead of repeating it. *@
+                        @foreach (var timeGroup in GroupByOrderTime(group.Items))
                         {
-                            <div class="kitem kitem--@it.Status.ToString().ToLower()">
-                                <div class="kitem__row">
-                                    <span class="kitem__qty">@it.Quantity×</span>
-                                    <span class="kitem__name">@it.ProductName</span>
-                                    <span class="spacer"></span>
-                                    @if (it.Status == OrderItemStatus.Preparing)
+                            <div class="ticket__time-group">
+                                <span class="ticket__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
+                                <div class="ticket__time-group-items">
+                                    @foreach (var it in timeGroup.Items)
                                     {
-                                        <button class="btn btn--icon btn--success" title="@Loc.T("Ready")"
-                                                @onclick="() => SetItem(it.Id, OrderItemStatus.Ready)"><LucideIcon Name="arrow-right" Size="18" /></button>
-                                    }
-                                    else
-                                    {
-                                        <LucideIcon Name="check" Size="16" />
+                                        <div class="kitem kitem--@it.Status.ToString().ToLower()">
+                                            <div class="kitem__row">
+                                                <span class="kitem__qty">@it.Quantity×</span>
+                                                <span class="kitem__name">@it.ProductName</span>
+                                                <span class="spacer"></span>
+                                                @if (it.Status == OrderItemStatus.Preparing)
+                                                {
+                                                    <button class="btn btn--icon btn--success" title="@Loc.T("Ready")"
+                                                            @onclick="() => SetItem(it.Id, OrderItemStatus.Ready)"><LucideIcon Name="arrow-right" Size="18" /></button>
+                                                }
+                                                else
+                                                {
+                                                    <LucideIcon Name="check" Size="16" />
+                                                }
+                                            </div>
+                                            @if (it.Extras.Count > 0)
+                                            {
+                                                <div class="kitem__extras">＋ @string.Join(", ", it.Extras.Select(e => e.Name))</div>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(it.Comment))
+                                            {
+                                                <div class="kitem__comment"><LucideIcon Name="triangle-alert" Size="14" /> @it.Comment</div>
+                                            }
+                                        </div>
                                     }
                                 </div>
-                                @if (it.Extras.Count > 0)
-                                {
-                                    <div class="kitem__extras">＋ @string.Join(", ", it.Extras.Select(e => e.Name))</div>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(it.Comment))
-                                {
-                                    <div class="kitem__comment"><LucideIcon Name="triangle-alert" Size="14" /> @it.Comment</div>
-                                }
                             </div>
                         }
                     }
@@ -165,9 +191,29 @@ else
 @code {
     private List<OrderDto> _orders = new();
     private HubConnection? _hub;
-    private bool _connected;
 
     private bool _showFilters;
+    private bool _chipsExpanded;
+    private OrderStatus? _statusFilterValue;
+    private bool _statusMenuOpen;
+    private void ToggleStatusMenu() => _statusMenuOpen = !_statusMenuOpen;
+    private void ChooseStatusFilter(OrderStatus? value) { _statusFilterValue = value; _statusMenuOpen = false; }
+    private string StatusFilterLabel() => _statusFilterValue is null ? Loc.T("All statuses") : Loc.T(_statusFilterValue.ToString()!);
+
+    private string _sortOrder = "oldest"; // "newest" | "oldest" | "number" — oldest first matches the kitchen's natural cook-order priority
+    private bool _sortMenuOpen;
+    private void ToggleSortMenu() => _sortMenuOpen = !_sortMenuOpen;
+    private void ChooseSort(string value) { _sortOrder = value; _sortMenuOpen = false; }
+    private string SortLabel(string value) => value switch
+    {
+        "newest" => Loc.T("Newest first"),
+        "number" => Loc.T("Order number"),
+        _ => Loc.T("Oldest first"),
+    };
+
+    private bool _zoneMenuOpen;
+    private void ToggleZoneMenu() => _zoneMenuOpen = !_zoneMenuOpen;
+    private void ChooseZone(string value) { _zoneFilter = value; _zoneMenuOpen = false; }
     private string _zoneFilter = "";
     private string _tableSearch = "";
     private List<string> Zones => _orders
@@ -180,9 +226,15 @@ else
     {
         get
         {
-            var list = string.IsNullOrEmpty(_zoneFilter) ? _orders : _orders.Where(o => o.Zone == _zoneFilter);
+            var list = _statusFilterValue is null ? _orders : _orders.Where(o => o.Status == _statusFilterValue);
+            if (!string.IsNullOrEmpty(_zoneFilter)) list = list.Where(o => o.Zone == _zoneFilter);
             if (!string.IsNullOrWhiteSpace(_tableSearch)) list = list.Where(o => o.TableName.Contains(_tableSearch, StringComparison.OrdinalIgnoreCase));
-            return list.ToList();
+            return (_sortOrder switch
+            {
+                "newest" => list.OrderByDescending(o => o.CreatedAt),
+                "number" => list.OrderBy(o => o.Number),
+                _ => list.OrderBy(o => o.CreatedAt)
+            }).ToList();
         }
     }
 
@@ -200,28 +252,36 @@ else
         _hub.On<int>(KitchenHub.OrderSent, async _ => await Reload());
         _hub.On<int, int>(KitchenHub.ItemStatusChanged, async (_, _) => await Reload());
         _hub.On<int>(KitchenHub.OrderReady, async _ => await Reload());
-        _hub.On<int>(KitchenHub.FirstsFired, async _ =>
-        {
-            await Reload();
-            await JS.InvokeVoidAsync("posBeep");
-        });
         _hub.On<int>(KitchenHub.SecondsFired, async _ =>
         {
             await Reload();
             await JS.InvokeVoidAsync("posBeep");
         });
-        _hub.On<int>(KitchenHub.DessertsFired, async _ =>
-        {
-            await Reload();
-            await JS.InvokeVoidAsync("posBeep");
-        });
-        _hub.Reconnected += async _ => { _connected = true; await Reload(); };
-        _hub.Closed += async _ => { _connected = false; await InvokeAsync(StateHasChanged); };
+        _hub.Reconnected += async _ => await Reload();
 
         await _hub.StartAsync();
-        _connected = true;
         StateHasChanged();
     }
+
+    private void JumpToTicket(int orderId) => Nav.NavigateTo($"/kitchen#ticket-{orderId}");
+
+    // Same bracket grouping as OrderCard.razor's GroupByOrderTime: items ordered in the same
+    // minute share one timestamp instead of each line carrying its own repeated time.
+    private static List<TimeGroup> GroupByOrderTime(List<OrderItemDto> items)
+    {
+        var groups = new List<TimeGroup>();
+        foreach (var it in items)
+        {
+            var minute = new DateTime(it.CreatedAt.Year, it.CreatedAt.Month, it.CreatedAt.Day, it.CreatedAt.Hour, it.CreatedAt.Minute, 0, it.CreatedAt.Kind);
+            if (groups.Count > 0 && groups[^1].Time == minute)
+                groups[^1].Items.Add(it);
+            else
+                groups.Add(new TimeGroup(minute, new List<OrderItemDto> { it }));
+        }
+        return groups;
+    }
+
+    private sealed record TimeGroup(DateTime Time, List<OrderItemDto> Items);
 
     private async Task Load() => _orders = await Orders.GetKitchenOrdersAsync();
 
@@ -252,22 +312,9 @@ else
         await Load();
     }
 
-    private async Task AcknowledgeFirsts(OrderDto o)
-    {
-        await Orders.AcknowledgeFirstCoursesAsync(o.Id);
-        await Load();
-    }
-
     private async Task AcknowledgeSeconds(OrderDto o)
     {
         await Orders.AcknowledgeSecondCoursesAsync(o.Id);
-        await Load();
-    }
-
-    private async Task ToggleFirsts(OrderDto o)
-    {
-        if (o.FirstsSentAt is null) await Orders.FireFirstCoursesAsync(o.Id);
-        else await Orders.UndoFirstCoursesFiredAsync(o.Id);
         await Load();
     }
 
@@ -275,19 +322,6 @@ else
     {
         if (o.SecondsSentAt is null) await Orders.FireSecondCoursesAsync(o.Id);
         else await Orders.UndoSecondCoursesFiredAsync(o.Id);
-        await Load();
-    }
-
-    private async Task AcknowledgeDesserts(OrderDto o)
-    {
-        await Orders.AcknowledgeDessertCoursesAsync(o.Id);
-        await Load();
-    }
-
-    private async Task ToggleDesserts(OrderDto o)
-    {
-        if (o.DessertsSentAt is null) await Orders.FireDessertCoursesAsync(o.Id);
-        else await Orders.UndoDessertCoursesFiredAsync(o.Id);
         await Load();
     }
 

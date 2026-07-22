@@ -1,6 +1,10 @@
 @inherits LayoutComponentBase
 
 <div class="shell">
+    <main class="shell__content">
+        @Body
+    </main>
+
     <header class="topbar">
         <NavMenu />
 
@@ -8,10 +12,6 @@
 
         <TopbarExtras />
     </header>
-
-    <main class="shell__content">
-        @Body
-    </main>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>

@@ -1,7 +1,8 @@
 .resd-panel { display: flex; flex-direction: column; gap: 1.1rem; }
 
-/* Same white card treatment as the /tables day picker, so both screens read as one system. */
-.resd__datebar { display: flex; flex-direction: column; align-items: center; gap: .35rem; padding: .6rem 1rem; }
+/* Same white card treatment and width as the /tables day picker (.tables-datebar, 380px),
+   so both screens read as one system, instead of stretching full width here. */
+.resd__datebar { display: flex; flex-direction: column; align-items: center; gap: .35rem; padding: .6rem 1rem; width: 380px; margin: 0; }
 /* .resv__stats-actions carries a legacy -.75rem margin-top (app.css) from when it sat directly
    under the day-nav with no card wrapper — inside this card it pulls the icons up into the
    date input. Cancel it here so the icons sit the same distance below the date as on /tables. */

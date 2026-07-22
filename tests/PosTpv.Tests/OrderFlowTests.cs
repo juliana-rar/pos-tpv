@@ -337,17 +337,14 @@ public class OrderFlowTests
         Assert.All(served.Items.Where(i => i.IsDrink), i => Assert.Equal(OrderItemStatus.Delivered, i.Status));
         Assert.All(served.Items.Where(i => !i.IsDrink), i => Assert.NotEqual(OrderItemStatus.Delivered, i.Status));
 
-        // Firing firsts / seconds flags the order (independently); acknowledging clears just that one.
-        await orders.FireFirstCoursesAsync(order.Id);
+        // Firing seconds flags the order; acknowledging clears it.
         await orders.FireSecondCoursesAsync(order.Id);
         var fired = (await orders.GetOpenOrdersAsync()).First(o => o.Id == order.Id);
-        Assert.NotNull(fired.FirstsFiredAt);
         Assert.NotNull(fired.SecondsFiredAt);
 
-        await orders.AcknowledgeFirstCoursesAsync(order.Id);
+        await orders.AcknowledgeSecondCoursesAsync(order.Id);
         var acked = (await orders.GetOpenOrdersAsync()).First(o => o.Id == order.Id);
-        Assert.Null(acked.FirstsFiredAt);
-        Assert.NotNull(acked.SecondsFiredAt);
+        Assert.Null(acked.SecondsFiredAt);
     }
 
     private sealed class NullNotifier : IKitchenNotifier
@@ -355,9 +352,7 @@ public class OrderFlowTests
         public Task OrderSentToKitchenAsync(int orderId) => Task.CompletedTask;
         public Task OrderItemStatusChangedAsync(int orderId, int orderItemId) => Task.CompletedTask;
         public Task OrderReadyAsync(int orderId) => Task.CompletedTask;
-        public Task FirstCoursesFiredAsync(int orderId) => Task.CompletedTask;
         public Task SecondCoursesFiredAsync(int orderId) => Task.CompletedTask;
-        public Task DessertCoursesFiredAsync(int orderId) => Task.CompletedTask;
         public Task SecondCoursesServedAsync(int orderId) => Task.CompletedTask;
         public Task DessertCoursesServedAsync(int orderId) => Task.CompletedTask;
         public Task DrinksServedAsync(int orderId) => Task.CompletedTask;

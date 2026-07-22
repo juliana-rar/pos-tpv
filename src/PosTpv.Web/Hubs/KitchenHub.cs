@@ -20,9 +20,7 @@ public class KitchenHub : Hub
     public const string OrderSent = "OrderSent";
     public const string ItemStatusChanged = "ItemStatusChanged";
     public const string OrderReady = "OrderReady";
-    public const string FirstsFired = "FirstsFired";
     public const string SecondsFired = "SecondsFired";
-    public const string DessertsFired = "DessertsFired";
     public const string SecondCoursesServed = "SecondCoursesServed";
     public const string DessertCoursesServed = "DessertCoursesServed";
     public const string DrinksServed = "DrinksServed";

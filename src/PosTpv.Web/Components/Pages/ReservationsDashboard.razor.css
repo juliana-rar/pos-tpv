@@ -1,3 +1,5 @@
-/* Pulled up flush against the topbar, same trick as .tables-datebar on /tables,
-   so the date-nav bar below sits at the same height on both screens. */
-.resd { display: flex; flex-direction: column; gap: 1.1rem; max-width: 1100px; margin: -1rem auto 0; }
+/* Pulled up flush against the topbar, same trick as .tables-datebar on /tables, so the
+   date-nav bar below sits at the same height AND the same left position on both screens —
+   no horizontal auto-centering here, since that shifted the datebar's left edge away from
+   where it sits on /tables depending on viewport width. */
+.resd { display: flex; flex-direction: column; gap: 1.1rem; max-width: 1100px; margin: -1.4rem 0 0; }

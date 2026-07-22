@@ -83,6 +83,7 @@ public class PosDbContext : DbContext
         b.Entity<RestaurantTable>(e =>
         {
             e.Property(x => x.Name).HasMaxLength(40).IsRequired();
+            e.Property(x => x.Color).HasMaxLength(9);
             e.HasIndex(x => x.Name).IsUnique();
             e.HasIndex(x => x.GroupId);
         });
@@ -163,6 +164,7 @@ public class PosDbContext : DbContext
         b.Entity<AppSetting>(e =>
         {
             e.Property(x => x.Title).HasMaxLength(80).IsRequired();
+            e.Property(x => x.FloorTexture).HasMaxLength(20).IsRequired();
         });
     }
 

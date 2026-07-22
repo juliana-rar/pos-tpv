@@ -19,7 +19,7 @@
     @* All fire/serve actions grouped together, right under the meta line.
        None of them disappear once done — they switch to a muted, disabled state that keeps
        showing what happened and at what time, instead of vanishing from the card. *@
-    @if (_drinks.Count > 0 || _hasFirsts || _hasSeconds || _hasDesserts || _showServeFirsts)
+    @if (_drinks.Count > 0 || _hasSeconds || _showServeFirsts || _showServeDesserts)
     {
         <div class="order-card__actions">
             @if (_drinks.Count > 0)
@@ -36,14 +36,6 @@
                         title="@(_firstsPendingToServe ? null : Loc.T("Click to undo"))"
                         @onclick="OnToggleServeFirstsClick">
                     <LucideIcon Name="salad" Size="14" />@FirstsServeLabel()
-                </button>
-            }
-            @if (_hasFirsts)
-            {
-                <button class="btn btn--sm @(Order.FirstsFiredAt is null ? "btn--primary" : "btn--ghost")"
-                        title="@(Order.FirstsFiredAt is null ? Loc.T("Tell the kitchen to start the first courses") : Loc.T("Click to undo"))"
-                        @onclick="OnToggleFirstsClick">
-                    <LucideIcon Name="bell" Size="14" />@CourseLabel("Fire firsts", "Firsts fired", Order.FirstsFiredAt)
                 </button>
             }
             @if (_showServeSeconds)
@@ -68,14 +60,6 @@
                         title="@(_dessertsPendingToServe ? null : Loc.T("Click to undo"))"
                         @onclick="OnToggleServeDessertsClick">
                     <LucideIcon Name="cake-slice" Size="14" />@DessertsServeLabel()
-                </button>
-            }
-            @if (_hasDesserts)
-            {
-                <button class="btn btn--sm @(Order.DessertsFiredAt is null ? "btn--primary" : "btn--ghost")"
-                        title="@(Order.DessertsFiredAt is null ? Loc.T("Tell the kitchen to start the desserts") : Loc.T("Click to undo"))"
-                        @onclick="OnToggleDessertsClick">
-                    <LucideIcon Name="bell" Size="14" />@CourseLabel("Fire desserts", "Desserts fired", Order.DessertsFiredAt)
                 </button>
             }
         </div>
@@ -281,10 +265,6 @@
     [Parameter] public EventCallback<int> OnUnserveFirsts { get; set; }
     /// <summary>Undo serving a single first-course line (carries the order item id).</summary>
     [Parameter] public EventCallback<int> OnUnserveFirstItem { get; set; }
-    /// <summary>Fire the first courses for this order (carries the order id).</summary>
-    [Parameter] public EventCallback<int> OnFireFirsts { get; set; }
-    /// <summary>Undo firing the first courses (carries the order id).</summary>
-    [Parameter] public EventCallback<int> OnUnfireFirsts { get; set; }
     /// <summary>Serve every ready second-course line of this order (carries the order id).</summary>
     [Parameter] public EventCallback<int> OnServeSeconds { get; set; }
     /// <summary>Undo serving every second-course line of this order at once (carries the order id).</summary>
@@ -301,10 +281,6 @@
     [Parameter] public EventCallback<int> OnUnserveDesserts { get; set; }
     /// <summary>Undo serving a single dessert line (carries the order item id).</summary>
     [Parameter] public EventCallback<int> OnUnserveDessertItem { get; set; }
-    /// <summary>Fire the desserts for this order (carries the order id).</summary>
-    [Parameter] public EventCallback<int> OnFireDesserts { get; set; }
-    /// <summary>Undo firing the desserts (carries the order id).</summary>
-    [Parameter] public EventCallback<int> OnUnfireDesserts { get; set; }
     /// <summary>Open the editor for this order (carries the order id).</summary>
     [Parameter] public EventCallback<int> OnEdit { get; set; }
     /// <summary>Open the payment dialog for this order (carries the order id).</summary>
@@ -318,7 +294,6 @@
     private List<DrinkGroup> _starterGroups = new();
     private bool _firstsPendingToServe;                 // has ready-but-not-served first courses
     private bool _showServeFirsts;                      // something ready or already served, so the button is relevant
-    private bool _hasFirsts;                            // has first courses (drives the "Fire firsts" button)
     private List<OrderItemDto> _mains = new();
     private List<DrinkGroup> _mainGroups = new();
     private bool _secondsPendingToServe;                // has ready-but-not-served second courses
@@ -328,7 +303,6 @@
     private List<DrinkGroup> _dessertGroups = new();
     private bool _dessertsPendingToServe;               // has ready-but-not-served desserts
     private bool _showServeDesserts;                    // something ready or already served, so the button is relevant
-    private bool _hasDesserts;                          // has desserts (drives the "Fire desserts" button)
 
     protected override void OnParametersSet()
     {
@@ -366,8 +340,6 @@
         _firstsPendingToServe = starters.Any(s => s.Status == OrderItemStatus.Ready);
         _showServeFirsts = starters.Any(s => s.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered);
 
-        _hasFirsts = starters.Count > 0;
-
         _mains = mains;
         _mainGroups = GroupByServeBatch(mains);
         _secondsPendingToServe = mains.Any(s => s.Status == OrderItemStatus.Ready);
@@ -378,7 +350,6 @@
         _dessertGroups = GroupByServeBatch(desserts);
         _dessertsPendingToServe = desserts.Any(s => s.Status == OrderItemStatus.Ready);
         _showServeDesserts = desserts.Any(s => s.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered);
-        _hasDesserts = desserts.Count > 0;
     }
 
     // A "Serve drinks" click stamps every drink it touches with the exact same UpdatedAt (one
@@ -492,15 +463,9 @@
         foreach (var it in group.Items) await OnUnserveDessertItem.InvokeAsync(it.Id);
     }
     // Same toggle pattern as the drinks button: click to fire, click again to undo.
-    private Task OnToggleFirstsClick() => Order.FirstsFiredAt is null
-        ? OnFireFirsts.InvokeAsync(Order.Id)
-        : OnUnfireFirsts.InvokeAsync(Order.Id);
     private Task OnToggleSecondsClick() => Order.SecondsFiredAt is null
         ? OnFireSeconds.InvokeAsync(Order.Id)
         : OnUnfireSeconds.InvokeAsync(Order.Id);
-    private Task OnToggleDessertsClick() => Order.DessertsFiredAt is null
-        ? OnFireDesserts.InvokeAsync(Order.Id)
-        : OnUnfireDesserts.InvokeAsync(Order.Id);
     private Task OnEditClick() => OnEdit.InvokeAsync(Order.Id);
     private Task OnPayClick() => OnPay.InvokeAsync(Order.Id);
 

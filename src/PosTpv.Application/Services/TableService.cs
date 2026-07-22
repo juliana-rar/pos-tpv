@@ -59,7 +59,7 @@ public class TableService : ITableService
 
             return new TableDto(t.Id, t.Name, t.Seats, t.Shape, t.Status,
                 t.PositionX, t.PositionY, t.Width, t.Height, t.Rotation, t.IsLocked,
-                order?.Id, order?.Total ?? 0m, t.GroupId, t.Zone, t.GroupName);
+                order?.Id, order?.Total ?? 0m, t.GroupId, t.Zone, t.GroupName, t.Color);
         }).ToList();
     }
 
@@ -71,6 +71,7 @@ public class TableService : ITableService
             Seats = form.Seats,
             Shape = form.Shape,
             Zone = form.Zone,
+            Color = form.Color,
         };
 
         // Land the new table near the middle of the floor plan instead of the top-left corner
@@ -95,6 +96,7 @@ public class TableService : ITableService
         entity.Seats = form.Seats;
         entity.Shape = form.Shape;
         entity.Zone = form.Zone;
+        entity.Color = form.Color;
         _uow.Repository<RestaurantTable>().Update(entity);
         await _uow.SaveChangesAsync(ct);
     }

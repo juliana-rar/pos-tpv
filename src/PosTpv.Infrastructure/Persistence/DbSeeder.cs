@@ -52,11 +52,15 @@ public class DbSeeder : IDbSeeder
             _log.LogInformation("Seeding demo catalogue.");
             var drinks = new Category { Name = "Drinks", Icon = "🥤", Color = "#0ea5e9", DisplayOrder = 1, Kind = CategoryKind.Drink };
             var starters = new Category { Name = "Starters", Icon = "🥗", Color = "#22c55e", DisplayOrder = 2, Course = CourseType.Starter };
-            var pizzas = new Category { Name = "Pizzas", Icon = "🍕", Color = "#ef4444", DisplayOrder = 3, Course = CourseType.Main };
-            var pasta = new Category { Name = "Pasta", Icon = "🍝", Color = "#f59e0b", DisplayOrder = 4, Course = CourseType.Main };
-            var desserts = new Category { Name = "Desserts", Icon = "🍰", Color = "#ec4899", DisplayOrder = 5, Course = CourseType.Dessert };
+            var salads = new Category { Name = "Salads", Icon = "🥙", Color = "#65a30d", DisplayOrder = 3, Course = CourseType.Starter };
+            var pizzas = new Category { Name = "Pizzas", Icon = "🍕", Color = "#ef4444", DisplayOrder = 4, Course = CourseType.Main };
+            var pasta = new Category { Name = "Pasta", Icon = "🍝", Color = "#f59e0b", DisplayOrder = 5, Course = CourseType.Main };
+            var burgers = new Category { Name = "Burgers", Icon = "🍔", Color = "#a16207", DisplayOrder = 6, Course = CourseType.Main };
+            var desserts = new Category { Name = "Desserts", Icon = "🍰", Color = "#ec4899", DisplayOrder = 7, Course = CourseType.Dessert };
 
             starters.Comments.Add(Cmt("No onion", 0));
+            salads.Comments.Add(Cmt("No dressing", 0));
+            salads.Comments.Add(Cmt("Dressing on the side", 1));
             pizzas.Comments.Add(Cmt("Well done", 0));
             pizzas.Comments.Add(Cmt("No cheese", 1));
             pizzas.Comments.Add(Cmt("Extra sauce", 2));
@@ -64,25 +68,52 @@ public class DbSeeder : IDbSeeder
             pasta.Comments.Add(Cmt("Spicy", 0));
             pasta.Comments.Add(Cmt("No cheese", 1));
             pasta.Comments.Add(Cmt("Gluten free", 2));
+            burgers.Comments.Add(Cmt("No onion", 0));
+            burgers.Comments.Add(Cmt("Well done", 1));
+            burgers.Comments.Add(Cmt("No pickles", 2));
 
-            _db.Categories.AddRange(drinks, starters, pizzas, pasta, desserts);
+            _db.Categories.AddRange(drinks, starters, salads, pizzas, pasta, burgers, desserts);
 
             _db.Products.AddRange(
                 P("Water", 1.50m, drinks, "#38bdf8", 10),
+                P("Sparkling Water", 1.80m, drinks, "#7dd3fc", 10),
                 P("Soft Drink", 2.20m, drinks, "#0ea5e9", 10),
+                P("Coca-Cola", 2.20m, drinks, "#dc2626", 10),
+                P("Iced Tea", 2.30m, drinks, "#ca8a04", 10),
                 P("House Wine", 3.50m, drinks, "#7c3aed", 10),
                 P("Beer", 2.80m, drinks, "#f59e0b", 10),
+                P("Espresso", 1.60m, drinks, "#78350f", 10),
+                P("Cappuccino", 2.40m, drinks, "#92400e", 10),
                 P("Bruschetta", 5.90m, starters, "#22c55e", 21, prep: 6),
                 P("Garlic Bread", 4.50m, starters, "#16a34a", 21, prep: 5),
                 P("Caesar Salad", 7.90m, starters, "#84cc16", 21, prep: 8),
+                P("Mozzarella Sticks", 6.50m, starters, "#65a30d", 21, prep: 7),
+                P("Onion Rings", 5.20m, starters, "#4d7c0f", 21, prep: 6),
+                P("Hummus & Pita", 6.00m, starters, "#3f6212", 21, prep: 5),
+                P("Greek Salad", 8.20m, salads, "#65a30d", 21, prep: 6),
+                P("Caprese Salad", 8.50m, salads, "#84cc16", 21, prep: 5),
+                P("Mixed Green Salad", 6.90m, salads, "#4d7c0f", 21, prep: 5),
                 P("Margherita", 8.50m, pizzas, "#ef4444", 21, prep: 12),
                 P("Pepperoni", 10.90m, pizzas, "#dc2626", 21, prep: 12),
                 P("Four Cheese", 11.50m, pizzas, "#f97316", 21, prep: 13),
                 P("Diavola", 11.90m, pizzas, "#b91c1c", 21, prep: 13),
+                P("Vegetariana", 10.50m, pizzas, "#f87171", 21, prep: 12),
+                P("Quattro Stagioni", 12.20m, pizzas, "#991b1b", 21, prep: 14),
+                P("Hawaiana", 10.90m, pizzas, "#fb923c", 21, prep: 12),
                 P("Carbonara", 9.90m, pasta, "#f59e0b", 21, prep: 11),
                 P("Bolognese", 9.50m, pasta, "#d97706", 21, prep: 11),
+                P("Lasagna", 10.90m, pasta, "#b45309", 21, prep: 15),
+                P("Ravioli", 10.50m, pasta, "#ea580c", 21, prep: 12),
+                P("Pesto Penne", 9.20m, pasta, "#ca8a04", 21, prep: 10),
+                P("Classic Burger", 9.90m, burgers, "#a16207", 21, prep: 12),
+                P("Cheeseburger", 10.50m, burgers, "#854d0e", 21, prep: 12),
+                P("Bacon Burger", 11.90m, burgers, "#713f12", 21, prep: 13),
+                P("Veggie Burger", 9.50m, burgers, "#ca8a04", 21, prep: 12),
                 P("Tiramisu", 5.50m, desserts, "#ec4899", 10, prep: 3),
-                P("Panna Cotta", 5.00m, desserts, "#db2777", 10, prep: 3));
+                P("Panna Cotta", 5.00m, desserts, "#db2777", 10, prep: 3),
+                P("Cheesecake", 5.80m, desserts, "#be185d", 10, prep: 3),
+                P("Chocolate Brownie", 5.20m, desserts, "#9d174d", 10, prep: 4),
+                P("Ice Cream", 4.50m, desserts, "#f472b6", 10, prep: 2));
 
             await _db.SaveChangesAsync(ct);
         }
@@ -121,10 +152,10 @@ public class DbSeeder : IDbSeeder
             _db.Extras.AddRange(extras);
             await _db.SaveChangesAsync(ct);
 
-            // Offer the add-ons on pizzas and pasta.
+            // Offer the add-ons on pizzas, pasta and burgers.
             var eligible = await _db.Products
                 .Include(p => p.Extras)
-                .Where(p => p.Category.Name == "Pizzas" || p.Category.Name == "Pasta")
+                .Where(p => p.Category.Name == "Pizzas" || p.Category.Name == "Pasta" || p.Category.Name == "Burgers")
                 .ToListAsync(ct);
             foreach (var product in eligible)
                 foreach (var extra in extras)

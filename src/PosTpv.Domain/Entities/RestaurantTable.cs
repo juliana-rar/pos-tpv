@@ -14,6 +14,10 @@ public class RestaurantTable : BaseEntity
     /// <summary>Free-text floor area (e.g. "Main hall", "Bar") used to group/filter tables. Null = unassigned.</summary>
     public string? Zone { get; set; }
 
+    /// <summary>Optional custom accent colour (hex) shown as a small badge on the floor plan,
+    /// independent of the status-driven border colour — e.g. to flag a VIP table.</summary>
+    public string? Color { get; set; }
+
     // Floor-map geometry (pixels on the plan canvas).
     public double PositionX { get; set; }
     public double PositionY { get; set; }

@@ -1,14 +1,14 @@
-/* Day picker for the whole /tables screen — centred on the full page width
-   (spans both the floor plan and the reservations sidebar below it), not just
-   inside the reservations panel. */
+/* Day picker — its own separate bordered box again (stacked above .resv inside .resv-col),
+   but now scoped to the reservations column's own width instead of spanning the full page
+   width above both columns, so .floor-layout (and the map inside it) can start right at the
+   top of the page instead of being pushed down by a full-width bar. */
 .tables-datebar {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: .35rem;
     padding: .6rem 1rem;
-    /* Pull it up against the topbar, cancelling most of the page's own top padding. */
-    margin: -1rem 0 .8rem;
+    flex: none;
 }
 /* Narrower than .resv__head-date on purpose — full date-pill width left too much empty
    space around just two icons. Bordered pill, same shape as .resv__stats-actions
@@ -25,19 +25,55 @@
     background: var(--card-2);
 }
 
+/* Realistic "physical" button, matching /orders (Orders.razor.css's .toolbar .btn):
+   a soft ambient shadow lifts it off the surface and a thin dark shadow hugging the
+   bottom edge gives it rounded thickness, with a glossy top highlight. On press: the
+   lift disappears, an inset shadow carves the surface inward, and the button drops 2px. */
+.btn,
+.btn--primary,
+.btn--ghost {
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--card) 98%, white 2%), var(--card-2));
+    border: 1px solid var(--border);
+    color: var(--text-soft);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .65) inset,
+        0 -5px 7px -5px color-mix(in srgb, var(--text) 25%, transparent) inset,
+        0 2px 5px rgba(0, 0, 0, .1);
+    transform: translateY(0);
+    transition: transform 110ms ease, background 110ms ease, box-shadow 110ms ease;
+}
+.btn--primary { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+
+.btn:hover,
+.btn--primary:hover,
+.btn--ghost:hover {
+    background: linear-gradient(to bottom, var(--card), color-mix(in srgb, var(--card-2) 90%, black 6%));
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .65) inset,
+        0 -5px 7px -5px color-mix(in srgb, var(--text) 25%, transparent) inset,
+        0 3px 8px rgba(0, 0, 0, .14);
+}
+
+.btn:active,
+.btn--primary:active,
+.btn--ghost:active {
+    background: color-mix(in srgb, var(--text) 20%, var(--card-2));
+    transform: translateY(2px);
+    box-shadow: inset 0 3px 6px rgba(0, 0, 0, .3), inset 0 1px 2px rgba(0, 0, 0, .16);
+    transition-duration: 40ms;
+}
+
 .floor-panel {
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
     min-width: 0;
-    height: calc(100vh - 220px);
+    height: calc(100vh - 130px);
     min-height: 420px;
     padding: .5rem .6rem;
     gap: .4rem;
     margin: 0;
 }
-.toolbar--tables { margin: 0; }
-.legend { display: flex; gap: .7rem; flex-wrap: wrap; }
 /* Kept as one flex item so the three buttons wrap onto their own line together
    instead of splitting — "Edit layout" landing alone below "Join tables" on narrow screens. */
 .toolbar-actions { display: flex; gap: .5rem; flex-wrap: nowrap; }
@@ -50,20 +86,297 @@
 
 .floor-panel .floor-notice, .floor-panel .floor-hint { margin: 0; }
 
-.zone-filter { display: flex; flex-wrap: wrap; gap: .4rem; }
+/* Anchors the legend and the toolbar to the map's own corners (position:relative here
+   gives them that reference frame) instead of each taking its own row above the map —
+   so .floor below fills the whole panel and reads as a bigger map. */
+.floor-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+.floor-wrap > .legend {
+    position: absolute;
+    left: .6rem;
+    top: .6rem;
+    z-index: 4;
+    display: flex;
+    gap: .6rem;
+    flex-wrap: wrap;
+    padding: .3rem .6rem;
+    background: color-mix(in srgb, var(--card) 90%, transparent);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    pointer-events: none;
+}
+.floor-wrap > .toolbar--tables {
+    position: absolute;
+    top: .6rem;
+    right: .6rem;
+    z-index: 4;
+    margin: 0;
+    padding: .3rem .5rem;
+    background: color-mix(in srgb, var(--card) 90%, transparent);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    width: fit-content;
+}
+.floor-wrap > .toolbar--tables .spacer { display: none; }
+/* Squares off the corner where the floor-style widget attaches below, so the two boxes
+   read as one continuous joined shape instead of two separate rounded pills. */
+.floor-wrap > .toolbar--tables.toolbar--tables-joined { border-bottom-right-radius: 0; }
 
-.floor-wrap { flex: 1 1 auto; min-height: 0; display: flex; }
+/* Floor-style toggle: its own small widget sitting directly below the main toolbar row,
+   right-aligned under the expand/collapse (minimise map) button, instead of crowding the
+   7-icon row above. .toolbar--tables is the positioned ancestor, so top:100%/right:0 here
+   drops it flush against the toolbar's own bottom-right corner. Same translucent card
+   background/border/shadow as .toolbar--tables above it, and butted directly against it
+   (no gap, 1px border overlap, squared top corners) so the pair reads as one joined unit. */
+.floor-tex-widget {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: -1px;
+    padding: .3rem .5rem;
+    background: color-mix(in srgb, var(--card) 90%, transparent);
+    border: 1px solid var(--border);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: var(--radius-sm);
+    border-bottom-right-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    width: fit-content;
+}
+
+/* Popover itself opens below the toggle button (.floor-tex-widget is its positioned
+   ancestor here) — same shape as the reservation status menu (.resv-status__menu) and the
+   Kitchen filter dropdowns (.dd__menu). */
+.floor-tex-menu {
+    position: absolute;
+    top: calc(100% + .4rem);
+    right: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    padding: .35rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    animation: pop var(--transition);
+}
+.floor-tex-opt {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    padding: .35rem .6rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: .82rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--transition);
+}
+.floor-tex-opt:hover { background: var(--card-2); }
+.floor-tex-opt--on { box-shadow: inset 0 0 0 1px var(--border); font-weight: 700; }
+.floor-tex-swatch {
+    flex: none;
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background-size: 10px 10px;
+}
+.floor-tex-swatch--grid {
+    background-color: var(--card-2);
+    background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+}
+.floor-tex-swatch--wood {
+    background-color: #b8875a;
+    background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, .25) 0 2px, transparent 2px 6px);
+}
+.floor-tex-swatch--tile {
+    background-color: #e2e8f0;
+    background-size: 8px 8px;
+    background-image: linear-gradient(45deg, rgba(0, 0, 0, .15) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, .15) 75%);
+}
+.floor-tex-swatch--concrete {
+    background-color: #cbd5e1;
+    background-image: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, .5) 0, transparent 60%);
+}
+.floor-tex-swatch--marble {
+    background-color: #f1efe9;
+    background-image: linear-gradient(120deg, transparent 40%, rgba(148, 163, 184, .5) 45%, transparent 50%);
+}
+.floor-tex-swatch--terracotta {
+    background-color: #bd6b45;
+    background-size: 7px 7px;
+    background-image:
+        linear-gradient(0deg, rgba(0, 0, 0, .3) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, .3) 75%),
+        linear-gradient(90deg, rgba(0, 0, 0, .3) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, .3) 75%);
+}
+
+/* Zone filter as a floating segmented control (reuses the app-wide .tabs pattern, e.g. the
+   Lunch/Dinner toggle) anchored to the map's bottom-left corner instead of taking its own row. */
+.floor-wrap > .zone-filter {
+    position: absolute;
+    left: .6rem;
+    bottom: .6rem;
+    z-index: 4;
+    margin: 0;
+    background: color-mix(in srgb, var(--card-2) 90%, transparent);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Floating hint bar shown while picking the table to reassign, before a source table is
+   clicked — centred at the top of the map, below the toolbar overlay. */
+.floor-hint--floating {
+    position: absolute;
+    top: 3.2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4;
+    margin: 0;
+    width: max-content;
+    max-width: calc(100% - 1.2rem);
+    padding: .5rem .8rem;
+    background: color-mix(in srgb, var(--card) 95%, transparent);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Inline confirm popover shown once the source (occupied) table is clicked — same anchor
+   point as the hint bar above, since only one of the two is ever visible at a time. */
+.reassign-popover {
+    position: absolute;
+    top: 3.2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    width: max-content;
+    max-width: calc(100% - 1.2rem);
+    padding: .7rem .8rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+}
+.reassign-popover__title { display: flex; align-items: center; gap: .4rem; font-weight: 700; font-size: .88rem; }
+.reassign-popover__actions { display: flex; justify-content: flex-end; gap: .5rem; }
+/* Gives the destination select the same gradient/inset-shadow depth as the popover's own
+   Cancel/Confirm buttons (.btn above), instead of the flatter default .select look. */
+.reassign-popover select {
+    background-color: transparent;
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"),
+        linear-gradient(to bottom, color-mix(in srgb, var(--card) 98%, white 2%), var(--card-2));
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .65) inset,
+        0 -3px 5px -3px color-mix(in srgb, var(--text) 20%, transparent) inset,
+        0 1px 3px rgba(0, 0, 0, .08);
+    transition: box-shadow 110ms ease, border-color 110ms ease;
+}
+.reassign-popover select:hover {
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .65) inset,
+        0 -3px 5px -3px color-mix(in srgb, var(--text) 20%, transparent) inset,
+        0 2px 6px rgba(0, 0, 0, .12);
+}
+[data-theme="dark"] .reassign-popover select {
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"),
+        linear-gradient(to bottom, color-mix(in srgb, var(--card) 98%, white 2%), var(--card-2));
+}
 
 .floor {
     position: relative;
     flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
+}
+
+/* ---- Floor background styles (picked via the "Floor style" toolbar button) --------------
+   Pure CSS gradients — no images — per the project's no-external-assets rule. Only .floor--tex-grid
+   is the original plain dotted-grid look; the rest simulate real floor materials. */
+.floor--tex-grid {
     background-image:
         linear-gradient(color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px),
         linear-gradient(90deg, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px);
     background-size: 34px 34px;
 }
+
+.floor--tex-wood {
+    background-color: #a97c50;
+    background-image:
+        /* fine grain */
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 3px),
+        /* alternating plank tone */
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, .05) 0 55px, rgba(0, 0, 0, .05) 55px 110px),
+        /* plank seams (long edge) */
+        repeating-linear-gradient(90deg, rgba(0, 0, 0, .22) 0 2px, transparent 2px 110px),
+        /* plank end-joints, offset every other row for a brick-like lay */
+        repeating-linear-gradient(0deg, rgba(0, 0, 0, .12) 0 1px, transparent 1px 200px);
+    background-size: 3px 100%, 110px 100%, 110px 100%, 100% 200px;
+}
+[data-theme="dark"] .floor--tex-wood { background-color: #6b4a30; }
+
+.floor--tex-tile {
+    background-color: #dde3ea;
+    background-image:
+        /* per-tile diagonal sheen so each square reads as its own tile, not just a grid */
+        conic-gradient(from 90deg at 50% 50%, rgba(255, 255, 255, .4) 0deg 90deg, transparent 90deg 180deg, rgba(0, 0, 0, .04) 180deg 270deg, transparent 270deg 360deg),
+        /* grout lines */
+        repeating-linear-gradient(0deg, rgba(100, 116, 139, .5) 0 2px, transparent 2px 60px),
+        repeating-linear-gradient(90deg, rgba(100, 116, 139, .5) 0 2px, transparent 2px 60px);
+    background-size: 60px 60px, 60px 60px, 60px 60px;
+}
+[data-theme="dark"] .floor--tex-tile { background-color: #334155; }
+
+.floor--tex-concrete {
+    background-color: #bcc4cf;
+    background-image:
+        radial-gradient(circle at 15% 25%, rgba(255, 255, 255, .3) 0, transparent 35%),
+        radial-gradient(circle at 65% 55%, rgba(0, 0, 0, .08) 0, transparent 40%),
+        radial-gradient(circle at 35% 80%, rgba(0, 0, 0, .06) 0, transparent 30%),
+        radial-gradient(circle at 85% 15%, rgba(0, 0, 0, .05) 0, transparent 25%),
+        /* fine speckled grain */
+        repeating-radial-gradient(circle at 0 0, rgba(0, 0, 0, .05) 0 1px, transparent 1px 3px);
+    background-size: 280px 280px, 320px 320px, 220px 220px, 240px 240px, 5px 5px;
+}
+[data-theme="dark"] .floor--tex-concrete { background-color: #475569; }
+
+.floor--tex-marble {
+    background-color: #f1efe9;
+    background-image:
+        linear-gradient(120deg, transparent 42%, rgba(148, 163, 184, .4) 43%, transparent 45%),
+        linear-gradient(35deg, transparent 58%, rgba(148, 163, 184, .3) 59%, transparent 62%),
+        linear-gradient(75deg, transparent 18%, rgba(100, 116, 139, .22) 19%, transparent 22%),
+        radial-gradient(circle at 30% 35%, rgba(255, 255, 255, .6) 0, transparent 55%);
+    background-size: 420px 420px, 320px 320px, 520px 520px, 100% 100%;
+}
+[data-theme="dark"] .floor--tex-marble {
+    background-color: #3f4a5a;
+    background-image:
+        linear-gradient(120deg, transparent 42%, rgba(203, 213, 225, .18) 43%, transparent 45%),
+        linear-gradient(35deg, transparent 58%, rgba(203, 213, 225, .14) 59%, transparent 62%),
+        linear-gradient(75deg, transparent 18%, rgba(148, 163, 184, .12) 19%, transparent 22%),
+        radial-gradient(circle at 30% 35%, rgba(255, 255, 255, .08) 0, transparent 55%);
+}
+
+.floor--tex-terracotta {
+    background-color: #bd6b45;
+    background-image:
+        radial-gradient(circle at 30% 30%, rgba(255, 255, 255, .14) 0, transparent 60%),
+        repeating-linear-gradient(0deg, rgba(0, 0, 0, .28) 0 3px, transparent 3px 70px),
+        repeating-linear-gradient(90deg, rgba(0, 0, 0, .28) 0 3px, transparent 3px 70px);
+    background-size: 70px 70px, 70px 70px, 70px 70px;
+}
+[data-theme="dark"] .floor--tex-terracotta { background-color: #7a3f28; }
 
 .tbl {
     position: absolute;
@@ -186,6 +499,43 @@
     box-shadow: none;
 }
 .tbl--grouped:hover { box-shadow: var(--shadow); z-index: 4; }
+/* Custom per-table accent (e.g. flag a VIP table) — a small dot on the corner, independent
+   of the status-driven border colour so it never competes with free/occupied/reserved. */
+.tbl__accent {
+    position: absolute;
+    top: -4px; right: -4px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--tcolor);
+    border: 2px solid var(--card);
+    box-shadow: var(--shadow-sm);
+}
+/* One per seat, ringed around the table's own edge (see ChairStyles in Tables.razor) so a
+   table with 6 seats visibly reads as bigger/busier than one with 2 — closer to a real floor
+   plan than a plain box with a seat-count number. A simple top-down chair mark (small rounded
+   square) rather than a side-view furniture icon, since the whole map is already a top-down
+   layout — a catalogue-style armchair glyph doesn't read at this size and clashes with the
+   plan view. Sits outside the table's own box (left/top can fall outside 0–100%), so it must
+   not be clipped and must stay a direct child of .tbl. */
+.tbl__chair {
+    position: absolute;
+    width: 9px; height: 9px;
+    border-radius: 2.5px;
+    background: var(--card-2);
+    border: 1.5px solid color-mix(in srgb, var(--border) 50%, var(--text-soft));
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+/* Occupied tables get a filled, rounded "head from above" mark instead of the hollow empty
+   chair square — a warm tone matching .tbl--occupied's own border colour, with a soft halo
+   standing in for shoulders, so a busy table visibly reads as full of people at a glance. */
+.tbl__chair--seated {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--warning) 55%, var(--text));
+    border-color: color-mix(in srgb, var(--warning) 70%, var(--border));
+    box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--warning) 18%, transparent);
+}
 .tbl__group {
     position: absolute;
     top: -12px; left: 50%; transform: translateX(-50%);
@@ -222,22 +572,32 @@
 }
 
 /* ---- Reservations panel & assignment -------------------------------------- */
-.floor-layout--split { display: flex; gap: 1rem; align-items: stretch; }
+/* Pulls the whole row up against the topbar, cancelling the page's own top padding — the
+   job the old full-width .tables-datebar used to do before it moved inside .resv. */
+.floor-layout--split { display: flex; gap: 1rem; align-items: stretch; margin-top: -1.4rem; }
 /* Visually place the reservations panel before the floor plan (left side) without
    reordering the markup, so the drag/resize JS (keyed off the .floor element) is untouched. */
-.floor-layout--split .resv { order: -1; }
-.floor-layout--map-expanded .resv { display: none; }
+.floor-layout--split .resv-col { order: -1; }
+.floor-layout--map-expanded .resv-col { display: none; }
 /* Fixed + covers the whole viewport (topbar included) so the map reads as truly
-   fullscreen instead of just growing within the page's own padding. */
+   fullscreen instead of just growing within the page's own padding. No padding gap
+   around it and the .card look (rounded corners, border, shadow) is stripped off the
+   floor panel, so the map runs edge-to-edge with no visible boundary anywhere. */
 .floor-layout--map-expanded {
     position: fixed;
     inset: 0;
     z-index: 1000;
     background: var(--background);
-    padding: .8rem;
+    padding: 0;
     margin: 0;
 }
-.floor-layout--map-expanded .floor-panel { height: 100%; }
+.floor-layout--map-expanded .floor-panel {
+    height: 100%;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
 
 /* Assign mode: clicking a table books the selected reservation onto it. */
 .floor-hint--assign { display: flex; align-items: center; gap: .6rem; font-weight: 600; }
@@ -257,10 +617,19 @@
 }
 
 /* Side drawer */
-.resv {
+/* Left column: the date-picker box and the reservations list box, stacked as two separate
+   bordered cards sharing this column's width, instead of one merged box. */
+.resv-col {
     flex: 0 0 380px;
-    height: calc(100vh - 220px);
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    height: calc(100vh - 130px);
     min-height: 420px;
+}
+.resv {
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex; flex-direction: column;
     overflow: hidden;
     padding: 0;
@@ -441,7 +810,9 @@
 .color-pick { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
 .color-swatch {
     width: 26px; height: 26px; padding: 0; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
     border: 2px solid var(--border); background: var(--sw, transparent);
+    color: var(--text-soft);
     cursor: pointer; transition: transform var(--transition), border-color var(--transition);
 }
 .color-swatch:hover { transform: scale(1.08); }
@@ -450,5 +821,6 @@
 
 @media (max-width: 900px) {
     .floor-layout--split { flex-direction: column; }
-    .resv { flex-basis: auto; height: 420px; }
+    .resv-col { flex-basis: auto; height: auto; }
+    .resv { height: 420px; }
 }

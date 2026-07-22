@@ -70,8 +70,6 @@
                    OnServeFirsts="ServeFirsts"
                    OnUnserveFirsts="UnserveFirsts"
                    OnUnserveFirstItem="UnserveFirstItem"
-                   OnFireFirsts="FireFirsts"
-                   OnUnfireFirsts="UnfireFirsts"
                    OnServeSeconds="ServeSeconds"
                    OnUnserveSeconds="UnserveSeconds"
                    OnUnserveSecondItem="UnserveSecondItem"
@@ -80,8 +78,6 @@
                    OnServeDesserts="ServeDesserts"
                    OnUnserveDesserts="UnserveDesserts"
                    OnUnserveDessertItem="UnserveDessertItem"
-                   OnFireDesserts="FireDesserts"
-                   OnUnfireDesserts="UnfireDesserts"
                    OnEdit="OpenEditor"
                    OnPay="OpenPayment" />
     }
@@ -145,9 +141,7 @@
         _hub.On<int, int>(KitchenHub.ItemStatusChanged, (orderId, _) => RefreshOrder(orderId));
         _hub.On<int>(KitchenHub.OrderReady, RefreshOrder);
         _hub.On<int>(KitchenHub.OrderSent, RefreshOrder);
-        _hub.On<int>(KitchenHub.FirstsFired, RefreshOrder);
         _hub.On<int>(KitchenHub.SecondsFired, RefreshOrder);
-        _hub.On<int>(KitchenHub.DessertsFired, RefreshOrder);
         _hub.On<int>(KitchenHub.DrinksServed, RefreshOrder);
         _hub.On<int>(KitchenHub.FirstCoursesServed, RefreshOrder);
         _hub.On<int>(KitchenHub.SecondCoursesServed, RefreshOrder);
@@ -227,16 +221,12 @@
     private Task UnserveDesserts(int orderId) => OrderSvc.UnserveDessertCoursesAsync(orderId);
     private Task UnserveDessertItem(int itemId) => OrderSvc.SetItemStatusAsync(itemId, OrderItemStatus.Ready);
 
-    // "Marchar primeros / segundos / postres": alert the kitchen in real time; the echo refreshes the card.
-    private Task FireFirsts(int orderId) => OrderSvc.FireFirstCoursesAsync(orderId);
+    // "Marchar segundos": alert the kitchen in real time; the echo refreshes the card.
     private Task FireSeconds(int orderId) => OrderSvc.FireSecondCoursesAsync(orderId);
-    private Task FireDesserts(int orderId) => OrderSvc.FireDessertCoursesAsync(orderId);
 
     // Undo path: same "acknowledge" the kitchen uses to clear its alert, reused here so a
     // mis-fired course goes back to unfired instead of staying stuck on both screens.
-    private Task UnfireFirsts(int orderId) => OrderSvc.AcknowledgeFirstCoursesAsync(orderId);
     private Task UnfireSeconds(int orderId) => OrderSvc.AcknowledgeSecondCoursesAsync(orderId);
-    private Task UnfireDesserts(int orderId) => OrderSvc.AcknowledgeDessertCoursesAsync(orderId);
 
     public async ValueTask DisposeAsync()
     {

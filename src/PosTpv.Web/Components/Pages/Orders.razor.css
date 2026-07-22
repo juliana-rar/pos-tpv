@@ -6,12 +6,13 @@
 }
 
 /* Single full-width card bar: table quick-jump chips on the left, status/sort/refresh
-   controls on the right, pulled up close to the topbar. One background/border for the whole
-   row (matches .pos__tablebar in Pos.razor.css) rather than two separate boxes, since the
-   toolbar controls now live inside it. */
+   controls on the right, pulled up close to the top of the page. One background/border for the
+   whole row (matches .pos__tablebar in Pos.razor.css) rather than two separate boxes, since the
+   toolbar controls now live inside it. The navbar lives at the bottom of the screen, so this
+   only needs to stick to the viewport's own top edge, not offset below a top navbar. */
 .orders-quicknav {
     position: sticky;
-    top: var(--topbar-h);
+    top: 0;
     z-index: 30;
     display: flex;
     align-items: flex-start;
@@ -33,6 +34,9 @@
 
 .toolbar { margin: 0; flex-wrap: nowrap; flex-shrink: 0; }
 .toolbar .select, .toolbar .btn, .toolbar .input { height: 2.15rem; font-size: .78rem; padding: 0 .6rem; box-sizing: border-box; }
+/* Keeps room for the custom dropdown arrow (app.css's .select) instead of letting the
+   compact toolbar padding above crop it against the text. */
+.toolbar .select { padding-right: 1.8rem; }
 
 /* Realistic "physical" button, built entirely from shadows rather than a flat colored
    border-bottom (which read as a harsh drawn line, not a real edge). At rest: a soft ambient

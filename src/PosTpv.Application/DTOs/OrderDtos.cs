@@ -14,9 +14,8 @@ public record OrderDto(
     int Id, string Number, OrderStatus Status, int TableId, string TableName,
     int WaiterId, string WaiterName, DateTime CreatedAt, string? Notes,
     IReadOnlyList<OrderItemDto> Items, decimal Subtotal, decimal VatTotal, decimal Total,
-    DateTime? FirstsFiredAt, DateTime? SecondsFiredAt, DateTime? DrinksServedAt,
-    DateTime? FirstsSentAt, DateTime? SecondsSentAt, string? Zone,
-    DateTime? DessertsFiredAt, DateTime? DessertsSentAt);
+    DateTime? SecondsFiredAt, DateTime? DrinksServedAt,
+    DateTime? SecondsSentAt, string? Zone);
 
 /// <summary>Request to add a product line to an order, optionally with selected extras.</summary>
 /// <remarks>

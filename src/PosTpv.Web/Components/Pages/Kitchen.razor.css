@@ -1,12 +1,184 @@
-.kds__head { margin-bottom: .5rem; }
+/* Same wrapping bar as .orders-quicknav in Orders.razor.css: table quick-jump chips on the
+   left, the existing filters/live/active toolbar on the right, one bordered box for the whole
+   row instead of two separate ones. */
+.orders-quicknav {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 1rem;
+    margin-bottom: .8rem;
+    padding: .5rem .6rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+}
+@media (max-width: 640px) {
+    .orders-quicknav { flex-wrap: wrap; }
+}
+
+/* While the filter controls are open, the toolbar alone takes the first line and the table
+   chips drop to a second line below it, instead of squeezing into whatever space is left. */
+.orders-quicknav--filters-open { flex-wrap: wrap; justify-content: flex-end; }
+.orders-quicknav--filters-open .kds__head { order: 1; }
+/* Forces the chips onto exactly one row (scrolling sideways if there are too many) instead
+   of the base rule's up-to-2-rows wrap — otherwise, with the filters row above it, that 2nd
+   chip row reads as a whole extra ("3rd") line of the bar. */
+.orders-quicknav--filters-open .orders-quicknav__chips {
+    order: 2;
+    flex-basis: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-height: none;
+}
+
+/* ---- Quick-jump strip: one small chip per ticket on screen, straight to it ---- */
+.orders-quicknav__chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-height: calc(2 * 2.15rem + .4rem);
+    overflow: hidden;
+    transition: max-height var(--transition);
+}
+.orders-quicknav__chips--expanded { max-height: none; }
+.orders-quicknav__chip {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.6rem;
+    padding: .4rem .7rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+    transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+}
+.orders-quicknav__chip:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.orders-quicknav__chip:active { transform: translateY(0); }
+.orders-quicknav__chip:focus, .orders-quicknav__chip:focus-visible { outline: none; }
+.orders-quicknav__chip-name { font-weight: 800; font-size: .85rem; }
+
+/* Status colouring mirrors Orders.razor.css's chips. */
+.orders-quicknav__chip[data-status="sent"] { border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); }
+.orders-quicknav__chip[data-status="sent"] .orders-quicknav__chip-name { color: var(--primary); }
+
+.orders-quicknav__chip[data-status="inpreparation"] { border-color: color-mix(in srgb, var(--warning) 55%, var(--border)); }
+.orders-quicknav__chip[data-status="inpreparation"] .orders-quicknav__chip-name { color: var(--warning); }
+
+.orders-quicknav__chip[data-status="ready"] {
+    border-color: var(--success);
+    background: color-mix(in srgb, var(--success) 12%, var(--card));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--success) 30%, transparent);
+}
+.orders-quicknav__chip[data-status="ready"] .orders-quicknav__chip-name { color: var(--success); }
+
+/* Same as .toolbar in Orders.razor.css: forces every filter control onto one row instead of
+   wrapping (the base .toolbar rule in app.css defaults to flex-wrap:wrap). */
+.kds__head { margin-bottom: 0; flex-wrap: nowrap; flex-shrink: 0; }
 
 /* Browsers give <input> and <select> slightly different intrinsic heights even with
    identical padding/border/font — pin both explicitly so the search box and zone select
    read as the exact same size (same fix as .toolbar .input/.select in Orders.razor.css). */
 .kds__head .input, .kds__head .select {
-    height: 2.15rem;
-    padding: 0 .6rem;
+    height: 1.7rem;
+    padding: 0 .45rem;
+    font-size: .72rem;
     box-sizing: border-box;
+}
+/* Keeps room for the custom dropdown arrow (app.css's .select) instead of letting the
+   compact padding above crop it against the text. */
+.kds__head .select { padding-right: 1.6rem; background-size: 14px; }
+
+/* Status/sort/zone filters: fully custom dropdowns (button + absolutely-positioned option
+   list) instead of native <select>s, since the browser's own open-list chrome (system font,
+   square corners, hard highlight colour) can't be restyled — matches the same pattern used
+   for the reservation status menu (.resv-status__menu in Tables.razor.css). The closed
+   trigger still borrows .select's look (border, chevron, sizing) so all three read
+   identically as a group. */
+.dd { position: relative; }
+/* Smaller than the other compact toolbar text (.kds__head .select's .72rem) because the
+   longest label here ("Todos los estados") otherwise wraps to 2 lines and gets clipped
+   inside the fixed-width trigger; the nowrap+ellipsis is just a safety net beyond that. */
+.dd__trigger { text-align: left; width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kds__head .dd__trigger { font-size: .66rem; }
+.dd__menu {
+    position: absolute;
+    top: calc(100% + .3rem);
+    left: 0;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    padding: .35rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    z-index: 20;
+    animation: pop var(--transition);
+}
+.dd__opt {
+    display: flex;
+    padding: .4rem .6rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: .8rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--transition);
+}
+.dd__opt:hover { background: var(--card-2); }
+.dd__opt--on { box-shadow: inset 0 0 0 1px var(--border); font-weight: 700; }
+
+/* Realistic "physical" keycap button, same as .toolbar .btn in Orders.razor.css: a soft
+   ambient shadow lifts it at rest, and pressing it drops it 2px with an inset shadow — no
+   blue/primary fill, even for the toggled-on Filters gear. */
+.kds__head .btn,
+.kds__head .btn--primary,
+.kds__head .btn--ghost {
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--card) 97%, white 3%), var(--card-2));
+    border: 1px solid var(--border);
+    color: var(--text-soft);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .6) inset,
+        0 -5px 7px -5px color-mix(in srgb, var(--text) 25%, transparent) inset,
+        0 2px 5px rgba(0, 0, 0, .1);
+    transform: translateY(0);
+    transition: transform 110ms ease, background 110ms ease, box-shadow 110ms ease;
+}
+.kds__head .btn--primary { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+
+.kds__head .btn:hover,
+.kds__head .btn--primary:hover,
+.kds__head .btn--ghost:hover {
+    background: linear-gradient(to bottom, var(--card), color-mix(in srgb, var(--card-2) 90%, black 6%));
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .6) inset,
+        0 -5px 7px -5px color-mix(in srgb, var(--text) 25%, transparent) inset,
+        0 3px 8px rgba(0, 0, 0, .14);
+}
+
+.kds__head .btn:active,
+.kds__head .btn--primary:active,
+.kds__head .btn--ghost:active {
+    background: color-mix(in srgb, var(--text) 20%, var(--card-2));
+    transform: translateY(2px);
+    box-shadow: inset 0 3px 6px rgba(0, 0, 0, .3), inset 0 1px 2px rgba(0, 0, 0, .16);
+    transition-duration: 40ms;
 }
 
 .kds {
@@ -35,6 +207,39 @@
 .ticket__fired-row { display: flex; flex-wrap: wrap; gap: .4rem; padding: 0 .9rem .5rem; }
 .ticket__fired { white-space: nowrap; }
 .ticket__fired--empty { opacity: .45; }
+
+/* Realistic "physical" keycap button, same as .order-card__actions .btn in OrderCard.razor.css:
+   a soft ambient shadow lifts it at rest, and pressing it drops it 2px with an inset shadow —
+   no blue/primary fill. */
+.ticket__fired,
+.ticket__foot .btn {
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--card) 98%, white 2%), var(--card-2));
+    border: 1px solid var(--border);
+    color: var(--text);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .65) inset,
+        0 -6px 8px -6px color-mix(in srgb, var(--text) 25%, transparent) inset,
+        0 3px 7px rgba(0, 0, 0, .12);
+    transform: translateY(0);
+    transition: transform 110ms ease, background 110ms ease, box-shadow 110ms ease;
+}
+
+.ticket__fired:hover,
+.ticket__foot .btn:hover {
+    background: linear-gradient(to bottom, var(--card), color-mix(in srgb, var(--card-2) 90%, black 6%));
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .65) inset,
+        0 -6px 8px -6px color-mix(in srgb, var(--text) 25%, transparent) inset,
+        0 5px 11px rgba(0, 0, 0, .16);
+}
+
+.ticket__fired:active,
+.ticket__foot .btn:active {
+    background: color-mix(in srgb, var(--text) 20%, var(--card-2));
+    transform: translateY(2px);
+    box-shadow: inset 0 3px 7px rgba(0, 0, 0, .32), inset 0 1px 2px rgba(0, 0, 0, .18);
+    transition-duration: 40ms;
+}
 
 /* A ticket whose second courses have been fired jumps out with a frame and a pulse. */
 .ticket--seconds {
@@ -75,7 +280,18 @@
 .kitem__name { font-weight: 600; }
 .kitem__extras { margin-top: .25rem; font-size: .8rem; font-weight: 600; }
 .kitem__comment { margin-top: .25rem; font-size: .8rem; font-weight: 700; }
-.kitem .btn--icon { width: 30px; height: 30px; padding: 0; }
+/* Same keycap depth as the other buttons on this page, but keeps its green success fill —
+   only the Serve/Fire buttons in OrderCard went fully gray, this one stays a colored CTA. */
+.kitem .btn--icon {
+    width: 30px; height: 30px; padding: 0;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .3) inset, 0 2px 4px rgba(0, 0, 0, .15);
+    transform: translateY(0);
+    transition: transform 110ms ease, box-shadow 110ms ease;
+}
+.kitem .btn--icon:active {
+    transform: translateY(1px);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, .3);
+}
 
 /* Course section headers within the item list — same icons/labels as the waiter's OrderCard. */
 .ticket__group {
@@ -86,5 +302,18 @@
     border-top: 1px solid var(--border);
 }
 .ticket__items > .ticket__group:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+
+/* Same ordered-together bracket as .order-card__time-group in OrderCard.razor.css: items
+   tapped in the same minute share one timestamp behind a connecting bar on the right. */
+.ticket__time-group { display: flex; gap: .4rem; }
+.ticket__time-group-time {
+    flex: none;
+    display: flex; align-items: center; justify-content: center;
+    min-width: 1.7rem;
+    font-size: .68rem; font-weight: 700; color: var(--text-soft);
+    border-right: 2px solid var(--border);
+    padding-right: .4rem;
+}
+.ticket__time-group-items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .3rem; }
 
 .ticket__foot { padding: .6rem .7rem; border-top: 1px solid var(--border); margin-top: auto; }

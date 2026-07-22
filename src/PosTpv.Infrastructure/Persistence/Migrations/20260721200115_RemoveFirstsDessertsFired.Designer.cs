@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PosTpv.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using PosTpv.Infrastructure.Persistence;
 namespace PosTpv.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(PosDbContext))]
-    partial class PosDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260721200115_RemoveFirstsDessertsFired")]
+    partial class RemoveFirstsDessertsFired
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -95,11 +98,6 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
 
                     b.Property<TimeOnly>("DinnerStart")
                         .HasColumnType("time");
-
-                    b.Property<string>("FloorTexture")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.Property<TimeOnly>("LunchEnd")
                         .HasColumnType("time");
@@ -618,10 +616,6 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("Color")
-                        .HasMaxLength(9)
-                        .HasColumnType("nvarchar(9)");
 
                     b.Property<int?>("GroupId")
                         .HasColumnType("int");

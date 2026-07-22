@@ -4,32 +4,44 @@
     min-height: 100vh;
 }
 
+/* Fixed (not sticky) so it's always pinned to the viewport's bottom edge regardless of how
+   tall the page content grows — sticky's "stick once scrolled past" behavior would otherwise
+   let it overlap the tail end of any page taller than the viewport on first paint. Content
+   below reserves the matching space via .shell__content's padding-bottom. Needs an opaque
+   background (unlike the old top bar, which could stay transparent since nothing was ever
+   scrolled underneath it) — scrollable page content constantly passes behind this fixed bar,
+   and without an opaque backdrop it would show through and clash with the icons on top. */
+/* padding-bottom: env(safe-area-inset-bottom) extends the bar's background behind the home
+   indicator / gesture area on notched phones (Safari respects this once viewport-fit=cover is
+   set) instead of the icons sitting flush against — or the background stopping short of — that
+   zone. On browsers without a safe area (or in a plain tab, where the browser's own address/tab
+   bar sits below the page and can't be reached by any page CSS) this simply resolves to 0. */
 .topbar {
-    position: sticky;
-    top: 0;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
     z-index: 40;
     min-height: var(--topbar-h);
     display: flex;
     align-items: center;
     gap: .9rem;
-    padding: 0 1.1rem;
-    background: transparent;
-    border-bottom: 1px solid transparent;
+    padding: 0 1.1rem env(safe-area-inset-bottom, 0px);
+    background: var(--card);
+    border-top: 1px solid var(--border);
     transition: background var(--transition), border-color var(--transition);
 }
 
-/* Frosted background only while the "more" toggle is open (i.e. the extra icons/brand/user
-   controls are showing) — MainLayout itself is static, so this reads the toggle's rendered
-   state via :has() instead of a cascading parameter, keeping the login page's static render
-   path unaffected. */
+/* Slightly stronger frosted background while the "more" toggle is open, so the revealed
+   brand/user/logout cluster reads as its own elevated surface. */
 .topbar:has(.nav__link--more.active) {
-    background: color-mix(in srgb, var(--card) 85%, transparent);
+    background: color-mix(in srgb, var(--card) 96%, white 4%);
     backdrop-filter: blur(10px);
-    border-bottom-color: var(--border);
 }
 
 .shell__content {
     flex: 1;
     padding: 1.4rem;
+    /* Reserves space for the now-fixed bottom navbar (plus its safe-area padding on notched
+       phones) so scrolled content never renders underneath it. */
+    padding-bottom: calc(var(--topbar-h) + env(safe-area-inset-bottom, 0px) + 1.4rem);
     min-width: 0;
 }
