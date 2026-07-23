@@ -13,7 +13,7 @@ public class AppSettingsFormDto
 }
 
 /// <summary>Current-service-period lookup shared by the dashboard badge and the reservation
-/// time-picker hint, so both read the same lunch/dinner windows configured in Settings.</summary>
+/// wizard's Lunch/Dinner step, so both read the same lunch/dinner windows configured in Settings.</summary>
 public enum ServicePeriod { Closed, Lunch, Dinner }
 
 public static class AppSettingsExtensions
@@ -24,6 +24,4 @@ public static class AppSettingsExtensions
         if (time >= s.DinnerStart && time <= s.DinnerEnd) return ServicePeriod.Dinner;
         return ServicePeriod.Closed;
     }
-
-    public static bool IsInService(this AppSettingsDto s, TimeOnly time) => s.GetPeriod(time) != ServicePeriod.Closed;
 }

@@ -93,7 +93,7 @@
                                             <LucideIcon Name="cup-soda" Size="14" />@DrinksLabel()
                                         </button>
                                     }
-                                    @if (_hasSeconds)
+                                    @if (_hasSeconds && ShowFireSeconds)
                                     {
                                         <button class="btn btn--sm @(SecondsAlreadyDone ? "btn--ghost" : "btn--primary")"
                                                 title="@(SecondsAlreadyDone ? null : Loc.T("Tell the kitchen to start the second courses"))"
@@ -143,6 +143,10 @@
                                                         <div class="orderLine">
                                                             <div class="orderLine__main">
                                                                 <span class="orderLine__name">@it.ProductName</span>
+                                                                @if (it.UnitPrice == 0m)
+                                                                {
+                                                                    <span class="orderLine__invited" title="@Loc.T("Invited — not charged")">@Loc.T("Invitation")</span>
+                                                                }
                                                                 <span class="spacer"></span>
                                                                 <div class="orderLine__ctrl">
                                                                     <button class="btn btn--icon btn--ghost orderLine__remove" title="@Loc.T("Remove")" disabled="@_busy" @onclick="() => RemoveItem(it.Id)"><LucideIcon Name="x" Size="13" /></button>
@@ -174,12 +178,19 @@
                         <div class="order__totals">
                             <div class="order__grand">
                                 <span>@Loc.T("Total")</span>
-                                <div class="order__grand-right">
-                                    <span>@_order.Total.ToString("N2")</span>
-                                    <button class="btn btn--pay" title="@Loc.T("Charge")" @onclick="OpenPayment" type="button">
-                                        <LucideIcon Name="credit-card" Size="16" />@Loc.T("Charge")
-                                    </button>
-                                </div>
+                                <span>@_order.Total.ToString("N2")</span>
+                            </div>
+                            <div class="order__grand-actions">
+                                @* Arms a single free line: the next product tap is captured at zero price
+                                   instead of opening the payment dialog. *@
+                                <button class="btn btn--invite @(_invitationMode ? "btn--invite-active" : "")"
+                                        title="@Loc.T("Tap a product to invite it (not charged)")" disabled="@_busy"
+                                        @onclick="ToggleInvitation" type="button">
+                                    <LucideIcon Name="gift" Size="16" />@Loc.T("Invitation")
+                                </button>
+                                <button class="btn btn--pay" title="@Loc.T("Charge")" @onclick="OpenPayment" type="button">
+                                    <LucideIcon Name="credit-card" Size="16" />@Loc.T("Charge")
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -262,6 +273,7 @@
     private bool _busy;
     private string? _error;
     private bool _showPayment;
+    private bool _invitationMode;
 
     private List<CategoryCommentDto> _commentPresets = new();
     private string? _commentText;
@@ -350,22 +362,20 @@
         return lastServedAt is null ? Loc.T("Seconds served") : $"{Loc.T("Seconds served")} · {lastServedAt.Value.ToLocalTime():HH:mm}";
     }
 
-    // Once the kitchen has fired seconds (from here or from its own "Seconds prepared" pill in
-    // /kitchen), SecondsSentAt never clears on its own — so the button locks into this label
-    // instead of flipping back to "Fire seconds" every time the kitchen acknowledges its alert.
-    // Seconds can also reach the customer without ever being fired (e.g. auto-served the moment
-    // a dessert is ordered) — in that case SecondsSentAt is still null, but it's still wrong to
-    // keep inviting a "Fire seconds" click, so this also locks once every main is delivered.
-    private bool SecondsAlreadyDone => _order!.SecondsSentAt is not null || (_showServeSeconds && !_secondsPendingToServe);
+    // Seconds can reach the customer without ever being fired (e.g. auto-served the moment a
+    // dessert is ordered) — in that case the "Serve seconds" chip alone already reads "Seconds
+    // served · time", so the Fire-seconds bell is hidden rather than showing that same text a
+    // second time right next to it.
+    private bool ShowFireSeconds => _order!.SecondsSentAt is not null || !(_showServeSeconds && !_secondsPendingToServe);
 
-    private string SecondsSentLabel()
-    {
-        if (_order!.SecondsSentAt is not null)
-            return $"{Loc.T("Seconds prepared")} · {_order.SecondsSentAt.Value.ToLocalTime():HH:mm}";
-        if (_showServeSeconds && !_secondsPendingToServe)
-            return Loc.T("Seconds served");
-        return Loc.T("Fire seconds");
-    }
+    // Once the kitchen has fired seconds, SecondsSentAt never clears on its own — so the button
+    // locks into "Seconds prepared" instead of flipping back to "Fire seconds" every time the
+    // kitchen acknowledges its alert.
+    private bool SecondsAlreadyDone => _order!.SecondsSentAt is not null;
+
+    private string SecondsSentLabel() => _order!.SecondsSentAt is not null
+        ? $"{Loc.T("Seconds prepared")} · {_order.SecondsSentAt.Value.ToLocalTime():HH:mm}"
+        : Loc.T("Fire seconds");
 
     private Task OnToggleDrinksClick() => Mutate(async () =>
     {
@@ -424,13 +434,18 @@
     }
 
     // Tapping a product adds it straight away, as its own line (no dialog in the way).
-    // Extras/comment can be set afterwards from the line itself.
+    // Extras/comment can be set afterwards from the line itself. When invitation mode is armed,
+    // this one tap is captured at zero price and the mode disarms itself right away.
     private Task OnProductClick(ProductDto p)
     {
         if (_order is null) return Task.CompletedTask;
         var orderId = _order.Id;
-        return Mutate(async () => await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id, Merge: false)));
+        var invited = _invitationMode;
+        _invitationMode = false;
+        return Mutate(async () => await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id, Merge: false, Invited: invited)));
     }
+
+    private void ToggleInvitation() => _invitationMode = !_invitationMode;
 
     // Edit an already-added line: extras and the kitchen note together, same as OpenEditItem
     // in Pos.razor. Shows the dialog immediately, then fetches extras/comment presets.

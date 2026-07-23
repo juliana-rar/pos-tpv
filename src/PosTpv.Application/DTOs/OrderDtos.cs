@@ -21,9 +21,11 @@ public record OrderDto(
 /// <remarks>
 /// When <c>Merge</c> is false the line is always created as its own row, even if an identical
 /// pending line already exists — used to keep each drink on its own line so it can carry its own comment.
+/// When <c>Invited</c> is true the line is captured at zero price (a comp/invitation) and never
+/// merges into another line, so a free round never silently zeroes out a paid one.
 /// </remarks>
 public record AddItemRequest(int OrderId, int ProductId, int Quantity = 1, string? Comment = null,
-    IReadOnlyList<int>? ExtraIds = null, bool Merge = true);
+    IReadOnlyList<int>? ExtraIds = null, bool Merge = true, bool Invited = false);
 
 /// <summary>A single tender against a bill; several make up a split payment.</summary>
 public record PaymentInput(decimal Amount, PaymentMethod Method);

@@ -261,28 +261,45 @@
 .orderLine__qty { margin-left: .2rem; min-width: 1.1rem; text-align: center; font-weight: 700; font-size: .66rem; }
 .orderLine__comment { margin-top: .15rem; font-size: .7rem; font-style: italic; }
 .orderLine__extras { margin-top: .15rem; font-size: .68rem; font-weight: 600; }
-.order__totals { border-top: 1px solid var(--border); margin-top: auto; padding-top: .25rem; }
+.order__totals { border-top: 1px solid var(--border); margin-top: auto; padding-top: .4rem; display: flex; flex-direction: column; gap: .5rem; }
 .order__grand { display: flex; justify-content: space-between; align-items: center; font-size: .92rem; font-weight: 800; }
-.order__grand-right { display: flex; align-items: center; gap: .6rem; }
 
-/* Modern pay CTA: a solid gradient pill with its own lift/press depth, distinct from the
-   flatter ghost/primary buttons elsewhere in the panel so it reads as the one commit action. */
-.btn--pay {
-    display: flex; align-items: center; gap: .4rem;
-    padding: .4rem .9rem;
-    border: none;
-    border-radius: 999px;
-    background: linear-gradient(135deg, var(--success), color-mix(in srgb, var(--success) 70%, black));
-    color: #fff;
-    font-size: .8rem;
-    font-weight: 800;
-    cursor: pointer;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, .35) inset, 0 3px 8px color-mix(in srgb, var(--success) 45%, transparent);
-    transform: translateY(0);
-    transition: transform 120ms cubic-bezier(.34, 1.56, .64, 1), box-shadow 120ms ease, filter 120ms ease;
+/* Invitación + Cobrar sit as one joined control spanning the full width of the order panel:
+   Invitación keeps the rounded corner on its outer (left) edge, Cobrar on its outer (right)
+   edge, flat where the two meet in the middle. */
+.order__grand-actions { display: flex; align-items: stretch; }
+
+.orderLine__invited {
+    flex: none;
+    font-size: .62rem; font-weight: 800; text-transform: uppercase; letter-spacing: .02em;
+    padding: .1rem .4rem;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--warning) 22%, transparent);
+    color: color-mix(in srgb, var(--warning) 60%, var(--text) 40%);
 }
-.btn--pay:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 1px 0 rgba(255, 255, 255, .35) inset, 0 5px 12px color-mix(in srgb, var(--success) 50%, transparent); }
-.btn--pay:active { transform: translateY(1px); box-shadow: 0 1px 4px color-mix(in srgb, var(--success) 40%, transparent) inset; transition-duration: 40ms; }
+
+/* Flat, modern, neutral-gray CTAs — each takes half the panel's width so the pair always
+   spans it edge to edge, however wide the panel is. */
+.btn--invite, .btn--pay {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center; gap: .4rem;
+    padding: .55rem .9rem;
+    border: 1px solid var(--border);
+    font-size: .82rem;
+    font-weight: 700;
+    color: var(--text);
+    background: var(--card-2);
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease, transform 80ms ease;
+}
+.btn--invite:disabled, .btn--pay:disabled { opacity: .5; cursor: default; }
+
+.btn--invite { border-radius: var(--radius-sm) 0 0 var(--radius-sm); border-right: none; }
+.btn--pay { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+
+.btn--invite:hover:not(:disabled), .btn--pay:hover:not(:disabled) { background: var(--border); }
+.btn--invite:active:not(:disabled), .btn--pay:active:not(:disabled) { transform: scale(.98); transition-duration: 40ms; }
+.btn--invite-active { background: var(--text-soft); color: var(--card); }
 
 @media (max-width: 1100px) {
     .editor__pos { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }

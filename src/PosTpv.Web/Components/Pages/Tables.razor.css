@@ -738,32 +738,78 @@
    centers cleanly and needs no breakpoint to behave on mobile. */
 .resv-form { max-width: 640px; margin: 0 auto; }
 
+/* ---- 4-step wizard bar: dots on a connecting progress line, filled as you advance ------ */
+.resv-steps { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); margin-bottom: 1.6rem; }
+.resv-steps__track, .resv-steps__progress {
+    position: absolute; top: 15px; left: 12.5%; height: 3px; border-radius: 3px;
+}
+.resv-steps__track { right: 12.5%; background: var(--border); }
+.resv-steps__progress { background: var(--primary); transition: width 260ms cubic-bezier(.4, 0, .2, 1); }
+.resv-step {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; align-items: center; gap: .5rem;
+    border: none; background: transparent; padding: 0;
+    font: inherit; color: var(--text-soft); cursor: pointer;
+    transition: color var(--transition);
+}
+.resv-step:disabled { cursor: default; opacity: .4; }
+.resv-step__num {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px;
+    border-radius: 999px; border: 2px solid var(--border);
+    font-size: .8rem; font-weight: 800;
+    background: var(--card); color: var(--text-soft);
+    transition: background var(--transition), border-color var(--transition), color var(--transition), box-shadow var(--transition);
+}
+.resv-step__label { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
+.resv-step--done .resv-step__num { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.resv-step--done .resv-step__label { color: var(--text); }
+.resv-step--on .resv-step__num { border-color: var(--primary); color: var(--primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 16%, transparent); }
+.resv-step--on .resv-step__label { color: var(--primary); }
+@media (max-width: 640px) {
+    .resv-step__label { display: none; }
+}
+
+/* ---- Step content sits in its own modern card, not floating on the modal background ---- */
+.resv-step-panel {
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 1.6rem;
+    min-height: 200px;
+}
+
+/* ---- Wizard Back/Next nav, below the step card ----------------------------------------- */
+.resv-nav { display: flex; align-items: center; margin-top: 1rem; }
+
+/* ---- Summary step: read-only recap of everything picked so far ------------------------ */
+.resv-summary { display: flex; flex-direction: column; gap: .6rem; margin-bottom: 1.1rem; }
+.resv-summary__row { display: flex; align-items: center; gap: .5rem; font-weight: 700; }
+
 /* Field rows: auto-fit collapses to one column on narrow/mobile screens with
    no extra media query needed. */
 .resv-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; }
-.resv-row--phone-when { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
-/* Guest row: name, party size, children, high chairs and the computed total side by side
-   on one line — kept in one row even on narrow screens (that's the point), just with a
-   tighter ratio so the inputs still have breathing room. */
-.resv-row--guest { grid-template-columns: 1.6fr .6fr .6fr .6fr .6fr; }
+/* Guest row: party size, children, high chairs and the computed total side by side on one
+   line — kept in one row even on narrow screens (that's the point). */
+.resv-row--guest { grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 700px) {
-    /* Five fields no longer fit legibly in one row on a phone — wrap instead of squeezing. */
+    /* Four fields no longer fit legibly in one row on a phone — wrap instead of squeezing. */
     .resv-row--guest { grid-template-columns: 1fr 1fr; gap: .5rem; }
 }
 
-/* ---- Lunch/Dinner picker: big, tappable service cards, not a small button row ------- */
-.period-picker { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-bottom: .6rem; }
+/* ---- Lunch/Dinner picker: compact tappable service chips ---------------------------- */
+.period-picker { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; margin-bottom: .5rem; }
 .period-opt {
-    display: flex; flex-direction: column; align-items: center; gap: .3rem;
-    padding: .9rem .6rem;
-    border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--card-2); color: var(--text-soft);
+    display: flex; flex-direction: row; align-items: center; gap: .4rem;
+    padding: .45rem .6rem;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--card); color: var(--text-soft);
     font: inherit; cursor: pointer;
     transition: transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition), box-shadow var(--transition);
 }
-.period-opt:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
-.period-opt__label { font-weight: 800; font-size: 1rem; color: var(--text); }
-.period-opt__time { font-size: .8rem; }
+.period-opt:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.period-opt__label { font-weight: 800; font-size: .82rem; color: var(--text); }
+.period-opt__time { font-size: .72rem; margin-left: auto; }
 .period-opt--on {
     border-color: var(--primary);
     background: color-mix(in srgb, var(--primary) 12%, var(--card));
@@ -772,23 +818,47 @@
 }
 .period-opt--on .period-opt__label { color: var(--primary); }
 
+/* ---- Quarter-hour slot grid, revealed under the picker once a period is chosen ------- */
+/* Fixed 4-column grid (not flex-wrap) so every slot stretches to fill an equal-width card,
+   instead of a pill sized to its own text. */
+.slot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .6rem; margin-top: 1rem; }
+@media (max-width: 640px) {
+    .slot-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.slot-chip {
+    padding: .7rem .5rem;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--card); color: var(--text);
+    font: inherit; font-size: .85rem; font-weight: 700; text-align: center; cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition), box-shadow var(--transition);
+}
+.slot-chip:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--primary); }
+.slot-chip--on {
+    border-color: var(--primary); background: var(--primary); color: var(--on-primary);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
 /* ---- Read-only field: same box as .input, used for the computed guest total ---------- */
 .field-static {
     display: flex; align-items: center;
     min-height: 2.4rem;
     padding: .5rem .8rem;
     border: 1px solid var(--border); border-radius: var(--radius-sm);
-    background: var(--card-2); color: var(--text);
+    background: var(--card); color: var(--text);
     font-weight: 800;
 }
+
+/* Inside the wizard's step-panel card (already var(--card-2)), inputs need the lighter
+   var(--card) tone to still read as distinct fields rather than blending into the panel. */
+.resv-step-panel .input, .resv-step-panel textarea.input { background: var(--card); }
 
 /* Tighter vertical rhythm so the whole form fits without scrolling on most screens. */
 .resv-form .modal-section { margin-top: .4rem; padding-top: .3rem; }
 .resv-form .field { margin-bottom: .35rem; }
 .resv-form .field > label { margin-bottom: 0; }
 
-/* ---- Table picker: multi-select toggle chips ------------------------------- */
-.tbl-pick { display: flex; flex-wrap: wrap; justify-content: center; gap: .35rem; margin-bottom: .35rem; }
+/* ---- Table name chip: read-only, shown once a table is assigned via Assign/Reassign ---- */
 .tbl-chip {
     display: inline-flex; align-items: center; gap: .4rem;
     padding: .45rem .7rem;
@@ -798,11 +868,7 @@
     transition: transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition);
 }
 .tbl-chip:hover { transform: translateY(-1px); }
-.tbl-chip--on { border-color: var(--text); background: var(--card); color: var(--text); font-weight: 800; }
-.tbl-chip__seats { display: inline-flex; align-items: center; gap: .15rem; font-size: .76rem; color: var(--text-soft); }
-.tbl-chip--on .tbl-chip__seats { color: var(--text); }
 .tbl-chip--sm { padding: .12rem .5rem; font-size: .72rem; font-weight: 700; background: var(--card); border-color: var(--border); }
-.tbl-pick__summary { margin-bottom: .3rem; }
 
 .field-hint { display: flex; align-items: center; gap: .4rem; margin: -.5rem 0 .9rem; font-size: .8rem; }
 

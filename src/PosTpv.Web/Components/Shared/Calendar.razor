@@ -1,0 +1,75 @@
+@* Compact month-grid date picker, bound the same way as TimePicker (@bind-Value). Replaces
+   the native <input type="date"> in flows where a visual calendar is wanted instead of the
+   browser's own (un-stylable) date popup. *@
+@using System.Globalization
+
+<div class="cal">
+    <div class="cal__head">
+        <button type="button" class="btn btn--icon btn--ghost btn--sm" @onclick="() => ShiftMonth(-1)"><LucideIcon Name="arrow-left" Size="14" /></button>
+        <span class="cal__title">@_displayed.ToString("MMMM yyyy", CultureInfo.CurrentUICulture)</span>
+        <button type="button" class="btn btn--icon btn--ghost btn--sm" @onclick="() => ShiftMonth(1)"><LucideIcon Name="arrow-right" Size="14" /></button>
+    </div>
+    <div class="cal__weekdays">
+        @foreach (var d in WeekdayLabels)
+        {
+            <span>@d</span>
+        }
+    </div>
+    <div class="cal__days">
+        @foreach (var day in DaysInGrid())
+        {
+            <button type="button"
+                    class="cal__day @(day.Month != _displayed.Month ? "cal__day--out" : "") @(day.Date == Value.Date ? "cal__day--on" : "") @(day.Date == DateTime.Today ? "cal__day--today" : "")"
+                    @onclick="() => Select(day)">
+                @day.Day
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public DateTime Value { get; set; }
+    [Parameter] public EventCallback<DateTime> ValueChanged { get; set; }
+
+    private DateTime _displayed;
+    private bool _initialized;
+
+    protected override void OnParametersSet()
+    {
+        // Seed the visible month from the bound value once, then let the user browse
+        // freely without the grid jumping back if the parent re-renders.
+        if (!_initialized)
+        {
+            _displayed = new DateTime(Value.Year, Value.Month, 1);
+            _initialized = true;
+        }
+    }
+
+    private static List<string> WeekdayLabels
+    {
+        get
+        {
+            var names = CultureInfo.CurrentUICulture.DateTimeFormat.AbbreviatedDayNames; // [0] = Sunday
+            var mondayFirst = new[] { names[1], names[2], names[3], names[4], names[5], names[6], names[0] };
+            return mondayFirst.Select(n => n.Length <= 2 ? n : n[..2]).Select(n => char.ToUpper(n[0]) + n[1..]).ToList();
+        }
+    }
+
+    private void ShiftMonth(int delta) => _displayed = _displayed.AddMonths(delta);
+
+    // 6 full weeks (42 cells) starting the Monday on/before the 1st, so the grid always has a
+    // stable height regardless of how the month lines up.
+    private IEnumerable<DateTime> DaysInGrid()
+    {
+        var first = new DateTime(_displayed.Year, _displayed.Month, 1);
+        var mondayOffset = ((int)first.DayOfWeek + 6) % 7;
+        var start = first.AddDays(-mondayOffset);
+        for (var i = 0; i < 42; i++) yield return start.AddDays(i);
+    }
+
+    private Task Select(DateTime day)
+    {
+        Value = day.Date;
+        return ValueChanged.InvokeAsync(day.Date);
+    }
+}

@@ -388,90 +388,108 @@
 
 <Modal Visible="_resForm is not null" OnClose="CloseResForm" FullScreen="true">
     <HeaderActions>
+        @if (_resForm?.Id > 0)
+        {
+            <button class="btn btn--icon btn--ghost" title="@Loc.T("Delete")" @onclick="() => DeleteRes(_resForm!.Id)" type="button"><LucideIcon Name="trash-2" Size="18" /></button>
+        }
         <button class="btn btn--icon btn--primary" title="@Loc.T("Save")" @onclick="SaveRes" type="button"><LucideIcon Name="check" Size="18" /></button>
     </HeaderActions>
     <ChildContent>
         @if (_resForm is not null)
         {
             <div class="resv-form">
-                <div class="modal-section">@Loc.T("Guest")</div>
-                <div class="resv-row resv-row--guest">
-                    <div class="field"><label>@Loc.T("Customer name")</label><input class="input" @bind="_resForm.CustomerName" /></div>
-                    <div class="field"><label>@Loc.T("Party size")</label><input type="number" min="0" class="input" @bind="_resForm.PartySize" /></div>
-                    <div class="field"><label><LucideIcon Name="baby" Size="12" /> @Loc.T("Children")</label><input type="number" min="0" class="input" @bind="_resForm.ChildrenCount" /></div>
-                    <div class="field"><label><LucideIcon Name="armchair" Size="12" /> @Loc.T("High chairs")</label><input type="number" min="0" class="input" @bind="_resForm.HighChairCount" /></div>
-                    <div class="field"><label>@Loc.T("Total")</label><div class="field-static">@FormTotalGuests</div></div>
-                </div>
-                <div class="resv-row resv-row--phone-when">
-                    <div class="field"><label>@Loc.T("Phone")</label><input class="input" @bind="_resForm.Phone" /></div>
-                    <div class="field"><label>@Loc.T("Date")</label><input type="date" class="input" @bind="_resForm.Date" /></div>
-                    <div class="field"><label>@Loc.T("Time")</label><TimePicker @bind-Value="_resForm.Time" /></div>
-                </div>
-
-                <div class="modal-section">@Loc.T("Tables")</div>
-                <div class="tbl-pick">
-                    @foreach (var t in _tables)
+                <div class="resv-steps">
+                    <div class="resv-steps__track"></div>
+                    <div class="resv-steps__progress" style="width:@(N(StepProgressWidthPercent))%"></div>
+                    @foreach (var s in ResSteps)
                     {
-                        <button type="button" class="tbl-chip @(_resForm.TableIds.Contains(t.Id) ? "tbl-chip--on" : "")"
-                                @onclick="() => ToggleFormTable(t.Id)">
-                            <span>@t.Name</span>
-                            <span class="tbl-chip__seats">@t.Seats<LucideIcon Name="user" Size="11" /></span>
+                        <button type="button"
+                                class="resv-step @(s.Step == _resStep ? "resv-step--on" : "") @(s.Step < _resMaxStep && s.Step != _resStep ? "resv-step--done" : "")"
+                                disabled="@(s.Step > _resMaxStep)" @onclick="() => GoToStep(s.Step)">
+                            <span class="resv-step__num">@(s.Step < _resMaxStep ? "✓" : s.Step.ToString())</span>
+                            <span class="resv-step__label">@Loc.T(s.Label)</span>
                         </button>
                     }
-                    @if (_tables.Count == 0) { <p class="muted">@Loc.T("No tables yet. Create one to start.")</p> }
-                </div>
-                <div class="tbl-pick__summary">
-                    <span class="badge @(SelectedSeats >= FormTotalGuests ? "badge--success" : "badge--warning")">
-                        @SelectedSeats / @FormTotalGuests @Loc.T("seats selected")
-                    </span>
                 </div>
 
-                <div class="modal-section">@Loc.T("When")</div>
-                <div class="period-picker">
-                    <button type="button" class="period-opt @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "period-opt--on" : "")"
-                            @onclick="() => _resForm.Time = Branding.Current.LunchStart">
-                        <LucideIcon Name="sun" Size="24" />
-                        <span class="period-opt__label">@Loc.T("Lunch")</span>
-                        <span class="period-opt__time">@Branding.Current.LunchStart.ToString("HH:mm")</span>
-                    </button>
-                    <button type="button" class="period-opt @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Dinner ? "period-opt--on" : "")"
-                            @onclick="() => _resForm.Time = Branding.Current.DinnerStart">
-                        <LucideIcon Name="moon" Size="24" />
-                        <span class="period-opt__label">@Loc.T("Dinner")</span>
-                        <span class="period-opt__time">@Branding.Current.DinnerStart.ToString("HH:mm")</span>
-                    </button>
-                </div>
-                @if (!Branding.Current.IsInService(_resForm.Time))
-                {
-                    <p class="field-hint field-hint--warning"><LucideIcon Name="triangle-alert" Size="14" /> @Loc.T("This reservation falls outside the configured lunch/dinner hours.")</p>
-                }
-
-                <div class="modal-section">@Loc.T("Details")</div>
-                <div class="field">
-                    <label>@Loc.T("Colour")</label>
-                    <div class="color-pick">
-                        @foreach (var c in GroupColors)
+                <div class="resv-step-panel">
+                    @if (_resStep == 1)
+                    {
+                        <div class="resv-row">
+                            <div class="field"><label>@Loc.T("Customer name")</label><input class="input" @bind="_resForm.CustomerName" /></div>
+                            <div class="field"><label>@Loc.T("Phone")</label><input class="input" @bind="_resForm.Phone" /></div>
+                        </div>
+                        <div class="resv-row resv-row--guest">
+                            <div class="field"><label>@Loc.T("Party size")</label><input type="number" min="0" class="input" @bind="_resForm.PartySize" /></div>
+                            <div class="field"><label><LucideIcon Name="baby" Size="12" /> @Loc.T("Children")</label><input type="number" min="0" class="input" @bind="_resForm.ChildrenCount" /></div>
+                            <div class="field"><label><LucideIcon Name="armchair" Size="12" /> @Loc.T("High chairs")</label><input type="number" min="0" class="input" @bind="_resForm.HighChairCount" /></div>
+                            <div class="field"><label>@Loc.T("Total")</label><div class="field-static">@FormTotalGuests</div></div>
+                        </div>
+                    }
+                    else if (_resStep == 2)
+                    {
+                        <Calendar Value="_resForm.Date" ValueChanged="PickDate" />
+                    }
+                    else if (_resStep == 3)
+                    {
+                        <div class="period-picker">
+                            <button type="button" class="period-opt @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "period-opt--on" : "")"
+                                    @onclick="() => PickPeriod(Branding.Current.LunchStart)">
+                                <LucideIcon Name="sun" Size="16" />
+                                <span class="period-opt__label">@Loc.T("Lunch")</span>
+                                <span class="period-opt__time">@Branding.Current.LunchStart.ToString("HH:mm")–@Branding.Current.LunchEnd.ToString("HH:mm")</span>
+                            </button>
+                            <button type="button" class="period-opt @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Dinner ? "period-opt--on" : "")"
+                                    @onclick="() => PickPeriod(Branding.Current.DinnerStart)">
+                                <LucideIcon Name="moon" Size="16" />
+                                <span class="period-opt__label">@Loc.T("Dinner")</span>
+                                <span class="period-opt__time">@Branding.Current.DinnerStart.ToString("HH:mm")–@Branding.Current.DinnerEnd.ToString("HH:mm")</span>
+                            </button>
+                        </div>
+                        var slots = CurrentPeriodSlots;
+                        @if (slots.Count > 0)
                         {
-                            <button type="button" class="color-swatch @(_resForm.Color == c ? "color-swatch--on" : "")"
-                                    style="--sw:@c" title="@c" @onclick="() => _resForm.Color = c"></button>
+                            <div class="slot-grid">
+                                @foreach (var slot in slots)
+                                {
+                                    <button type="button" class="slot-chip @(slot == _resForm.Time ? "slot-chip--on" : "")" @onclick="() => PickSlot(slot)">@slot.ToString("HH:mm")</button>
+                                }
+                            </div>
                         }
-                        <input type="color" class="color-swatch color-swatch--custom" title="@Loc.T("Custom colour")" @bind="_resForm.Color" />
-                    </div>
+                    }
+                    else if (_resStep == 4)
+                    {
+                        <div class="resv-summary">
+                            <div class="resv-summary__row"><LucideIcon Name="user" Size="14" /> @(string.IsNullOrWhiteSpace(_resForm.CustomerName) ? Loc.T("Customer name") : _resForm.CustomerName) @if (!string.IsNullOrWhiteSpace(_resForm.Phone)) { <span class="muted"> · @_resForm.Phone</span> }</div>
+                            <div class="resv-summary__row"><LucideIcon Name="users" Size="14" /> @FormTotalGuests @Loc.T("people")
+                                @if (_resForm.ChildrenCount > 0) { <span class="muted"> · <LucideIcon Name="baby" Size="13" /> @_resForm.ChildrenCount</span> }
+                                @if (_resForm.HighChairCount > 0) { <span class="muted"> · <LucideIcon Name="armchair" Size="13" /> @_resForm.HighChairCount</span> }
+                            </div>
+                            <div class="resv-summary__row"><LucideIcon Name="calendar" Size="14" /> @_resForm.Date.ToString("dd MMM yyyy")</div>
+                            <div class="resv-summary__row"><LucideIcon Name="@(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "sun" : "moon")" Size="14" /> @Loc.T(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "Lunch" : "Dinner") · @_resForm.Time.ToString("HH:mm")</div>
+                        </div>
+                        <div class="field"><label>@Loc.T("Comments")</label><textarea class="input" rows="2" @bind="_resForm.Comments"></textarea></div>
+                    }
+
+                    @if (_resError is not null) { <div class="field-error">@_resError</div> }
                 </div>
-                <div class="field"><label>@Loc.T("Comments")</label><textarea class="input" rows="2" @bind="_resForm.Comments"></textarea></div>
-                @if (_resError is not null) { <div class="field-error">@_resError</div> }
+
+                <div class="resv-nav">
+                    @if (_resStep > 1)
+                    {
+                        <button type="button" class="btn btn--icon btn--ghost" title="@Loc.T("Back")" @onclick="GoBack"><LucideIcon Name="arrow-left" Size="16" /></button>
+                    }
+                    <span class="spacer"></span>
+                    @if (_resStep == 1 && _resStep < ResSteps.Length)
+                    {
+                        <button type="button" class="btn btn--icon btn--primary" title="@Loc.T("Next")"
+                                disabled="@(_resStep == 1 && string.IsNullOrWhiteSpace(_resForm.CustomerName))"
+                                @onclick="GoNext"><LucideIcon Name="arrow-right" Size="16" /></button>
+                    }
+                </div>
             </div>
         }
     </ChildContent>
-    <Footer>
-        @if (_resForm?.Id > 0)
-        {
-            <button class="btn btn--danger" @onclick="() => DeleteRes(_resForm!.Id)">@Loc.T("Delete")</button>
-        }
-        <span class="spacer"></span>
-        <button class="btn btn--ghost" @onclick="CloseResForm">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" @onclick="SaveRes">@Loc.T("Save")</button>
-    </Footer>
 </Modal>
 
 @code {
@@ -541,6 +559,18 @@
     private int? _statusMenuOpenId;
     private ReservationFormDto? _resForm;
     private string? _resError;
+
+    // ---- Reservation wizard: 4 steps, each its own screen ----
+    private int _resStep = 1;
+    private int _resMaxStep = 1;   // furthest step reached, gates which step-chips are clickable
+    private static readonly (int Step, string Label)[] ResSteps =
+    {
+        (1, "Guest"), (2, "Date"), (3, "Service"), (4, "Summary")
+    };
+
+    // Fills the stepper's connecting line up to the current step's dot — the dots are evenly
+    // spaced (100 / ResSteps.Length apart), so step 1 = 0% filled, the last step = full width.
+    private double StepProgressWidthPercent => (100.0 / ResSteps.Length) * (_resStep - 1);
 
     private bool _suppressRender;   // while true, JS owns the DOM; Blazor must not re-render the floor
     private ElementReference _floorEl;
@@ -814,20 +844,77 @@
         _resForm = id is null
             ? new ReservationFormDto { Date = _reserveDate }
             : await ReservationService.GetForEditAsync(id.Value) ?? new ReservationFormDto();
+        // Editing an existing reservation already has every step filled in, so unlock the whole
+        // wizard instead of forcing another walk through it; a new one starts at step 1 only.
+        _resStep = 1;
+        _resMaxStep = id is null ? 1 : ResSteps.Length;
     }
 
     private void CloseResForm() => _resForm = null;
 
-    private int SelectedSeats => _resForm is null ? 0 : _tables.Where(t => _resForm.TableIds.Contains(t.Id)).Sum(t => t.Seats);
+    private void GoToStep(int step)
+    {
+        if (step <= _resMaxStep) _resStep = step;
+    }
+
+    private void GoNext()
+    {
+        _resStep = Math.Min(ResSteps.Length, _resStep + 1);
+        _resMaxStep = Math.Max(_resMaxStep, _resStep);
+    }
+
+    private void GoBack() => _resStep = Math.Max(1, _resStep - 1);
+
+    // Picking a date or a service period is a single, unambiguous action — so unlike the
+    // free-text/number steps, these two advance the wizard on their own instead of waiting for
+    // an explicit Next click.
+    private void PickDate(DateTime date)
+    {
+        if (_resForm is null) return;
+        _resForm.Date = date;
+        GoNext();
+    }
+
+    // Picking a period no longer jumps straight to the next step — it just anchors the form to
+    // that period's start so ServiceSlots below has something to show, and reveals the quarter-hour
+    // slot grid for it. The wizard only advances once an actual slot is picked.
+    private void PickPeriod(TimeOnly start)
+    {
+        if (_resForm is null) return;
+        _resForm.Time = start;
+    }
+
+    private void PickSlot(TimeOnly slot)
+    {
+        if (_resForm is null) return;
+        _resForm.Time = slot;
+        GoNext();
+    }
+
+    // Quarter-hour slots spanning the currently selected service period, e.g. 13:00, 13:15 …
+    // up to whatever end time is configured in Settings. Picking one sets the reservation's
+    // exact time and advances straight to the summary — no separate "pick the hour" step.
+    private List<TimeOnly> CurrentPeriodSlots => _resForm is null ? new() : Branding.Current.GetPeriod(_resForm.Time) switch
+    {
+        ServicePeriod.Lunch => ServiceSlots(Branding.Current.LunchStart, Branding.Current.LunchEnd),
+        ServicePeriod.Dinner => ServiceSlots(Branding.Current.DinnerStart, Branding.Current.DinnerEnd),
+        _ => new()
+    };
+
+    private static List<TimeOnly> ServiceSlots(TimeOnly start, TimeOnly end)
+    {
+        var slots = new List<TimeOnly>();
+        var t = start;
+        for (var i = 0; i < 96 && t <= end; i++)
+        {
+            slots.Add(t);
+            t = t.AddMinutes(15);
+        }
+        return slots;
+    }
 
     // Seats needed = adults (party size) + children, so the seat-count check accounts for everyone at the table.
     private int FormTotalGuests => _resForm is null ? 0 : _resForm.PartySize + _resForm.ChildrenCount;
-
-    private void ToggleFormTable(int tableId)
-    {
-        if (_resForm is null) return;
-        if (!_resForm.TableIds.Remove(tableId)) _resForm.TableIds.Add(tableId);
-    }
 
     private async Task SaveRes()
     {

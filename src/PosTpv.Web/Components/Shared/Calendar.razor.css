@@ -1,0 +1,20 @@
+.cal { display: flex; flex-direction: column; gap: .5rem; max-width: 320px; margin: 0 auto; }
+
+.cal__head { display: flex; align-items: center; justify-content: space-between; }
+.cal__title { font-weight: 800; font-size: .9rem; text-transform: capitalize; }
+
+.cal__weekdays, .cal__days { display: grid; grid-template-columns: repeat(7, 1fr); gap: .2rem; }
+.cal__weekdays span { text-align: center; font-size: .68rem; font-weight: 700; color: var(--text-soft); padding: .2rem 0; }
+
+.cal__day {
+    aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid transparent; border-radius: var(--radius-sm);
+    background: var(--card); color: var(--text);
+    font: inherit; font-size: .8rem; cursor: pointer;
+    transition: transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition);
+}
+.cal__day:hover { transform: translateY(-1px); }
+.cal__day--out { color: var(--text-soft); opacity: .45; }
+.cal__day--today { border-color: var(--primary); }
+.cal__day--on { background: var(--primary); color: var(--on-primary); font-weight: 800; }

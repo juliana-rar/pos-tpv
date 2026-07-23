@@ -226,7 +226,7 @@ public class OrderService : IOrderService
         // Merge into an existing pending line for the same product + comment, but only when neither
         // the new line nor the existing one carries extras (lines with extras stay distinct), and only
         // when the caller allows merging (drinks are added unmerged so each keeps its own comment).
-        var existing = (hasExtras || !request.Merge) ? null : order.Items.FirstOrDefault(i =>
+        var existing = (hasExtras || !request.Merge || request.Invited) ? null : order.Items.FirstOrDefault(i =>
             i.ProductId == product.Id && i.Status == OrderItemStatus.Pending
             && i.Comment == request.Comment && i.Extras.Count == 0);
 
@@ -242,7 +242,7 @@ public class OrderService : IOrderService
                 OrderId = order.Id,
                 ProductId = product.Id,
                 Quantity = request.Quantity,
-                UnitPrice = product.Price,
+                UnitPrice = request.Invited ? 0m : product.Price,
                 VatRate = product.VatRate,
                 Comment = request.Comment,
                 Status = OrderItemStatus.Pending
