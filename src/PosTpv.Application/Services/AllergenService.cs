@@ -28,7 +28,7 @@ public class AllergenService : IAllergenService
 
     public async Task<List<AllergenDto>> GetAllAsync(CancellationToken ct = default)
     {
-        var list = await _uow.Repository<Allergen>().Query().OrderBy(a => a.Name).ToListAsync(ct);
+        var list = await _uow.Repository<Allergen>().QueryNoTracking().OrderBy(a => a.Name).ToListAsync(ct);
         return _mapper.Map<List<AllergenDto>>(list);
     }
 

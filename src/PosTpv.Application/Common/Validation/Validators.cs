@@ -50,6 +50,7 @@ public class ReservationFormValidator : AbstractValidator<ReservationFormDto>
     public ReservationFormValidator()
     {
         RuleFor(x => x.CustomerName).NotEmpty().MaximumLength(120);
+        RuleFor(x => x.Phone).NotEmpty();
         RuleFor(x => x.PartySize).InclusiveBetween(1, 50);
         RuleFor(x => x.DurationMinutes).InclusiveBetween(15, 600);
     }

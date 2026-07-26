@@ -21,6 +21,8 @@ public static class DependencyInjection
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IAllergenService, AllergenService>();
         services.AddScoped<ITableService, TableService>();
+        services.AddScoped<IFloorDecorService, FloorDecorService>();
+        services.AddScoped<IFloorZoneService, FloorZoneService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IReservationService, ReservationService>();
         services.AddScoped<IDashboardService, DashboardService>();

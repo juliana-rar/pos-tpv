@@ -18,6 +18,8 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
 
     public IQueryable<T> Query() => _set.AsQueryable();
 
+    public IQueryable<T> QueryNoTracking() => _set.AsNoTracking();
+
     public Task<T?> GetByIdAsync(int id, CancellationToken ct = default) =>
         _set.FirstOrDefaultAsync(e => e.Id == id, ct);
 

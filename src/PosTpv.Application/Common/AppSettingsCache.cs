@@ -10,8 +10,14 @@ namespace PosTpv.Application.Common;
 /// </summary>
 public class AppSettingsCache
 {
-    public AppSettingsDto Current { get; private set; } =
-        new("PosTPV", new TimeOnly(13, 0), new TimeOnly(16, 0), new TimeOnly(20, 0), new TimeOnly(23, 30), "grid");
+    // This is the one genuinely cross-request singleton in the app (every Blazor Server circuit
+    // shares the same instance), so reads/writes of Current are locked against concurrent Set()
+    // calls from two admins saving settings at once.
+    private readonly object _lock = new();
+    private AppSettingsDto _current =
+        new("PosTPV", new TimeOnly(13, 0), new TimeOnly(16, 0), new TimeOnly(20, 0), new TimeOnly(23, 30), "grid", "open");
+
+    public AppSettingsDto Current { get { lock (_lock) return _current; } }
 
     /// <summary>Raised whenever settings are saved, so long-lived components (e.g. the sidebar
     /// brand, which persists across in-app navigation) can refresh without waiting for the
@@ -20,7 +26,7 @@ public class AppSettingsCache
 
     public void Set(AppSettingsDto dto)
     {
-        Current = dto;
+        lock (_lock) { _current = dto; }
         Changed?.Invoke();
     }
 }

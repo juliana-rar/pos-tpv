@@ -52,7 +52,7 @@ public class BillingService : IBillingService
 
     public async Task<InvoiceDetailDto?> GetInvoiceDetailAsync(int invoiceId, CancellationToken ct = default)
     {
-        var invoice = await _uow.Repository<Invoice>().Query()
+        var invoice = await _uow.Repository<Invoice>().QueryNoTracking()
             .Include(i => i.Order).ThenInclude(o => o.Table)
             .Include(i => i.Order).ThenInclude(o => o.Waiter)
             .Include(i => i.Order).ThenInclude(o => o.Items).ThenInclude(li => li.Product)

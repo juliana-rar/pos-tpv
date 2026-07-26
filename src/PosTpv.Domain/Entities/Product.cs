@@ -3,7 +3,7 @@ using PosTpv.Domain.Common;
 namespace PosTpv.Domain.Entities;
 
 /// <summary>A sellable item. Rendered as a card in the POS centre panel.</summary>
-public class Product : BaseEntity
+public class Product : BaseEntity, IOrderable
 {
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }

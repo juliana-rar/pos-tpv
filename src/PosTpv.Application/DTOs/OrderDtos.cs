@@ -8,7 +8,7 @@ public record OrderItemDto(
     int Id, int ProductId, string ProductName, int Quantity, decimal UnitPrice,
     decimal VatRate, string? Comment, OrderItemStatus Status,
     IReadOnlyList<OrderItemExtraDto> Extras, decimal LineTotal, bool IsDrink, CourseType Course,
-    DateTime CreatedAt, int CategoryId, DateTime? UpdatedAt);
+    DateTime CreatedAt, int CategoryId, DateTime? UpdatedAt, bool IsInvited);
 
 public record OrderDto(
     int Id, string Number, OrderStatus Status, int TableId, string TableName,

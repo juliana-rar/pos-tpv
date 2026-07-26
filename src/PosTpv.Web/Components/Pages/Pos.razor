@@ -29,7 +29,7 @@
         <div class="pos__tablebar">
             @foreach (var t in _tables)
             {
-                <button type="button"
+                <button @key="t.Id" type="button"
                         class="tableChip @(_order?.TableId == t.Id ? "tableChip--active" : "")"
                         data-status="@t.Status.ToString().ToLower()"
                         disabled="@_busy"
@@ -45,7 +45,7 @@
             <div class="pos__cats">
                 @foreach (var c in _categories)
                 {
-                    <button class="cat @(c.Id == _selectedCategoryId ? "cat--active" : "")"
+                    <button @key="c.Id" class="cat @(c.Id == _selectedCategoryId ? "cat--active" : "")"
                             style="--cat:@c.Color" @onclick="() => SelectCategory(c.Id)">
                         <span class="cat__icon">
                             @if (!string.IsNullOrWhiteSpace(c.ImageUrl))
@@ -67,7 +67,7 @@
                 <div class="product-grid">
                     @foreach (var p in _products)
                     {
-                        <button class="productCard @(p.IsAvailable ? "" : "productCard--off") @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? "productCard--img" : "")"
+                        <button @key="p.Id" class="productCard @(p.IsAvailable ? "" : "productCard--off") @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? "productCard--img" : "")"
                                 style="--pc:@p.Color; @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? $"background-image:url('{p.ImageUrl}')" : "")"
                                 disabled="@(!p.IsAvailable || _busy)"
                                 @onclick="() => OnProductClick(p)"
@@ -127,7 +127,7 @@
                     <div class="@GroupLinesClass(grp)">
                         @foreach (var it in grp.Items)
                         {
-                            <div class="orderLine">
+                            <div @key="it.Id" class="orderLine">
                                 <div class="orderLine__main">
                                     <span class="orderLine__name">@it.ProductName</span>
                                     <span class="spacer"></span>
@@ -188,7 +188,7 @@
     <div class="table-picker">
         @foreach (var t in _tables)
         {
-            <button class="tablePick tablePick--@t.Status.ToString().ToLower()"
+            <button @key="t.Id" class="tablePick tablePick--@t.Status.ToString().ToLower()"
                     @onclick="() => OpenTable(t.Id)">
                 <span class="tablePick__name">@t.Name</span>
                 <span class="tablePick__seats">@t.Seats @Loc.T("seats")</span>
@@ -360,36 +360,15 @@
     private decimal PaidSoFar => _payments.Sum(p => p.Amount);
     private decimal Remaining => Math.Round((_order?.Total ?? 0m) - PaidSoFar, 2);
 
-    private sealed record OrderSection(string? Icon, string? Label, List<OrderItemDto> Items);
-
     // Below 5 lines the order is short enough to scan as a flat list. From 5 lines on, it's
     // grouped under the same Drinks/First/Second/Desserts headers as the kitchen and /orders
-    // screens, so a long ticket reads at a glance instead of as one undifferentiated column.
-    // Each group caps at 6 lines with its own scroll (see .order__group-lines--scroll) instead
-    // of one scrollbar for the whole card, so e.g. a long drinks round doesn't push the food
-    // groups below out of view.
-    private List<OrderSection> OrderSections()
-    {
-        if (_order is null) return new();
-        if (_order.Items.Count < 5)
-            return new() { new OrderSection(null, null, _order.Items.ToList()) };
+    // screens (OrderPresentation.Sections), so a long ticket reads at a glance instead of as one
+    // undifferentiated column. Each group caps at 6 lines with its own scroll instead of one
+    // scrollbar for the whole card, so e.g. a long drinks round doesn't push the food groups out of view.
+    private List<OrderPresentation.OrderSection> OrderSections() =>
+        _order is null ? new() : OrderPresentation.Sections(_order.Items);
 
-        var sections = new List<OrderSection>();
-        void AddGroup(string icon, string label, IEnumerable<OrderItemDto> items)
-        {
-            var list = items.ToList();
-            if (list.Count == 0) return;
-            sections.Add(new OrderSection(icon, label, list));
-        }
-        AddGroup("cup-soda", "Drinks", _order.Items.Where(i => i.IsDrink));
-        AddGroup("salad", "First course", _order.Items.Where(i => !i.IsDrink && i.Course == CourseType.Starter));
-        AddGroup("utensils", "Second course", _order.Items.Where(i => !i.IsDrink && i.Course == CourseType.Main));
-        AddGroup("cake-slice", "Desserts", _order.Items.Where(i => !i.IsDrink && i.Course == CourseType.Dessert));
-        return sections;
-    }
-
-    private static string GroupLinesClass(OrderSection section) =>
-        section.Items.Count > 6 ? "order__group-lines order__group-lines--scroll" : "order__group-lines";
+    private static string GroupLinesClass(OrderPresentation.OrderSection section) => OrderPresentation.GroupLinesClass(section);
 
     private HubConnection? _hub;
 

@@ -38,6 +38,8 @@
                     <LucideIcon Name="salad" Size="14" />@FirstsServeLabel()
                 </button>
             }
+            @* Once seconds are ready to serve (or served), that state takes over this same slot
+               instead of stacking a separate "Serve seconds" button next to "Fire seconds". *@
             @if (_showServeSeconds)
             {
                 <button class="btn btn--sm @(_secondsPendingToServe ? "btn--primary" : "btn--ghost")"
@@ -46,7 +48,7 @@
                     <LucideIcon Name="utensils" Size="14" />@SecondsServeLabel()
                 </button>
             }
-            @if (_hasSeconds)
+            else if (_hasSeconds)
             {
                 <button class="btn btn--sm @(Order.SecondsFiredAt is null ? "btn--primary" : "btn--ghost")"
                         title="@(Order.SecondsFiredAt is null ? Loc.T("Tell the kitchen to start the second courses") : Loc.T("Click to undo"))"
@@ -288,19 +290,19 @@
 
     private OrderDto? _rendered;                       // last Order reference we partitioned/rendered
     private List<OrderItemDto> _drinks = new();
-    private List<DrinkGroup> _drinkGroups = new();
+    private List<OrderPresentation.ServeBatch> _drinkGroups = new();
     private bool _hasPendingDrinks;
     private List<OrderItemDto> _starters = new();
-    private List<DrinkGroup> _starterGroups = new();
+    private List<OrderPresentation.ServeBatch> _starterGroups = new();
     private bool _firstsPendingToServe;                 // has ready-but-not-served first courses
     private bool _showServeFirsts;                      // something ready or already served, so the button is relevant
     private List<OrderItemDto> _mains = new();
-    private List<DrinkGroup> _mainGroups = new();
+    private List<OrderPresentation.ServeBatch> _mainGroups = new();
     private bool _secondsPendingToServe;                // has ready-but-not-served second courses
     private bool _showServeSeconds;                     // something ready or already served, so the button is relevant
     private bool _hasSeconds;                           // has second courses (drives the "Fire seconds" button)
     private List<OrderItemDto> _desserts = new();
-    private List<DrinkGroup> _dessertGroups = new();
+    private List<OrderPresentation.ServeBatch> _dessertGroups = new();
     private bool _dessertsPendingToServe;               // has ready-but-not-served desserts
     private bool _showServeDesserts;                    // something ready or already served, so the button is relevant
 
@@ -319,105 +321,47 @@
 
     private void Repartition()
     {
-        List<OrderItemDto> drinks = new(), starters = new(), mains = new(), desserts = new();
-        foreach (var it in Order.Items)
-        {
-            if (it.IsDrink) { drinks.Add(it); continue; }
-            switch (it.Course)
-            {
-                case CourseType.Starter: starters.Add(it); break;
-                case CourseType.Dessert: desserts.Add(it); break;
-                default: mains.Add(it); break;   // CourseType.Main
-            }
-        }
+        var (drinks, starters, mains, desserts) = OrderPresentation.Partition(Order.Items);
 
         _drinks = drinks;
-        _drinkGroups = GroupByServeBatch(drinks);
+        _drinkGroups = OrderPresentation.GroupByServeBatch(drinks);
         _hasPendingDrinks = drinks.Any(d => d.Status != OrderItemStatus.Delivered);
 
         _starters = starters;
-        _starterGroups = GroupByServeBatch(starters);
+        _starterGroups = OrderPresentation.GroupByServeBatch(starters);
         _firstsPendingToServe = starters.Any(s => s.Status == OrderItemStatus.Ready);
         _showServeFirsts = starters.Any(s => s.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered);
 
         _mains = mains;
-        _mainGroups = GroupByServeBatch(mains);
+        _mainGroups = OrderPresentation.GroupByServeBatch(mains);
         _secondsPendingToServe = mains.Any(s => s.Status == OrderItemStatus.Ready);
         _showServeSeconds = mains.Any(s => s.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered);
         _hasSeconds = mains.Count > 0;
 
         _desserts = desserts;
-        _dessertGroups = GroupByServeBatch(desserts);
+        _dessertGroups = OrderPresentation.GroupByServeBatch(desserts);
         _dessertsPendingToServe = desserts.Any(s => s.Status == OrderItemStatus.Ready);
         _showServeDesserts = desserts.Any(s => s.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered);
     }
 
-    // A "Serve drinks" click stamps every drink it touches with the exact same UpdatedAt (one
-    // SaveChanges = one timestamp), so grouping consecutive drinks by that value recovers the
-    // original serve batches: one green badge per batch instead of one per line.
-    private static List<DrinkGroup> GroupByServeBatch(List<OrderItemDto> drinks)
-    {
-        var groups = new List<DrinkGroup>();
-        foreach (var it in drinks)
-        {
-            var servedAt = it.Status == OrderItemStatus.Delivered ? it.UpdatedAt : null;
-            if (groups.Count > 0 && groups[^1].ServedAt == servedAt)
-                groups[^1].Items.Add(it);
-            else
-                groups.Add(new DrinkGroup(servedAt, new List<OrderItemDto> { it }));
-        }
-        return groups;
-    }
-
-    // Groups consecutive lines that were ordered in the same minute — e.g. three waters tapped
-    // one after another — under one shared timestamp with a connecting bracket, instead of
-    // repeating the same "12:44" on every line, so it reads at a glance as "these 3 were
-    // ordered together" rather than three coincidentally-identical times.
-    private static List<TimeGroup> GroupByOrderTime(List<OrderItemDto> items)
-    {
-        var groups = new List<TimeGroup>();
-        foreach (var it in items)
-        {
-            var minute = new DateTime(it.CreatedAt.Year, it.CreatedAt.Month, it.CreatedAt.Day, it.CreatedAt.Hour, it.CreatedAt.Minute, 0, it.CreatedAt.Kind);
-            if (groups.Count > 0 && groups[^1].Time == minute)
-                groups[^1].Items.Add(it);
-            else
-                groups.Add(new TimeGroup(minute, new List<OrderItemDto> { it }));
-        }
-        return groups;
-    }
+    private static List<OrderPresentation.TimeGroup> GroupByOrderTime(List<OrderItemDto> items) =>
+        OrderPresentation.GroupByOrderTime(items);
 
     // Label + timestamp for a fired course, e.g. "Firsts fired · 14:32"; the plain active label
     // (e.g. "Fire firsts") while it hasn't been fired yet.
     private string CourseLabel(string activeKey, string firedKey, DateTime? firedAt) =>
         firedAt is null ? Loc.T(activeKey) : $"{Loc.T(firedKey)} · {firedAt.Value.ToLocalTime():HH:mm}";
 
-    private string DrinksLabel() => _hasPendingDrinks
-        ? Loc.T("Serve drinks")
-        : Order.DrinksServedAt is null
-            ? Loc.T("Drinks served")
-            : $"{Loc.T("Drinks served")} · {Order.DrinksServedAt.Value.ToLocalTime():HH:mm}";
+    private string DrinksLabel() => OrderPresentation.DrinksLabel(_hasPendingDrinks, Order.DrinksServedAt);
 
-    private string FirstsServeLabel()
-    {
-        if (_firstsPendingToServe) return Loc.T("Serve firsts");
-        var lastServedAt = _starters.Where(s => s.Status == OrderItemStatus.Delivered).Max(s => (DateTime?)s.UpdatedAt);
-        return lastServedAt is null ? Loc.T("Firsts served") : $"{Loc.T("Firsts served")} · {lastServedAt.Value.ToLocalTime():HH:mm}";
-    }
+    private string FirstsServeLabel() =>
+        OrderPresentation.CourseServeLabel(_firstsPendingToServe, _starters, "Serve firsts", "Firsts served");
 
-    private string SecondsServeLabel()
-    {
-        if (_secondsPendingToServe) return Loc.T("Serve seconds");
-        var lastServedAt = _mains.Where(s => s.Status == OrderItemStatus.Delivered).Max(s => (DateTime?)s.UpdatedAt);
-        return lastServedAt is null ? Loc.T("Seconds served") : $"{Loc.T("Seconds served")} · {lastServedAt.Value.ToLocalTime():HH:mm}";
-    }
+    private string SecondsServeLabel() =>
+        OrderPresentation.SecondsServeLabel(_secondsPendingToServe, _mains, Order.SecondsSentAt);
 
-    private string DessertsServeLabel()
-    {
-        if (_dessertsPendingToServe) return Loc.T("Serve desserts");
-        var lastServedAt = _desserts.Where(s => s.Status == OrderItemStatus.Delivered).Max(s => (DateTime?)s.UpdatedAt);
-        return lastServedAt is null ? Loc.T("Desserts served") : $"{Loc.T("Desserts served")} · {lastServedAt.Value.ToLocalTime():HH:mm}";
-    }
+    private string DessertsServeLabel() =>
+        OrderPresentation.CourseServeLabel(_dessertsPendingToServe, _desserts, "Serve desserts", "Desserts served");
 
     // Clicking the grouped drinks button toggles: serve every pending drink, or — once they're
     // all served — undo and put them all back to pending.
@@ -428,7 +372,7 @@
 
     // The badge now represents a whole serve batch, not a single line: undo puts every
     // drink in that batch back to pending, same as clicking each one's undo used to.
-    private async Task OnUnserveBatchClick(DrinkGroup group)
+    private async Task OnUnserveBatchClick(OrderPresentation.ServeBatch group)
     {
         foreach (var it in group.Items) await OnUnserveDrink.InvokeAsync(it.Id);
     }
@@ -438,7 +382,7 @@
     private Task OnToggleServeFirstsClick() => _firstsPendingToServe
         ? OnServeFirsts.InvokeAsync(Order.Id)
         : OnUnserveFirsts.InvokeAsync(Order.Id);
-    private async Task OnUnserveFirstBatchClick(DrinkGroup group)
+    private async Task OnUnserveFirstBatchClick(OrderPresentation.ServeBatch group)
     {
         foreach (var it in group.Items) await OnUnserveFirstItem.InvokeAsync(it.Id);
     }
@@ -448,7 +392,7 @@
     private Task OnToggleServeSecondsClick() => _secondsPendingToServe
         ? OnServeSeconds.InvokeAsync(Order.Id)
         : OnUnserveSeconds.InvokeAsync(Order.Id);
-    private async Task OnUnserveSecondBatchClick(DrinkGroup group)
+    private async Task OnUnserveSecondBatchClick(OrderPresentation.ServeBatch group)
     {
         foreach (var it in group.Items) await OnUnserveSecondItem.InvokeAsync(it.Id);
     }
@@ -458,7 +402,7 @@
     private Task OnToggleServeDessertsClick() => _dessertsPendingToServe
         ? OnServeDesserts.InvokeAsync(Order.Id)
         : OnUnserveDesserts.InvokeAsync(Order.Id);
-    private async Task OnUnserveDessertBatchClick(DrinkGroup group)
+    private async Task OnUnserveDessertBatchClick(OrderPresentation.ServeBatch group)
     {
         foreach (var it in group.Items) await OnUnserveDessertItem.InvokeAsync(it.Id);
     }
@@ -476,7 +420,4 @@
         OrderStatus.Sent => "badge--primary",
         _ => ""
     };
-
-    private sealed record DrinkGroup(DateTime? ServedAt, List<OrderItemDto> Items);
-    private sealed record TimeGroup(DateTime Time, List<OrderItemDto> Items);
 }

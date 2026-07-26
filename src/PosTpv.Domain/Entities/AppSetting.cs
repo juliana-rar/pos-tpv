@@ -18,4 +18,8 @@ public class AppSetting : BaseEntity
 
     /// <summary>Floor-plan background style on /tables ("grid", "wood", "tile", "concrete").</summary>
     public string FloorTexture { get; set; } = "grid";
+
+    /// <summary>How new reservations are currently being taken ("open", "phone_only", "closed",
+    /// "web" — the last one reserved for when online booking exists).</summary>
+    public string ReservationPolicy { get; set; } = "open";
 }

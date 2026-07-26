@@ -66,7 +66,7 @@ public class AuthService : IAuthService
 
     public async Task<List<UserDto>> GetUsersAsync(CancellationToken ct = default)
     {
-        var users = await _uow.Repository<User>().Query()
+        var users = await _uow.Repository<User>().QueryNoTracking()
             .OrderBy(u => u.Role).ThenBy(u => u.FullName).ToListAsync(ct);
         return _mapper.Map<List<UserDto>>(users);
     }

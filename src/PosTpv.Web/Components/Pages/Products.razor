@@ -42,12 +42,13 @@
                     </div>
                     <div class="catRow__main">
                         <span class="catRow__name">@c.Name</span>
-                        <span class="catRow__meta muted">
-                            <span class="badge">@c.ProductCount</span>
-                            <span class="badge @(c.IsVisible ? "badge--success" : "badge--danger")">
-                                @(c.IsVisible ? Loc.T("Visible") : Loc.T("Hidden"))
-                            </span>
-                            · @Loc.T("Order:") @c.DisplayOrder
+                        <span class="catRow__meta">
+                            <i class="catRow__dot" data-visible="@(c.IsVisible ? "true" : "false")"></i>
+                            @(c.IsVisible ? Loc.T("Visible") : Loc.T("Hidden"))
+                            <span class="catRow__meta-sep">·</span>
+                            @c.ProductCount @Loc.T("products")
+                            <span class="catRow__meta-sep">·</span>
+                            #@c.DisplayOrder
                         </span>
                     </div>
                     <div class="catRow__actions" @onclick:stopPropagation="true">
@@ -101,7 +102,7 @@
                             <strong>@p.Name</strong>
                             @if (!p.IsVisible) { <span class="badge badge--danger">@Loc.T("hidden")</span> }
                             <span class="spacer"></span>
-                            <span class="badge badge--primary">@p.Price.ToString("N2")</span>
+                            <span class="mgmt-card__price">@p.Price.ToString("N2")</span>
                         </div>
                         <div class="mgmt-card__meta muted">@Loc.T("VAT") @p.VatRate% · @Loc.T("Order:") @p.DisplayOrder</div>
                         @if (p.Allergens.Count > 0)
@@ -124,22 +125,18 @@
                             </div>
                         }
                         <div class="mgmt-card__actions">
-                            <label class="switch">
+                            <label class="switch" title="@(p.IsAvailable ? Loc.T("Available") : Loc.T("Off"))">
                                 <input type="checkbox" checked="@p.IsAvailable" @onchange="e => ToggleAvailable(p, (bool)e.Value!)" />
-                                <span>@(p.IsAvailable ? Loc.T("Available") : Loc.T("Off"))</span>
                             </label>
                             <span class="spacer"></span>
                             <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
                                     disabled="@(!string.IsNullOrWhiteSpace(_search) || i == 0)" @onclick="() => MoveProduct(p.Id, -1)"><LucideIcon Name="chevron-up" Size="16" /></button>
                             <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
                                     disabled="@(!string.IsNullOrWhiteSpace(_search) || i == Filtered.Count - 1)" @onclick="() => MoveProduct(p.Id, 1)"><LucideIcon Name="chevron-down" Size="16" /></button>
-                        </div>
-                        <div class="mgmt-card__actions">
-                            <button class="btn btn--ghost btn--sm" @onclick="() => OpenProductForm(p.Id)">@Loc.T("Edit")</button>
-                            <button class="btn btn--ghost btn--sm" @onclick="() => Duplicate(p.Id)">@Loc.T("Duplicate")</button>
-                            <button class="btn btn--ghost btn--sm" @onclick="() => OpenMove(p)">@Loc.T("Move…")</button>
-                            <span class="spacer"></span>
-                            <button class="btn btn--danger btn--sm" @onclick="() => DeleteProduct(p.Id)">@Loc.T("Delete")</button>
+                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")" @onclick="() => OpenProductForm(p.Id)"><LucideIcon Name="pencil" Size="16" /></button>
+                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Duplicate")" @onclick="() => Duplicate(p.Id)"><LucideIcon Name="copy" Size="16" /></button>
+                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move to category")" @onclick="() => OpenMove(p)"><LucideIcon Name="arrow-right-left" Size="16" /></button>
+                            <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")" @onclick="() => DeleteProduct(p.Id)"><LucideIcon Name="trash-2" Size="16" /></button>
                         </div>
                     </div>
                 }

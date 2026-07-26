@@ -15,6 +15,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+// Compresses the server-rendered page HTML and any non-fingerprinted responses (MapStaticAssets
+// already pre-compresses its own build-time assets, but the actual page shell/SignalR negotiate
+// responses weren't covered by that).
+builder.Services.AddResponseCompression(options => options.EnableForHttps = true);
+
 // Clean-architecture layers.
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -60,6 +65,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseResponseCompression();
 app.UseHttpsRedirection();
 app.UseRequestLocalization();
 app.UseAuthentication();

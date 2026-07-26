@@ -2,9 +2,12 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Roles = "Admin,Waiter,Cashier")]
 @using System.Globalization
+@using System.Security.Claims
 @using FluentValidation
 @implements IAsyncDisposable
 @inject ITableService Service
+@inject IFloorDecorService DecorService
+@inject IFloorZoneService ZoneService
 @inject IReservationService ReservationService
 @inject IOrderService OrderSvc
 @inject IValidator<TableFormDto> Validator
@@ -35,11 +38,16 @@
             <p class="floor-hint floor-hint--assign">@Loc.T("Click one or more tables on the plan to assign them to the reservation of") <strong>@_assignName</strong>.
                 <button class="btn btn--primary btn--sm" @onclick="CancelAssign">@Loc.T("Done")</button></p>
         }
+        else if (_paintMode)
+        {
+            <p class="floor-hint floor-hint--assign">@Loc.T("Tap a table on the plan to apply the selected colour.")
+                <button class="btn btn--primary btn--sm" @onclick="StopPaintMode">@Loc.T("Done")</button></p>
+        }
 
     <div class="floor-wrap">
     @* Floats over the map's top-right corner instead of taking its own row, so the map
        fills the whole panel height. *@
-    <div class="toolbar toolbar--tables @(_showFilters && !_editing && !_selecting && !_reassigning && _assignReservationId is null ? "toolbar--tables-joined" : "")">
+    <div class="toolbar toolbar--tables">
         <span class="spacer"></span>
         @if (_editing)
         {
@@ -50,7 +58,14 @@
         {
             <span class="badge badge--primary">@_selection.Count @Loc.T("selected")</span>
             <button class="btn btn--ghost btn--sm" @onclick="CancelSelect">@Loc.T("Cancel")</button>
-            <button class="btn btn--primary btn--sm" disabled="@(_selection.Count < 2)" @onclick="OpenJoinNamePrompt"><LucideIcon Name="link" Size="14" />@Loc.T("Join")</button>
+            @if (SelectedGroupId is not null)
+            {
+                <button class="btn btn--danger btn--sm" @onclick="SeparateSelectedGroup"><LucideIcon Name="split" Size="14" />@Loc.T("Separate")</button>
+            }
+            else
+            {
+                <button class="btn btn--primary btn--sm" disabled="@(_selection.Count < 2)" @onclick="OpenJoinNamePrompt"><LucideIcon Name="link" Size="14" />@Loc.T("Join")</button>
+            }
         }
         else if (_reassigning)
         {
@@ -67,32 +82,87 @@
                     <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Edit layout")" @onclick="StartEdit"><LucideIcon Name="move" Size="16" /></button>
                 }
                 <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters"><LucideIcon Name="settings" Size="16" /></button>
+                @if (_showFilters)
+                {
+                    <div class="floor-tex-widget">
+                        <button class="btn btn--icon @(_floorMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Floor style")" @onclick="ToggleFloorMenu"><LucideIcon Name="image" Size="16" /></button>
+                        @if (_floorMenuOpen)
+                        {
+                            <div class="floor-tex-menu">
+                                @foreach (var tex in FloorTextures)
+                                {
+                                    <button type="button" class="floor-tex-opt @(Branding.Current.FloorTexture == tex ? "floor-tex-opt--on" : "")" @onclick="() => ChooseFloorTexture(tex)">
+                                        <span class="floor-tex-swatch floor-tex-swatch--@tex"></span>
+                                        @Loc.T(TextureLabel(tex))
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="floor-tex-widget">
+                        <button class="btn btn--icon @(_paintMode || _paintMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Paint table colours")" @onclick="TogglePaintMenu"><LucideIcon Name="palette" Size="16" /></button>
+                        @if (_paintMenuOpen)
+                        {
+                            <div class="floor-tex-menu color-pick">
+                                <button type="button" class="color-swatch @(_paintColor is null ? "color-swatch--on" : "")" style="--sw:var(--card-2)" title="@Loc.T("None")" @onclick="() => ChoosePaintColor(null)">
+                                    <LucideIcon Name="x" Size="12" />
+                                </button>
+                                @foreach (var c in GroupColors)
+                                {
+                                    <button type="button" class="color-swatch @(_paintColor == c ? "color-swatch--on" : "")"
+                                            style="--sw:@c" title="@c" @onclick="() => ChoosePaintColor(c)"></button>
+                                }
+                                <input type="color" class="color-swatch color-swatch--custom" title="@Loc.T("Custom colour")" @bind="_paintColor" @bind:after="ChoosePaintColorCustom" />
+                            </div>
+                        }
+                    </div>
+                    <div class="floor-tex-widget">
+                        <button class="btn btn--icon @(_plantMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Plants")" @onclick="TogglePlantMenu"><LucideIcon Name="leaf" Size="16" /></button>
+                        @if (_plantMenuOpen)
+                        {
+                            <div class="floor-tex-menu">
+                                @foreach (var type in PlantTypes)
+                                {
+                                    <button type="button" class="floor-tex-opt" @onclick="() => AddDecor(type)">
+                                        <span class="decor-swatch decor-swatch--@DecorSlug(type)"></span>
+                                        @Loc.T(DecorLabel(type))
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="floor-tex-widget">
+                        <button class="btn btn--icon @(_designMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Design elements")" @onclick="ToggleDesignMenu"><LucideIcon Name="layout-template" Size="16" /></button>
+                        @if (_designMenuOpen)
+                        {
+                            <div class="floor-tex-menu">
+                                @foreach (var type in InteriorTypes)
+                                {
+                                    <button type="button" class="floor-tex-opt" @onclick="() => AddDecor(type)">
+                                        <span class="decor-swatch decor-swatch--@DecorSlug(type)"></span>
+                                        @Loc.T(DecorLabel(type))
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="floor-tex-widget">
+                        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Draw zone")" @onclick="AddZone"><LucideIcon Name="square-dashed" Size="16" /></button>
+                    </div>
+                }
+                <span class="zoom-group">
+                    <button class="btn btn--icon btn--ghost btn--sm" type="button" disabled="@(_zoom <= ZoomMin)" title="@Loc.T("Zoom out")" @onclick="ZoomOut"><LucideIcon Name="zoom-out" Size="16" /></button>
+                    <button class="zoom-group__level" type="button" title="@Loc.T("Reset zoom")" @onclick="ZoomReset">@((_zoom * 100).ToString("0"))%</button>
+                    <button class="btn btn--icon btn--ghost btn--sm" type="button" disabled="@(_zoom >= ZoomMax)" title="@Loc.T("Zoom in")" @onclick="ZoomIn"><LucideIcon Name="zoom-in" Size="16" /></button>
+                </span>
                 <button class="btn btn--icon btn--ghost btn--sm" type="button"
                         title="@(_mapExpanded ? Loc.T("Minimise map") : Loc.T("Expand map"))" @onclick="() => _mapExpanded = !_mapExpanded">
                     <LucideIcon Name="@(_mapExpanded ? "minimize-2" : "maximize-2")" Size="16" />
                 </button>
             </div>
         }
-        @if (_showFilters && !_editing && !_selecting && !_reassigning && _assignReservationId is null)
-        {
-            <div class="floor-tex-widget">
-                <button class="btn btn--icon @(_floorMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Floor style")" @onclick="ToggleFloorMenu"><LucideIcon Name="image" Size="16" /></button>
-                @if (_floorMenuOpen)
-                {
-                    <div class="floor-tex-menu">
-                        @foreach (var tex in FloorTextures)
-                        {
-                            <button type="button" class="floor-tex-opt @(Branding.Current.FloorTexture == tex ? "floor-tex-opt--on" : "")" @onclick="() => ChooseFloorTexture(tex)">
-                                <span class="floor-tex-swatch floor-tex-swatch--@tex"></span>
-                                @Loc.T(TextureLabel(tex))
-                            </button>
-                        }
-                    </div>
-                }
-            </div>
-        }
     </div>
-    @if (!_editing && !_selecting && _assignReservationId is null && _showFilters && Zones.Count > 0)
+    @if (!_editing && !_selecting && _assignReservationId is null && Zones.Count > 0)
     {
         <div class="tabs zone-filter">
             <button class="tabs__opt @(_zoneFilter is null ? "tabs__opt--on" : "")" @onclick="() => _zoneFilter = null">@Loc.T("All zones")</button>
@@ -125,32 +195,79 @@
             </div>
         </div>
     }
-    <div class="floor floor--tex-@Branding.Current.FloorTexture @(_editing ? "floor--edit" : "") @(_selecting ? "floor--select" : "") @(_assignReservationId is not null ? "floor--assign" : "") @(_reassigning ? "floor--assign" : "")" @ref="_floorEl">
-        @foreach (var t in VisibleTables)
+    <div class="floor floor--tex-@Branding.Current.FloorTexture @(_editing ? "floor--edit" : "") @(_selecting ? "floor--select" : "") @(_assignReservationId is not null ? "floor--assign" : "") @(_reassigning ? "floor--assign" : "") @(_paintMode ? "floor--assign" : "")" @ref="_floorEl">
+        @{
+            // Computed once per render instead of once per table/foreach: VisibleTables filters the
+            // whole floor and ResByTable groups every reservation, so re-evaluating either property
+            // on each access below was doing that work again for every table and every group badge.
+            var visible = VisibleTables;
+            var resByTable = ResByTable;
+        }
+    <div class="floor-canvas" style="transform:scale(@N(_zoom)); transform-origin:0 0; --zoom:@N(_zoom);">
+        @foreach (var z in _zones)
         {
-            ResByTable.TryGetValue(t.Id, out var rv);
+            <div class="floor-zone @(!_editing && _zoneFilter == z.Name ? "floor-zone--on" : "")"
+                 data-id="@z.Id"
+                 data-x="@N(z.PositionX)" data-y="@N(z.PositionY)"
+                 data-w="@N(z.Width)" data-h="@N(z.Height)" data-rot="0"
+                 data-locked="false"
+                 style="@ZoneStyle(z)"
+                 title="@z.Name"
+                 @onclick="() => OnZoneClick(z)">
+                <span class="floor-zone__name">@z.Name</span>
+                @if (_editing)
+                {
+                    @* Rename/delete need a Blazor-rendered Modal (rename) or live list update
+                       (delete) — neither works here since _editing suppresses rendering entirely
+                       so JS can own the DOM (see ShouldRender/_suppressRender). Only the drag/
+                       resize handle, which JS drives directly with no render needed, lives here;
+                       rename/delete move to the (rendering) non-editing view below instead. *@
+                    <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
+                }
+                else
+                {
+                    <button class="floor-zone__rename" type="button" title="@Loc.T("Rename")" @onclick="() => StartRenameZone(z)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="12" /></button>
+                    <button class="floor-zone__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RemoveZone(z.Id)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
+                }
+            </div>
+        }
+        @foreach (var t in visible)
+        {
+            resByTable.TryGetValue(t.Id, out var rv);
             <div class="@TableClass(t, rv)"
                  data-id="@t.Id"
                  data-x="@N(t.PositionX)" data-y="@N(t.PositionY)"
                  data-w="@N(t.Width)" data-h="@N(t.Height)" data-rot="@N(t.Rotation)"
                  data-locked="@(t.IsLocked ? "true" : "false")"
                  data-shape="@((int)t.Shape)"
+                 data-group="@(t.GroupId?.ToString() ?? "")"
                  style="@TableStyle(t)"
-                 @onclick="() => OnTableClick(t)" title="@(t.GroupId is not null ? (t.GroupName ?? t.Name) : t.Name)">
-                @if (t.Color is not null) { <span class="tbl__accent"></span> }
-                @if (!_editing && t.GroupId is null)
+                 @onclick="() => OnTableClick(t)"
+                 @onpointerdown="() => OnTablePointerDown(t)" @onpointerup="OnTablePointerUp" @onpointerleave="OnTablePointerUp" @onpointercancel="OnTablePointerUp"
+                 @oncontextmenu:preventDefault="true"
+                 title="@(t.GroupId is not null ? (t.GroupName ?? t.Name) : t.Name)">
+                @if (!_editing)
                 {
-                    @foreach (var chairStyle in ChairStyles(t))
+                    @foreach (var chairStyle in ChairStyles(t, visible))
                     {
-                        <span class="tbl__chair @(EffectiveTableStatus(t, rv) == TableStatus.Occupied ? "tbl__chair--seated" : "")" style="@chairStyle"></span>
+                        <svg class="tbl__chair @(EffectiveTableStatus(t, rv) == TableStatus.Occupied ? "tbl__chair--seated" : "")"
+                             style="@chairStyle" viewBox="0 0 14 19.6" width="14" height="19.6">
+                            <rect class="chair-leg" x="-1" y="9.1" width="1.7" height="2" rx="0.4" />
+                            <rect class="chair-leg" x="13.3" y="9.1" width="1.7" height="2" rx="0.4" />
+                            <rect class="chair-leg" x="-1" y="13.65" width="1.7" height="2" rx="0.4" />
+                            <rect class="chair-leg" x="13.3" y="13.65" width="1.7" height="2" rx="0.4" />
+                            <rect class="chair-seat" x="0" y="5.25" width="14" height="14" rx="3.5" />
+                            <rect class="chair-cushion" x="2.1" y="7.35" width="9.8" height="9.8" rx="2.45" />
+                            <rect class="chair-backrest" x="1.4" y="0" width="11.2" height="5.95" rx="2.8" />
+                        </svg>
                     }
                 }
                 <div class="tbl__content">
-                    @if (t.GroupId is null || IsGroupAnchor(t))
+                    @if (t.GroupId is null)
                     {
-                        <span class="tbl__name @(t.GroupId is not null ? "tbl__name--group" : "")">@(t.GroupId is not null ? (t.GroupName ?? t.Name) : t.Name)</span>
+                        <span class="tbl__name">@t.Name</span>
+                        <span class="tbl__seats">@t.Seats<LucideIcon Name="user" Size="12" /></span>
                     }
-                    <span class="tbl__seats">@t.Seats<LucideIcon Name="user" Size="12" /></span>
                     @if (t.GroupId is null || IsGroupAnchor(t))
                     {
                         @if (rv is not null)
@@ -163,10 +280,6 @@
                 {
                     <span class="tbl__resv" title="@rv.CustomerName"><LucideIcon Name="@(rv.Status == ReservationStatus.Seated ? "armchair" : PeriodIcon(rv.Time))" Size="14" /> @rv.Time.ToString("HH:mm")</span>
                 }
-                @if (t.GroupId is not null && IsGroupAnchor(t))
-                {
-                    <span class="tbl__group" style="--grp:@GroupColor(t.GroupId.Value)"><LucideIcon Name="link" Size="14" /> @Loc.T("Joined") · @GroupSeats(t.GroupId.Value)<LucideIcon Name="user" Size="12" /></span>
-                }
                 @if (_editing)
                 {
                     <button class="tbl__lock" type="button" title="@Loc.T("Lock / unlock")"><LucideIcon Name="@(t.IsLocked ? "lock" : "lock-open")" Size="14" /></button>
@@ -176,8 +289,40 @@
                 }
             </div>
         }
+        @* One badge per group, floating above the midpoint between its member tables — rather
+           than pinned to a single anchor table — so it still reads as "where they join" once
+           dragged, and carries the group's own name now that no single member shows it. *@
+        @foreach (var gid in visible.Where(t => t.GroupId.HasValue).Select(t => t.GroupId!.Value).Distinct())
+        {
+            <span class="tbl__group" data-group="@gid" style="@GroupCenterStyle(gid, visible) --grp:@GroupColor(gid)">
+                <span class="tbl__group-name">@GroupDisplayName(gid)</span>
+                <span class="tbl__group-seats"><LucideIcon Name="link" Size="12" /> @GroupSeats(gid)<LucideIcon Name="user" Size="11" /></span>
+            </span>
+        }
+        @foreach (var d in _decor)
+        {
+            <div class="decor decor--@DecorSlug(d.Type)"
+                 data-id="@d.Id"
+                 data-x="@N(d.PositionX)" data-y="@N(d.PositionY)"
+                 data-w="@N(d.Width)" data-h="@N(d.Height)" data-rot="@N(d.Rotation)"
+                 data-locked="@(d.IsLocked ? "true" : "false")"
+                 style="@DecorStyle(d)"
+                 title="@Loc.T(DecorLabel(d.Type))">
+                @if (_editing)
+                {
+                    <button class="tbl__lock" type="button" title="@Loc.T("Lock / unlock")"><LucideIcon Name="@(d.IsLocked ? "lock" : "lock-open")" Size="14" /></button>
+                    <span class="tbl__handle tbl__handle--rotate" title="@Loc.T("Rotate")"></span>
+                    <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
+                }
+                else
+                {
+                    <button class="decor__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RemoveDecor(d.Id)"><LucideIcon Name="x" Size="12" /></button>
+                }
+            </div>
+        }
         @if (_tables.Count == 0) { <p class="empty">@Loc.T("No tables yet. Create one to start.")</p> }
-        else if (VisibleTables.Count == 0) { <p class="empty">@Loc.T("No tables in this zone.")</p> }
+        else if (visible.Count == 0) { <p class="empty">@Loc.T("No tables in this zone.")</p> }
+    </div>
     </div>
     @* Floats over the map's bottom-right corner instead of sharing the toolbar's line. *@
     <div class="legend">
@@ -201,8 +346,161 @@
             </div>
         </div>
         <aside class="resv card">
+        @if (_resForm is not null)
+        {
+            <div class="resv__head">
+                <h2>@(_resForm.Id > 0 ? Loc.T("Edit reservation") : Loc.T("New reservation"))</h2>
+                <span class="spacer"></span>
+                @if (_resForm.Id > 0)
+                {
+                    <button class="btn btn--icon btn--ghost" title="@Loc.T("Delete")" @onclick="() => DeleteRes(_resForm.Id)" type="button"><LucideIcon Name="trash-2" Size="16" /></button>
+                }
+                <button class="btn btn--icon btn--ghost" title="@Loc.T("Close")" @onclick="CloseResForm" type="button"><LucideIcon Name="x" Size="16" /></button>
+                <button class="btn btn--icon btn--primary" title="@Loc.T("Save")" disabled="@_savingRes" @onclick="SaveRes" type="button"><LucideIcon Name="check" Size="16" /></button>
+            </div>
+            <div class="resv-wizard">
+                @if (_saveSuccess)
+                {
+                    <div class="resv-success">
+                        <div class="resv-success__circle"><LucideIcon Name="check" Size="26" /></div>
+                        <p class="resv-success__text">@(_wasNewReservation ? Loc.T("Reservation created") : Loc.T("Changes saved"))</p>
+                    </div>
+                }
+                else
+                {
+                <div class="resv-form">
+                    <div class="resv-steps">
+                        <div class="resv-steps__track"></div>
+                        <div class="resv-steps__progress" style="width:@(N(StepProgressWidthPercent))%"></div>
+                        @foreach (var s in ResSteps)
+                        {
+                            <button type="button"
+                                    class="resv-step @(s.Step == _resStep ? "resv-step--on" : "") @(s.Step < _resMaxStep && s.Step != _resStep ? "resv-step--done" : "")"
+                                    disabled="@(s.Step > _resMaxStep)" @onclick="() => GoToStep(s.Step)">
+                                <span class="resv-step__num">@(s.Step < _resMaxStep ? "✓" : s.Step.ToString())</span>
+                                <span class="resv-step__label">@Loc.T(s.Label)</span>
+                            </button>
+                        }
+                    </div>
+
+                    <div class="resv-step-panel">
+                        @if (_resStep == 1)
+                        {
+                            <div class="resv-row">
+                                <div class="field"><label>@Loc.T("Customer name")</label><input class="input" @bind="_resForm.CustomerName" /></div>
+                                <div class="field">
+                                    <label>@Loc.T("Phone")</label>
+                                    <div class="phone-field">
+                                        <button type="button" class="phone-prefix" @onclick="TogglePrefixMenu">
+                                            @_phonePrefix<LucideIcon Name="chevron-down" Size="11" />
+                                        </button>
+                                        <input class="input" @bind="_phoneLocal" @bind:event="oninput" @bind:after="SyncPhone" />
+                                        @if (_prefixMenuOpen)
+                                        {
+                                            <div class="phone-prefix__backdrop" @onclick="ClosePrefixMenu"></div>
+                                            <div class="phone-prefix__menu" @onclick:stopPropagation="true">
+                                                <input class="input phone-prefix__search" placeholder="@Loc.T("Search country or code…")"
+                                                       @bind="_prefixSearch" @bind:event="oninput" autofocus />
+                                                <div class="phone-prefix__list">
+                                                    @foreach (var p in FilteredPrefixes)
+                                                    {
+                                                        <button type="button" class="phone-prefix__opt @(p.Code == _phonePrefix ? "phone-prefix__opt--on" : "")" @onclick="() => PickPrefix(p.Code)">
+                                                            <span>@p.Name</span>
+                                                            <span class="muted">@p.Code</span>
+                                                        </button>
+                                                    }
+                                                    @if (!FilteredPrefixes.Any()) { <p class="empty">@Loc.T("No matches.")</p> }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="resv-row resv-row--guest">
+                                <div class="field"><label>@Loc.T("Party size")</label><input type="number" min="0" class="input" @bind="_resForm.PartySize" /></div>
+                                <div class="field"><label><LucideIcon Name="baby" Size="12" /> @Loc.T("Children")</label><input type="number" min="0" class="input" @bind="_resForm.ChildrenCount" /></div>
+                                <div class="field"><label><LucideIcon Name="armchair" Size="12" /> @Loc.T("High chairs")</label><input type="number" min="0" class="input" @bind="_resForm.HighChairCount" /></div>
+                            </div>
+                            <div class="field"><label>@Loc.T("Total")</label><div class="field-static">@FormTotalGuests @Loc.T("people")</div></div>
+                        }
+                        else if (_resStep == 2)
+                        {
+                            <Calendar Value="_resForm.Date" ValueChanged="PickDate" />
+                        }
+                        else if (_resStep == 3)
+                        {
+                            <div class="period-picker">
+                                <button type="button" class="period-opt @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "period-opt--on" : "")"
+                                        @onclick="() => PickPeriod(Branding.Current.LunchStart)">
+                                    <LucideIcon Name="sun" Size="16" />
+                                    <span class="period-opt__label">@Loc.T("Lunch")</span>
+                                    <span class="period-opt__time">@Branding.Current.LunchStart.ToString("HH:mm")–@Branding.Current.LunchEnd.ToString("HH:mm")</span>
+                                </button>
+                                <button type="button" class="period-opt @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Dinner ? "period-opt--on" : "")"
+                                        @onclick="() => PickPeriod(Branding.Current.DinnerStart)">
+                                    <LucideIcon Name="moon" Size="16" />
+                                    <span class="period-opt__label">@Loc.T("Dinner")</span>
+                                    <span class="period-opt__time">@Branding.Current.DinnerStart.ToString("HH:mm")–@Branding.Current.DinnerEnd.ToString("HH:mm")</span>
+                                </button>
+                            </div>
+                            var slots = CurrentPeriodSlots;
+                            @if (slots.Count > 0)
+                            {
+                                <div class="slot-grid">
+                                    @foreach (var slot in slots)
+                                    {
+                                        <button type="button" class="slot-chip @(slot == _resForm.Time ? "slot-chip--on" : "")" @onclick="() => PickSlot(slot)">@slot.ToString("HH:mm")</button>
+                                    }
+                                </div>
+                            }
+                        }
+                        else if (_resStep == 4)
+                        {
+                            <div class="resv-summary__title">@(_resForm.Id > 0 ? Loc.T("Edit reservation") : Loc.T("New reservation"))</div>
+                            <div class="resv-summary">
+                                <div class="resv-summary__row"><LucideIcon Name="user" Size="14" /> @(string.IsNullOrWhiteSpace(_resForm.CustomerName) ? Loc.T("Customer name") : _resForm.CustomerName) @if (!string.IsNullOrWhiteSpace(_resForm.Phone)) { <span class="muted"> · @_resForm.Phone</span> }</div>
+                                <div class="resv-summary__row"><LucideIcon Name="users" Size="14" /> @FormTotalGuests @Loc.T("people")
+                                    @if (_resForm.ChildrenCount > 0) { <span class="muted"> · <LucideIcon Name="baby" Size="13" /> @_resForm.ChildrenCount</span> }
+                                    @if (_resForm.HighChairCount > 0) { <span class="muted"> · <LucideIcon Name="armchair" Size="13" /> @_resForm.HighChairCount</span> }
+                                </div>
+                                <div class="resv-summary__row"><LucideIcon Name="calendar" Size="14" /> @_resForm.Date.ToString("dd MMM yyyy")</div>
+                                <div class="resv-summary__row"><LucideIcon Name="@(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "sun" : "moon")" Size="14" /> @Loc.T(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "Lunch" : "Dinner") · @_resForm.Time.ToString("HH:mm")</div>
+                            </div>
+                            <div class="field"><label>@Loc.T("Comments")</label><textarea class="input" rows="2" @bind="_resForm.Comments"></textarea></div>
+                        }
+
+                        @if (_resError is not null) { <div class="field-error">@_resError</div> }
+                    </div>
+
+                    <div class="resv-nav @(_resStep == ResSteps.Length ? "resv-nav--joined" : "")">
+                        @if (_resStep > 1)
+                        {
+                            <button type="button" class="btn btn--ghost resv-nav__back--full" @onclick="GoBack"><LucideIcon Name="arrow-left" Size="16" />@Loc.T("Back")</button>
+                        }
+                        @if (_resStep == 1 && _resStep < ResSteps.Length)
+                        {
+                            <button type="button" class="btn btn--primary resv-nav__next"
+                                    @onclick="GoNext">@Loc.T("Next")<LucideIcon Name="arrow-right" Size="16" /></button>
+                        }
+                        else if (_resStep == ResSteps.Length)
+                        {
+                            <button type="button" class="btn btn--primary resv-nav__next" disabled="@_savingRes" @onclick="SaveRes">
+                                @(_resForm.Id > 0 ? Loc.T("Save changes") : Loc.T("Create reservation"))
+                            </button>
+                        }
+                    </div>
+                </div>
+                }
+            </div>
+        }
+        else
+        {
             <div class="resv__head">
                 <h2>@Loc.T("Reservations")</h2>
+                @if (Branding.Current.ReservationPolicy != "open")
+                {
+                    <span class="badge badge--warning">@Loc.T(PolicyLabel(Branding.Current.ReservationPolicy))</span>
+                }
                 <span class="spacer"></span>
                 @if (_reservations.Count > 0)
                 {
@@ -217,6 +515,33 @@
                         </button>
                     </div>
                 }
+                <div class="resv-policy">
+                    <button type="button" class="btn btn--icon btn--ghost" title="@Loc.T("Reservation policy")" @onclick="TogglePolicyMenu">
+                        <LucideIcon Name="settings" Size="15" />
+                    </button>
+                    @if (_policyMenuOpen)
+                    {
+                        <div class="resv-policy__backdrop" @onclick="ClosePolicyMenu"></div>
+                        <div class="resv-policy__menu" @onclick:stopPropagation="true">
+                            <div class="resv-policy__title">@Loc.T("Taking reservations")</div>
+                            @foreach (var opt in ReservationPolicies)
+                            {
+                                <button type="button" class="resv-policy__opt @(Branding.Current.ReservationPolicy == opt.Value ? "resv-policy__opt--on" : "")"
+                                        disabled="@opt.ComingSoon" @onclick="() => SetReservationPolicy(opt.Value)">
+                                    <span>@Loc.T(opt.Label)</span>
+                                    @if (opt.ComingSoon)
+                                    {
+                                        <span class="badge">@Loc.T("Coming soon")</span>
+                                    }
+                                    else if (Branding.Current.ReservationPolicy == opt.Value)
+                                    {
+                                        <LucideIcon Name="check" Size="14" />
+                                    }
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
                 <button class="btn btn--primary btn--icon resv__new-btn" title="@Loc.T("New reservation")" @onclick="() => OpenResForm(null)"><LucideIcon Name="plus" Size="15" /></button>
             </div>
 
@@ -306,11 +631,12 @@
                 @if (_reservations.Count == 0) { <p class="empty">@Loc.T("No reservations for this day.")</p> }
                 else if (FilteredReservations.Count == 0) { <p class="empty">@Loc.T("No reservations for this service.")</p> }
             </div>
+        }
         </aside>
         </div>
 </div>
 
-<Modal Visible="_form is not null" Title="@(_form?.Id > 0 ? Loc.T("Edit table") : Loc.T("New table"))" OnClose="Close">
+<Modal Visible="_form is not null" Title="@(_form?.Id > 0 ? Loc.T("Edit table") : Loc.T("New table"))" OnClose="Close" FullScreen="true">
     <ChildContent>
         @if (_form is not null)
         {
@@ -386,114 +712,40 @@
     </Footer>
 </Modal>
 
-<Modal Visible="_resForm is not null" OnClose="CloseResForm" FullScreen="true">
-    <HeaderActions>
-        @if (_resForm?.Id > 0)
-        {
-            <button class="btn btn--icon btn--ghost" title="@Loc.T("Delete")" @onclick="() => DeleteRes(_resForm!.Id)" type="button"><LucideIcon Name="trash-2" Size="18" /></button>
-        }
-        <button class="btn btn--icon btn--primary" title="@Loc.T("Save")" @onclick="SaveRes" type="button"><LucideIcon Name="check" Size="18" /></button>
-    </HeaderActions>
+<Modal Visible="_renamingZoneId is not null" Title="@Loc.T("Name this zone")" OnClose="CancelRenameZone">
     <ChildContent>
-        @if (_resForm is not null)
-        {
-            <div class="resv-form">
-                <div class="resv-steps">
-                    <div class="resv-steps__track"></div>
-                    <div class="resv-steps__progress" style="width:@(N(StepProgressWidthPercent))%"></div>
-                    @foreach (var s in ResSteps)
-                    {
-                        <button type="button"
-                                class="resv-step @(s.Step == _resStep ? "resv-step--on" : "") @(s.Step < _resMaxStep && s.Step != _resStep ? "resv-step--done" : "")"
-                                disabled="@(s.Step > _resMaxStep)" @onclick="() => GoToStep(s.Step)">
-                            <span class="resv-step__num">@(s.Step < _resMaxStep ? "✓" : s.Step.ToString())</span>
-                            <span class="resv-step__label">@Loc.T(s.Label)</span>
-                        </button>
-                    }
-                </div>
-
-                <div class="resv-step-panel">
-                    @if (_resStep == 1)
-                    {
-                        <div class="resv-row">
-                            <div class="field"><label>@Loc.T("Customer name")</label><input class="input" @bind="_resForm.CustomerName" /></div>
-                            <div class="field"><label>@Loc.T("Phone")</label><input class="input" @bind="_resForm.Phone" /></div>
-                        </div>
-                        <div class="resv-row resv-row--guest">
-                            <div class="field"><label>@Loc.T("Party size")</label><input type="number" min="0" class="input" @bind="_resForm.PartySize" /></div>
-                            <div class="field"><label><LucideIcon Name="baby" Size="12" /> @Loc.T("Children")</label><input type="number" min="0" class="input" @bind="_resForm.ChildrenCount" /></div>
-                            <div class="field"><label><LucideIcon Name="armchair" Size="12" /> @Loc.T("High chairs")</label><input type="number" min="0" class="input" @bind="_resForm.HighChairCount" /></div>
-                            <div class="field"><label>@Loc.T("Total")</label><div class="field-static">@FormTotalGuests</div></div>
-                        </div>
-                    }
-                    else if (_resStep == 2)
-                    {
-                        <Calendar Value="_resForm.Date" ValueChanged="PickDate" />
-                    }
-                    else if (_resStep == 3)
-                    {
-                        <div class="period-picker">
-                            <button type="button" class="period-opt @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "period-opt--on" : "")"
-                                    @onclick="() => PickPeriod(Branding.Current.LunchStart)">
-                                <LucideIcon Name="sun" Size="16" />
-                                <span class="period-opt__label">@Loc.T("Lunch")</span>
-                                <span class="period-opt__time">@Branding.Current.LunchStart.ToString("HH:mm")–@Branding.Current.LunchEnd.ToString("HH:mm")</span>
-                            </button>
-                            <button type="button" class="period-opt @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Dinner ? "period-opt--on" : "")"
-                                    @onclick="() => PickPeriod(Branding.Current.DinnerStart)">
-                                <LucideIcon Name="moon" Size="16" />
-                                <span class="period-opt__label">@Loc.T("Dinner")</span>
-                                <span class="period-opt__time">@Branding.Current.DinnerStart.ToString("HH:mm")–@Branding.Current.DinnerEnd.ToString("HH:mm")</span>
-                            </button>
-                        </div>
-                        var slots = CurrentPeriodSlots;
-                        @if (slots.Count > 0)
-                        {
-                            <div class="slot-grid">
-                                @foreach (var slot in slots)
-                                {
-                                    <button type="button" class="slot-chip @(slot == _resForm.Time ? "slot-chip--on" : "")" @onclick="() => PickSlot(slot)">@slot.ToString("HH:mm")</button>
-                                }
-                            </div>
-                        }
-                    }
-                    else if (_resStep == 4)
-                    {
-                        <div class="resv-summary">
-                            <div class="resv-summary__row"><LucideIcon Name="user" Size="14" /> @(string.IsNullOrWhiteSpace(_resForm.CustomerName) ? Loc.T("Customer name") : _resForm.CustomerName) @if (!string.IsNullOrWhiteSpace(_resForm.Phone)) { <span class="muted"> · @_resForm.Phone</span> }</div>
-                            <div class="resv-summary__row"><LucideIcon Name="users" Size="14" /> @FormTotalGuests @Loc.T("people")
-                                @if (_resForm.ChildrenCount > 0) { <span class="muted"> · <LucideIcon Name="baby" Size="13" /> @_resForm.ChildrenCount</span> }
-                                @if (_resForm.HighChairCount > 0) { <span class="muted"> · <LucideIcon Name="armchair" Size="13" /> @_resForm.HighChairCount</span> }
-                            </div>
-                            <div class="resv-summary__row"><LucideIcon Name="calendar" Size="14" /> @_resForm.Date.ToString("dd MMM yyyy")</div>
-                            <div class="resv-summary__row"><LucideIcon Name="@(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "sun" : "moon")" Size="14" /> @Loc.T(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "Lunch" : "Dinner") · @_resForm.Time.ToString("HH:mm")</div>
-                        </div>
-                        <div class="field"><label>@Loc.T("Comments")</label><textarea class="input" rows="2" @bind="_resForm.Comments"></textarea></div>
-                    }
-
-                    @if (_resError is not null) { <div class="field-error">@_resError</div> }
-                </div>
-
-                <div class="resv-nav">
-                    @if (_resStep > 1)
-                    {
-                        <button type="button" class="btn btn--icon btn--ghost" title="@Loc.T("Back")" @onclick="GoBack"><LucideIcon Name="arrow-left" Size="16" /></button>
-                    }
-                    <span class="spacer"></span>
-                    @if (_resStep == 1 && _resStep < ResSteps.Length)
-                    {
-                        <button type="button" class="btn btn--icon btn--primary" title="@Loc.T("Next")"
-                                disabled="@(_resStep == 1 && string.IsNullOrWhiteSpace(_resForm.CustomerName))"
-                                @onclick="GoNext"><LucideIcon Name="arrow-right" Size="16" /></button>
-                    }
-                </div>
+        <div class="field"><label>@Loc.T("Zone name")</label><input class="input" @bind="_zoneNameInput" /></div>
+        <div class="field">
+            <label>@Loc.T("Accent colour")</label>
+            <div class="color-pick">
+                <button type="button" class="color-swatch @(_zoneColorInput is null ? "color-swatch--on" : "")" style="--sw:var(--card-2)" title="@Loc.T("None")" @onclick="() => _zoneColorInput = null">
+                    <LucideIcon Name="x" Size="12" />
+                </button>
+                @foreach (var c in GroupColors)
+                {
+                    <button type="button" class="color-swatch @(_zoneColorInput == c ? "color-swatch--on" : "")"
+                            style="--sw:@c" title="@c" @onclick="() => _zoneColorInput = c"></button>
+                }
+                <input type="color" class="color-swatch color-swatch--custom" title="@Loc.T("Custom colour")" @bind="_zoneColorInput" />
             </div>
-        }
+        </div>
     </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="CancelRenameZone">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="ConfirmRenameZone">@Loc.T("Save")</button>
+    </Footer>
 </Modal>
 
+@* Big-map mode only (see OnTableClick): a single tap on a table opens its comanda straight
+   away instead of the table-properties form, so the expanded map works as a fast waiter
+   screen — press-and-hold (OnTablePointerDown/Up) is what reaches the properties form there. *@
+<OrderEditor OrderId="_editorOrderId" OnClose="CloseOrderEditor" OnChanged="OnOrderEditorChanged" FullScreen="true" />
+
 @code {
-    private static readonly string[] GroupColors = { "#8b5cf6", "#0ea5e9", "#f59e0b", "#ec4899", "#10b981", "#f43f5e" };
+    // Cooler, darker "corporate upholstery" palette (navy, teal, slate, taupe, aubergine, sage)
+    // instead of the warmer/brighter first pass — used both for joined-group badges and the table
+    // paint-mode swatches, so the whole floor plan reads as enterprise software, not a colour wheel.
+    private static readonly string[] GroupColors = { "#2f4a68", "#2f6b66", "#52657a", "#6b5f4a", "#5c4a5c", "#3f5c4a" };
 
     private List<TableDto> _tables = new();
     private TableFormDto? _form;
@@ -535,6 +787,171 @@
         await Settings.UpdateAsync(form);
     }
 
+    // ---- Paint mode: pick a colour once, then tap tables on the map to apply it directly,
+    // instead of opening each table's full properties form just to change its accent colour. ----
+    private bool _paintMenuOpen;
+    private bool _paintMode;
+    private string? _paintColor;
+
+    private void TogglePaintMenu()
+    {
+        _paintMenuOpen = !_paintMenuOpen;
+        if (_paintMenuOpen) _floorMenuOpen = false;
+        else _paintMode = false;
+    }
+
+    private void ChoosePaintColor(string? color)
+    {
+        _paintColor = color;
+        _paintMode = true;
+        _paintMenuOpen = false;
+    }
+
+    private void ChoosePaintColorCustom()
+    {
+        _paintMode = true;
+        _paintMenuOpen = false;
+    }
+
+    private void StopPaintMode()
+    {
+        _paintMode = false;
+        _paintMenuOpen = false;
+    }
+
+    private async Task PaintTable(TableDto t)
+    {
+        await Service.SetColorAsync(t.Id, _paintColor);
+        await Load();
+    }
+
+    // ---- Floor decor: decorative plants and interior-design elements (walls, doors, bar
+    // counter, columns, windows) placed alongside tables so the plan can read as a real floor
+    // plan instead of a bare grid. Share the drag/resize/rotate/lock editor with tables (see
+    // floorplan.js) but persist through IFloorDecorService instead of ITableService. ----
+    private List<FloorDecorDto> _decor = new();
+    private static readonly FloorDecorType[] PlantTypes =
+    {
+        FloorDecorType.PottedPlant, FloorDecorType.SmallPlant, FloorDecorType.HangingPlant,
+        FloorDecorType.Bush, FloorDecorType.SmallTree, FloorDecorType.Fern
+    };
+    private static readonly FloorDecorType[] InteriorTypes = { FloorDecorType.Wall, FloorDecorType.Door, FloorDecorType.BarCounter, FloorDecorType.Column, FloorDecorType.Window };
+
+    private bool _plantMenuOpen;
+    private bool _designMenuOpen;
+
+    private void TogglePlantMenu()
+    {
+        _plantMenuOpen = !_plantMenuOpen;
+        if (_plantMenuOpen) { _floorMenuOpen = false; _paintMenuOpen = false; _designMenuOpen = false; }
+    }
+
+    private void ToggleDesignMenu()
+    {
+        _designMenuOpen = !_designMenuOpen;
+        if (_designMenuOpen) { _floorMenuOpen = false; _paintMenuOpen = false; _plantMenuOpen = false; }
+    }
+
+    private static string DecorSlug(FloorDecorType type) => type.ToString().ToLowerInvariant();
+
+    private static string DecorLabel(FloorDecorType type) => type switch
+    {
+        FloorDecorType.PottedPlant => "Potted plant",
+        FloorDecorType.SmallPlant => "Small plant",
+        FloorDecorType.HangingPlant => "Hanging plant",
+        FloorDecorType.Bush => "Bush",
+        FloorDecorType.SmallTree => "Small tree",
+        FloorDecorType.Fern => "Fern",
+        FloorDecorType.Wall => "Wall",
+        FloorDecorType.Door => "Door",
+        FloorDecorType.BarCounter => "Bar counter",
+        FloorDecorType.Column => "Column",
+        FloorDecorType.Window => "Window",
+        _ => type.ToString(),
+    };
+
+    private static string DecorStyle(FloorDecorDto d) =>
+        $"left:{N(d.PositionX)}px; top:{N(d.PositionY)}px; width:{N(d.Width)}px; height:{N(d.Height)}px; transform:rotate({N(d.Rotation)}deg); --rot:{N(d.Rotation)}deg";
+
+    private async Task AddDecor(FloorDecorType type)
+    {
+        _plantMenuOpen = false;
+        _designMenuOpen = false;
+        var dto = await DecorService.CreateAsync(type);
+        _decor.Add(dto);
+        StartEdit();
+    }
+
+    private async Task RemoveDecor(int id)
+    {
+        await DecorService.DeleteAsync(id);
+        _decor.RemoveAll(d => d.Id == id);
+    }
+
+    // ---- Floor zones: named, clickable boundary boxes drawn directly on the map (e.g.
+    // "Terrace", "Bar") — distinct from RestaurantTable.Zone (the free-text tag each table is
+    // filed under, driving the zone-filter tabs). Clicking a zone box applies that same filter
+    // spatially instead of only from the tabs below the map. Rendered first inside .floor-canvas
+    // so they paint underneath tables/decor. No rotation/shape — just drag + resize. ----
+    private List<FloorZoneDto> _zones = new();
+    private int? _renamingZoneId;
+    private string _zoneNameInput = "";
+    private string? _zoneColorInput;
+
+    private static string ZoneStyle(FloorZoneDto z)
+    {
+        var s = $"left:{N(z.PositionX)}px; top:{N(z.PositionY)}px; width:{N(z.Width)}px; height:{N(z.Height)}px;";
+        if (z.Color is not null) s += $" --zcolor:{z.Color};";
+        return s;
+    }
+
+    private void OnZoneClick(FloorZoneDto z)
+    {
+        if (_editing) return;
+        _zoneFilter = _zoneFilter == z.Name ? null : z.Name;
+    }
+
+    private async Task AddZone()
+    {
+        var dto = await ZoneService.CreateAsync();
+        _zones.Add(dto);
+        StartEdit();
+    }
+
+    private async Task RemoveZone(int id)
+    {
+        await ZoneService.DeleteAsync(id);
+        _zones.RemoveAll(z => z.Id == id);
+    }
+
+    private void StartRenameZone(FloorZoneDto z)
+    {
+        _renamingZoneId = z.Id;
+        _zoneNameInput = z.Name;
+        _zoneColorInput = z.Color;
+    }
+
+    private void CancelRenameZone() => _renamingZoneId = null;
+
+    private async Task ConfirmRenameZone()
+    {
+        if (_renamingZoneId is null || string.IsNullOrWhiteSpace(_zoneNameInput)) return;
+        await ZoneService.UpdateAsync(_renamingZoneId.Value, _zoneNameInput, _zoneColorInput);
+        var i = _zones.FindIndex(z => z.Id == _renamingZoneId.Value);
+        if (i >= 0) _zones[i] = _zones[i] with { Name = _zoneNameInput.Trim(), Color = _zoneColorInput };
+        _renamingZoneId = null;
+    }
+
+    // ---- Zoom: scales just the .floor-canvas wrapper (tables/decor/badges), not the outer
+    // .floor viewport/texture, so floorplan.js's drag math only needs a zoom-factor correction
+    // instead of a full coordinate-space rewrite. Hidden during layout editing (like Expand map)
+    // so the factor can't change mid-drag. ----
+    private const double ZoomMin = 0.5, ZoomMax = 2, ZoomStep = 0.1;
+    private double _zoom = 1;
+    private void ZoomIn() => _zoom = Math.Min(ZoomMax, Math.Round(_zoom + ZoomStep, 2));
+    private void ZoomOut() => _zoom = Math.Max(ZoomMin, Math.Round(_zoom - ZoomStep, 2));
+    private void ZoomReset() => _zoom = 1;
+
     // ---- Reservations panel state ----
     // Docked to the left of the floor plan (visually, via CSS order).
     private bool _mapExpanded;
@@ -559,6 +976,30 @@
     private int? _statusMenuOpenId;
     private ReservationFormDto? _resForm;
     private string? _resError;
+
+    // ---- Reservation-taking policy: staff-facing note on how bookings currently come in ----
+    private bool _policyMenuOpen;
+    private static readonly (string Value, string Label, bool ComingSoon)[] ReservationPolicies =
+    {
+        ("open", "Accepting reservations", false),
+        ("phone_only", "Phone only", false),
+        ("closed", "Not accepting reservations", false),
+        ("web", "Online booking", true),
+    };
+
+    private static string PolicyLabel(string value) =>
+        ReservationPolicies.FirstOrDefault(o => o.Value == value).Label ?? value;
+
+    private void TogglePolicyMenu() => _policyMenuOpen = !_policyMenuOpen;
+    private void ClosePolicyMenu() => _policyMenuOpen = false;
+
+    private async Task SetReservationPolicy(string value)
+    {
+        _policyMenuOpen = false;
+        var form = await Settings.GetForEditAsync();
+        form.ReservationPolicy = value;
+        await Settings.UpdateAsync(form);
+    }
 
     // ---- Reservation wizard: 4 steps, each its own screen ----
     private int _resStep = 1;
@@ -587,7 +1028,35 @@
                           (o.PositionX < t.PositionX ||
                            (o.PositionX == t.PositionX && o.PositionY < t.PositionY)));
 
-    private int GroupSeats(int gid) => _tables.Where(t => t.GroupId == gid).Sum(t => t.Seats);
+    // Joining tables loses a seat on each side of every seam where two tables meet (nobody can
+    // sit facing into the next table) — a chain of N tables has N-1 seams, so 2 seats go for
+    // each one. Two 4-seat tables joined into one therefore seat 6, not 8.
+    private int GroupSeats(int gid)
+    {
+        var members = _tables.Where(t => t.GroupId == gid).ToList();
+        if (members.Count <= 1) return members.Sum(t => t.Seats);
+        return Math.Max(0, members.Sum(t => t.Seats) - 2 * (members.Count - 1));
+    }
+
+    private string GroupDisplayName(int gid)
+    {
+        var members = _tables.Where(t => t.GroupId == gid).OrderBy(t => t.Name).ToList();
+        var namedGroup = members.Select(t => t.GroupName).FirstOrDefault(n => !string.IsNullOrWhiteSpace(n));
+        return namedGroup ?? string.Join(" + ", members.Select(t => t.Name));
+    }
+
+    // Horizontal centre of every member table, but anchored to the group's own TOP edge rather
+    // than the vertical middle — the badge then floats just above the tables (like a header)
+    // instead of sitting across their middle. It keeps tracking that point as the group is
+    // dragged (JS moves every member by the same delta, so this recomputes to the same spot).
+    private string GroupCenterStyle(int gid, List<TableDto> visible)
+    {
+        var members = visible.Where(t => t.GroupId == gid).ToList();
+        if (members.Count == 0) return "";
+        var cx = members.Average(t => t.PositionX + t.Width / 2);
+        var topY = members.Min(t => t.PositionY);
+        return $"left:{N(cx)}px; top:{N(topY)}px;";
+    }
 
     private string? _zoneFilter;
     private List<string> Zones => _tables
@@ -606,6 +1075,7 @@
     {
         var status = EffectiveTableStatus(t, rv);
         var c = $"tbl tbl--{t.Shape.ToString().ToLower()} tbl--{status.ToString().ToLower()}";
+        if (t.Color is not null) c += " tbl--colored";
         if (t.IsLocked) c += " tbl--locked";
         if (t.GroupId is not null) c += " tbl--grouped";
         if (_selecting && _selection.Contains(t.Id)) c += " tbl--selected";
@@ -630,19 +1100,57 @@
     {
         var s = $"left:{N(t.PositionX)}px; top:{N(t.PositionY)}px; width:{N(t.Width)}px; height:{N(t.Height)}px; transform:rotate({N(t.Rotation)}deg); --rot:{N(t.Rotation)}deg";
         if (t.GroupId is not null) s += $"; --grp:{GroupColor(t.GroupId.Value)}";
-        if (t.Color is not null) s += $"; --tcolor:{t.Color}";
+        if (t.Color is not null)
+        {
+            s += $"; --tcolor:{t.Color}";
+            if (IsDarkColor(t.Color)) s += "; --tfg:#fff";
+        }
         return s;
     }
 
-    // One small chair mark per seat, ringed around the table so it reads as a real table
-    // instead of a bare labelled box. Round/oval tables get an even circular ring; square/
-    // rectangular tables get chairs walked around the four edges (proportionally, so a long
-    // side naturally picks up more chairs than a short one), matching how a real dining table
-    // is actually laid out. Percentages can fall outside 0–100 on purpose — that's what pushes
-    // the chair beyond the table's own edge instead of sitting on top of it.
-    private static IEnumerable<string> ChairStyles(TableDto t)
+    // Quick perceived-luminance check so a custom/dark accent colour (picked freely via the
+    // native colour input, unlike the fixed GroupColors palette) automatically gets white
+    // labels instead of the default dark text becoming unreadable on it.
+    private static bool IsDarkColor(string hex)
     {
-        const double outset = 15;
+        if (hex.Length < 7) return false;
+        if (!byte.TryParse(hex.AsSpan(1, 2), System.Globalization.NumberStyles.HexNumber, null, out var r)) return false;
+        if (!byte.TryParse(hex.AsSpan(3, 2), System.Globalization.NumberStyles.HexNumber, null, out var g)) return false;
+        if (!byte.TryParse(hex.AsSpan(5, 2), System.Globalization.NumberStyles.HexNumber, null, out var b)) return false;
+        return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5;
+    }
+
+    // One small chair mark per seat, ringed around the table so it reads as a real table
+    // instead of a bare labelled box. Round/oval tables get an even circular ring. Square/
+    // rectangular tables follow the same convention as a real dining table: exactly one chair
+    // on each short side (left/right) once there are at least 2 seats, and the rest split as
+    // evenly as possible between the head and foot (top/bottom) — so 4 seats is 1-1-1-1, 6 is
+    // 1-1-2-2, 8 is 1-1-3-3, etc., rather than a count proportional to each edge's length.
+    // Percentages can fall outside 0–100 on purpose — that's what pushes the chair beyond the
+    // table's own edge instead of sitting on top of it.
+    // Joined tables are always snapped into a single left-to-right row (see JoinTablesAsync), so
+    // a member's left and/or right edge can be a seam shared with its neighbour rather than a
+    // real table edge — those sides skip their chair so nobody is drawn "sitting" inside the
+    // next table. Top/bottom are never shared, since the row never stacks vertically.
+    private static IEnumerable<string> ChairStyles(TableDto t, IReadOnlyList<TableDto> allTables)
+    {
+        var hideLeft = false;
+        var hideRight = false;
+        if (t.GroupId is not null)
+        {
+            var members = allTables.Where(m => m.GroupId == t.GroupId).OrderBy(m => m.PositionX).ToList();
+            var idx = members.FindIndex(m => m.Id == t.Id);
+            hideLeft = idx > 0;
+            hideRight = idx >= 0 && idx < members.Count - 1;
+        }
+
+        const double outset = 16; // clearance off the table's own edge, scaled to the smaller chair size (see .tbl__chair)
+        // Left/right offsets are a % of the table's own Width, so a wide 6+ seat table (see
+        // RestaurantTable.DefaultWidthForSeats) pushed its side chairs much farther out in
+        // absolute px than the top/bottom ones get from the same %. Pin the side offset to the
+        // pixel clearance a default 70px-tall table would get instead, so it stays close
+        // regardless of how wide the table is.
+        var sideOutset = t.Width > 0 ? outset / 100 * 70 / t.Width * 100 : outset;
         var n = t.Seats;
         if (n <= 0 || n > 16) yield break;
 
@@ -653,47 +1161,65 @@
                 var angle = 2 * Math.PI * i / n - Math.PI / 2;
                 var left = 50 + 50 * (1 + outset / 50) * Math.Cos(angle);
                 var top = 50 + 50 * (1 + outset / 50) * Math.Sin(angle);
-                yield return $"left:{left:0.#}%; top:{top:0.#}%;";
+                // Faces outward, away from the table centre — the same vector the chair was placed
+                // along, just expressed as a rotation for the backrest pseudo-element (see .tbl__chair
+                // in Tables.razor.css). +90 converts "angle from +X axis" to "rotation from facing up".
+                var ang = angle * 180 / Math.PI + 90;
+                yield return $"left:{left:0.#}%; top:{top:0.#}%; --ang:{ang:0.#}deg;";
             }
             yield break;
         }
 
-        double w = t.Width, h = t.Height;
-        var perim = 2 * (w + h);
-        for (var i = 0; i < n; i++)
-        {
-            var d = perim * (i + 0.5) / n;
-            double left, top;
-            if (d < w) { left = d / w * 100; top = -outset; }
-            else if (d < w + h) { left = 100 + outset; top = (d - w) / h * 100; }
-            else if (d < w + h + w) { left = 100 - (d - w - h) / w * 100; top = 100 + outset; }
-            else { left = -outset; top = 100 - (d - w - h - w) / h * 100; }
-            yield return $"left:{left:0.#}%; top:{top:0.#}%;";
-        }
+        var sideCount = n >= 2 ? 1 : 0;
+        var remaining = n - 2 * sideCount;
+        var topCount = (remaining + 1) / 2;      // the odd remainder's extra chair goes to the head (top)
+        var bottomCount = remaining / 2;
+
+        if (!hideLeft)
+            for (var i = 0; i < sideCount; i++)
+                yield return $"left:{-sideOutset:0.#}%; top:50%; --ang:270deg;";          // left
+        if (!hideRight)
+            for (var i = 0; i < sideCount; i++)
+                yield return $"left:{100 + sideOutset:0.#}%; top:50%; --ang:90deg;";      // right
+        for (var i = 0; i < topCount; i++)
+            yield return $"left:{(i + 0.5) / topCount * 100:0.#}%; top:{-outset:0.#}%; --ang:0deg;";
+        for (var i = 0; i < bottomCount; i++)
+            yield return $"left:{(i + 0.5) / bottomCount * 100:0.#}%; top:{100 + outset:0.#}%; --ang:180deg;";
     }
 
     protected override bool ShouldRender() => !_suppressRender;
 
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+    private int _userId;
+
     protected override async Task OnInitializedAsync()
     {
+        var auth = await AuthState!;
+        _userId = int.TryParse(auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var id) ? id : 0;
+
         await Load();
         await LoadReservations();
     }
 
-    private async Task Load() => _tables = await Service.GetAllAsync();
+    private async Task Load()
+    {
+        _tables = await Service.GetAllAsync();
+        _decor = await DecorService.GetAllAsync();
+        _zones = await ZoneService.GetAllAsync();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_editing && _module is null && RendererInfo.IsInteractive)
         {
             _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/floorplan.js");
-            await _module.InvokeVoidAsync("init", _floorEl);
+            await _module.InvokeVoidAsync("init", _floorEl, _zoom);
             _suppressRender = true;
         }
     }
 
     // ---- Layout editing (drag / resize / rotate) ----
-    private void StartEdit() { CancelAssign(); CancelReassign(); _editing = true; }
+    private void StartEdit() { CancelAssign(); CancelReassign(); StopPaintMode(); _editing = true; }
 
     private async Task SaveLayout()
     {
@@ -702,6 +1228,10 @@
         {
             var layout = await _module.InvokeAsync<TableLayoutDto[]>("getLayout");
             await Service.SaveLayoutAsync(layout);
+            var decorLayout = await _module.InvokeAsync<FloorDecorLayoutDto[]>("getDecorLayout");
+            await DecorService.SaveLayoutAsync(decorLayout);
+            var zoneLayout = await _module.InvokeAsync<FloorZoneLayoutDto[]>("getZoneLayout");
+            await ZoneService.SaveLayoutAsync(zoneLayout);
             await _module.InvokeVoidAsync("dispose");
             await _module.DisposeAsync();
             _module = null;
@@ -724,11 +1254,11 @@
     }
 
     // ---- Join / separate ----
-    private void StartSelect() { CancelAssign(); CancelReassign(); _selecting = true; _selection.Clear(); _notice = null; }
+    private void StartSelect() { CancelAssign(); CancelReassign(); StopPaintMode(); _selecting = true; _selection.Clear(); _notice = null; }
     private void CancelSelect() { _selecting = false; _selection.Clear(); }
 
     // ---- Reassign an open order to another table ----
-    private void StartReassign() { CancelAssign(); _reassigning = true; _reassignSource = null; _reassignDestId = null; _notice = null; }
+    private void StartReassign() { CancelAssign(); StopPaintMode(); _reassigning = true; _reassignSource = null; _reassignDestId = null; _notice = null; }
     private void CancelReassign() { _reassigning = false; _reassignSource = null; _reassignDestId = null; }
 
     private async Task ConfirmReassign()
@@ -775,6 +1305,31 @@
         await Load();
     }
 
+    // Non-null only when every selected table already belongs to that same existing group —
+    // selecting an already-joined group's tables (via the same "Join tables" button) means the
+    // user wants to undo the join, not make a new one, so the toolbar offers Separate instead.
+    private int? SelectedGroupId
+    {
+        get
+        {
+            var selected = _tables.Where(t => _selection.Contains(t.Id)).ToList();
+            if (selected.Count == 0) return null;
+            var first = selected[0].GroupId;
+            return first is not null && selected.All(t => t.GroupId == first) ? first : null;
+        }
+    }
+
+    private async Task SeparateSelectedGroup()
+    {
+        if (_selection.Count == 0) return;
+        var tableId = _selection.First();
+        try { await Service.SeparateGroupAsync(tableId); }
+        catch (InvalidOperationException ex) { _notice = ex.Message; }
+        _selecting = false;
+        _selection.Clear();
+        await Load();
+    }
+
     // ---- Reservations panel ----
     private void OpenDashboard() => Nav.NavigateTo("/reservations");
     private void GoToTables() => Nav.NavigateTo("/tables");
@@ -787,7 +1342,7 @@
 
     private async Task LoadReservations() => _reservations = await ReservationService.GetByDateAsync(_reserveDate);
 
-    private void StartAssign(ReservationDto r) { CancelReassign(); _assignReservationId = r.Id; _assignName = r.CustomerName; }
+    private void StartAssign(ReservationDto r) { CancelReassign(); StopPaintMode(); _assignReservationId = r.Id; _assignName = r.CustomerName; }
     private void CancelAssign() { _assignReservationId = null; _assignName = null; }
 
     // Clicking "Assign" again while already assigning that same reservation cancels it,
@@ -848,9 +1403,91 @@
         // wizard instead of forcing another walk through it; a new one starts at step 1 only.
         _resStep = 1;
         _resMaxStep = id is null ? 1 : ResSteps.Length;
+        SplitPhone();
     }
 
     private void CloseResForm() => _resForm = null;
+
+    // ---- Phone prefix picker: splits the single Phone string into a "+34"-style prefix
+    // (its own searchable dropdown) and the local number, then recombines them on every
+    // edit — the rest of the app still only ever sees one Phone string. ----
+    private string _phonePrefix = "+34";
+    private string _phoneLocal = "";
+    private bool _prefixMenuOpen;
+    private string _prefixSearch = "";
+
+    private static readonly (string Name, string Code)[] PhonePrefixes =
+    {
+        ("Spain", "+34"), ("Andorra", "+376"), ("Portugal", "+351"), ("France", "+33"),
+        ("Italy", "+39"), ("Germany", "+49"), ("United Kingdom", "+44"), ("Ireland", "+353"),
+        ("Netherlands", "+31"), ("Belgium", "+32"), ("Luxembourg", "+352"), ("Switzerland", "+41"),
+        ("Austria", "+43"), ("Denmark", "+45"), ("Norway", "+47"), ("Sweden", "+46"),
+        ("Finland", "+358"), ("Iceland", "+354"), ("Poland", "+48"), ("Czechia", "+420"),
+        ("Slovakia", "+421"), ("Hungary", "+36"), ("Romania", "+40"), ("Bulgaria", "+359"),
+        ("Greece", "+30"), ("Turkey", "+90"), ("Croatia", "+385"), ("Serbia", "+381"),
+        ("Ukraine", "+380"), ("Russia", "+7"), ("Morocco", "+212"), ("Algeria", "+213"),
+        ("Tunisia", "+216"), ("Egypt", "+20"), ("Israel", "+972"),
+        ("United Arab Emirates", "+971"), ("Saudi Arabia", "+966"),
+        ("United States", "+1"), ("Canada", "+1"), ("Mexico", "+52"),
+        ("Guatemala", "+502"), ("Costa Rica", "+506"), ("Panama", "+507"), ("Cuba", "+53"),
+        ("Dominican Republic", "+1"), ("Colombia", "+57"), ("Venezuela", "+58"),
+        ("Ecuador", "+593"), ("Peru", "+51"), ("Bolivia", "+591"), ("Chile", "+56"),
+        ("Argentina", "+54"), ("Paraguay", "+595"), ("Uruguay", "+598"), ("Brazil", "+55"),
+        ("China", "+86"), ("Japan", "+81"), ("South Korea", "+82"), ("India", "+91"),
+        ("Australia", "+61"), ("New Zealand", "+64"), ("South Africa", "+27"),
+    };
+
+    private IReadOnlyList<(string Name, string Code)> FilteredPrefixes =>
+        (string.IsNullOrWhiteSpace(_prefixSearch)
+            ? PhonePrefixes.AsEnumerable()
+            : PhonePrefixes.Where(p =>
+                p.Name.Contains(_prefixSearch, StringComparison.OrdinalIgnoreCase) ||
+                p.Code.Contains(_prefixSearch, StringComparison.OrdinalIgnoreCase)))
+        .ToList();
+
+    private void TogglePrefixMenu()
+    {
+        _prefixMenuOpen = !_prefixMenuOpen;
+        _prefixSearch = "";
+    }
+
+    private void ClosePrefixMenu() => _prefixMenuOpen = false;
+
+    private void PickPrefix(string code)
+    {
+        _phonePrefix = code;
+        _prefixMenuOpen = false;
+        SyncPhone();
+    }
+
+    private void SyncPhone()
+    {
+        if (_resForm is null) return;
+        _resForm.Phone = string.IsNullOrWhiteSpace(_phoneLocal) ? null : $"{_phonePrefix} {_phoneLocal.Trim()}";
+    }
+
+    // Longest-prefix-first match so e.g. "+351" (Portugal) isn't mistaken for "+35" of nothing —
+    // codes overlap in their leading digits (+1, +34, +352…), so length order matters.
+    private void SplitPhone()
+    {
+        _phonePrefix = "+34";
+        _phoneLocal = "";
+        var raw = _resForm?.Phone?.Trim();
+        if (string.IsNullOrWhiteSpace(raw)) return;
+
+        var match = PhonePrefixes
+            .OrderByDescending(p => p.Code.Length)
+            .FirstOrDefault(p => raw.StartsWith(p.Code, StringComparison.Ordinal));
+        if (match.Code is not null)
+        {
+            _phonePrefix = match.Code;
+            _phoneLocal = raw[match.Code.Length..].TrimStart();
+        }
+        else
+        {
+            _phoneLocal = raw;
+        }
+    }
 
     private void GoToStep(int step)
     {
@@ -859,6 +1496,16 @@
 
     private void GoNext()
     {
+        // Leaving the Guest step needs a name and a phone — checked here (one message at a
+        // time) instead of just disabling Next, so pressing it always says exactly what's
+        // still missing rather than silently doing nothing.
+        if (_resStep == 1 && _resForm is not null)
+        {
+            if (string.IsNullOrWhiteSpace(_resForm.CustomerName)) { _resError = Loc.T("Enter the customer's name."); return; }
+            if (string.IsNullOrWhiteSpace(_resForm.Phone)) { _resError = Loc.T("Enter a phone number."); return; }
+        }
+
+        _resError = null;
         _resStep = Math.Min(ResSteps.Length, _resStep + 1);
         _resMaxStep = Math.Max(_resMaxStep, _resStep);
     }
@@ -916,18 +1563,41 @@
     // Seats needed = adults (party size) + children, so the seat-count check accounts for everyone at the table.
     private int FormTotalGuests => _resForm is null ? 0 : _resForm.PartySize + _resForm.ChildrenCount;
 
+    private bool _saveSuccess;
+    private bool _savingRes;
+    private bool _wasNewReservation;
+
     private async Task SaveRes()
     {
-        if (_resForm is null) return;
+        // Guards the whole save + success-checkmark window: without it, a second click while the
+        // 650ms confirmation is showing would re-submit the same (already cleared) form.
+        if (_resForm is null || _savingRes) return;
         var result = await ResValidator.ValidateAsync(_resForm);
         if (!result.IsValid) { _resError = result.Errors[0].ErrorMessage; return; }
 
-        if (_resForm.Id > 0) await ReservationService.UpdateAsync(_resForm);
-        else await ReservationService.CreateAsync(_resForm);
+        _savingRes = true;
+        try
+        {
+            _wasNewReservation = _resForm.Id == 0;
+            if (_resForm.Id > 0) await ReservationService.UpdateAsync(_resForm);
+            else await ReservationService.CreateAsync(_resForm);
 
-        _resForm = null;
-        await LoadReservations();
-        await Load();
+            await LoadReservations();
+            await Load();
+
+            // A brief checkmark confirmation instead of the panel just vanishing — makes the
+            // save read as a deliberate, acknowledged action rather than an abrupt reset.
+            _saveSuccess = true;
+            StateHasChanged();
+            await Task.Delay(650);
+
+            _saveSuccess = false;
+            _resForm = null;
+        }
+        finally
+        {
+            _savingRes = false;
+        }
     }
 
     private async Task DeleteRes(int id)
@@ -966,6 +1636,8 @@
     // ---- Table click routing ----
     private async Task OnTableClick(TableDto t)
     {
+        if (_longPressFired) { _longPressFired = false; return; }   // press-and-hold already handled this press
+        if (_paintMode) { await PaintTable(t); return; }
         if (_editing) return;   // in edit mode a click is a drag (JS owns it)
         if (_selecting)
         {
@@ -980,7 +1652,59 @@
             if (t.ActiveOrderId is not null) { _reassignSource = t; _reassignDestId = null; }
             return;
         }
+
+        // Big-map mode: a single tap jumps straight into the table's comanda (opening one if it
+        // doesn't have one yet, same as tapping a table in /pos) instead of the properties form —
+        // press-and-hold (OnTablePointerDown below) is what reaches the properties form there.
+        if (_mapExpanded)
+        {
+            await OpenOrderEditorFor(t);
+            return;
+        }
+
         OpenForm(t.Id);
+    }
+
+    private async Task OpenOrderEditorFor(TableDto t)
+    {
+        if (t.ActiveOrderId is not null) { _editorOrderId = t.ActiveOrderId; return; }
+        var order = await OrderSvc.OpenOrderAsync(t.Id, _userId);
+        _editorOrderId = order.Id;
+        await Load();
+    }
+
+    private int? _editorOrderId;
+    private void CloseOrderEditor() => _editorOrderId = null;
+    private async Task OnOrderEditorChanged() => await Load();
+
+    // ---- Press-and-hold (big-map mode only): holding a table down for half a second opens its
+    // properties form, while a plain tap (OnTableClick above) opens the comanda instead. ----
+    private CancellationTokenSource? _pressCts;
+    private bool _longPressFired;
+
+    private void OnTablePointerDown(TableDto t)
+    {
+        if (!_mapExpanded || _editing || _selecting || _assignReservationId is not null || _reassigning) return;
+        _pressCts?.Cancel();
+        _pressCts = new CancellationTokenSource();
+        _ = WatchForLongPress(t, _pressCts.Token);
+    }
+
+    private void OnTablePointerUp() => _pressCts?.Cancel();
+
+    private async Task WatchForLongPress(TableDto t, CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(500, ct);
+            await InvokeAsync(() =>
+            {
+                _longPressFired = true;
+                OpenForm(t.Id);
+                StateHasChanged();
+            });
+        }
+        catch (TaskCanceledException) { /* released before the hold threshold — a normal click follows */ }
     }
 
     private void OpenForm(int? id)
@@ -1032,7 +1756,15 @@
     {
         if (_module is not null)
         {
-            try { await _module.DisposeAsync(); } catch { /* circuit already gone */ }
+            // Navigating away mid-edit (without Save/Cancel) would otherwise skip the JS-side
+            // dispose(), leaving its window-level pointermove/pointerup listeners registered
+            // forever with closures over this page's now-detached DOM.
+            try
+            {
+                await _module.InvokeVoidAsync("dispose");
+                await _module.DisposeAsync();
+            }
+            catch { /* circuit already gone */ }
         }
     }
 }

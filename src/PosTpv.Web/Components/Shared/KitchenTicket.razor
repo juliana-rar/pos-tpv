@@ -1,0 +1,134 @@
+@* One kitchen ticket. Kept as its own component — same reasoning as OrderCard.razor on
+   /orders — so a single-order SignalR refresh (Kitchen.razor's RefreshOrder replaces just
+   that one OrderDto reference in the list) only re-renders the affected ticket: ShouldRender
+   short-circuits every other ticket on the board instead of Blazor re-diffing all of them on
+   every event from every waiter station. *@
+
+<div id="ticket-@Order.Id" class="ticket @(Order.SecondsFiredAt is null ? "" : "ticket--seconds")">
+    <div class="ticket__head">
+        <span class="ticket__table"><LucideIcon Name="armchair" Size="16" /> @Order.TableName</span>
+        <span class="badge ticket__status">@TicketStatusLabel(Order.Status)</span>
+        <span class="spacer"></span>
+        <span class="ticket__time">@Order.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
+    </div>
+
+    <div class="ticket__fired-row">
+        <button type="button" class="btn btn--sm btn--ghost ticket__fired @(Order.SecondsSentAt is null ? "ticket__fired--empty" : "")"
+                title="@(Order.SecondsSentAt is null ? Loc.T("Click to mark as fired") : Loc.T("Click to mark as not fired"))" @onclick="() => OnToggleSeconds.InvokeAsync(Order)">
+            <LucideIcon Name="bell" Size="14" />
+            @Loc.T("Seconds prepared")@(Order.SecondsSentAt is { } secondsAt ? $" · {secondsAt.ToLocalTime():HH:mm}" : "")
+        </button>
+    </div>
+
+    @if (Order.SecondsFiredAt is not null)
+    {
+        <div class="ticket__fire">
+            <span class="ticket__fire-label"><LucideIcon Name="bell" Size="15" /> @Loc.T("Fire second courses")</span>
+            <button class="btn btn--icon" title="@Loc.T("Got it")"
+                    @onclick="() => OnAcknowledgeSeconds.InvokeAsync(Order)"><LucideIcon Name="check" Size="18" /></button>
+        </div>
+    }
+
+    <div class="ticket__items">
+        @foreach (var group in _groups)
+        {
+            <div class="ticket__group"><LucideIcon Name="@group.Icon" Size="14" /> @Loc.T(group.Label)</div>
+            @* Same ordered-together bracket as /orders (OrderCard.razor's GroupByOrderTime): items tapped
+               in the same minute share one timestamp behind a connecting bar instead of repeating it. *@
+            @foreach (var timeGroup in OrderPresentation.GroupByOrderTime(group.Items))
+            {
+                <div class="ticket__time-group">
+                    <span class="ticket__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
+                    <div class="ticket__time-group-items">
+                        @foreach (var it in timeGroup.Items)
+                        {
+                            <div class="kitem kitem--@it.Status.ToString().ToLower()">
+                                <div class="kitem__row">
+                                    <span class="kitem__qty">@it.Quantity×</span>
+                                    <span class="kitem__name">@it.ProductName</span>
+                                    <span class="spacer"></span>
+                                    @if (it.Status == OrderItemStatus.Preparing)
+                                    {
+                                        <button class="btn btn--icon btn--success" title="@Loc.T("Ready")"
+                                                @onclick="() => OnSetItem.InvokeAsync((Order.Id, it.Id, OrderItemStatus.Ready))"><LucideIcon Name="arrow-right" Size="18" /></button>
+                                    }
+                                    else
+                                    {
+                                        <LucideIcon Name="check" Size="16" />
+                                    }
+                                </div>
+                                @if (it.Extras.Count > 0)
+                                {
+                                    <div class="kitem__extras">＋ @string.Join(", ", it.Extras.Select(e => e.Name))</div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(it.Comment))
+                                {
+                                    <div class="kitem__comment"><LucideIcon Name="triangle-alert" Size="14" /> @it.Comment</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    @if (_food.Count > 0)
+    {
+        <div class="ticket__foot">
+            <button class="btn btn--ghost btn--block" title="@(_allFoodReady ? Loc.T("Click to undo") : null)" @onclick="() => OnToggleAllReady.InvokeAsync(Order)">
+                @if (_allFoodReady)
+                {
+                    <LucideIcon Name="check" Size="16" />
+                }
+                @(_allFoodReady ? Loc.T("All ready") : Loc.T("Mark all ready"))
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public OrderDto Order { get; set; } = null!;
+    [Parameter] public EventCallback<(int OrderId, int ItemId, OrderItemStatus Status)> OnSetItem { get; set; }
+    [Parameter] public EventCallback<OrderDto> OnToggleAllReady { get; set; }
+    [Parameter] public EventCallback<OrderDto> OnAcknowledgeSeconds { get; set; }
+    [Parameter] public EventCallback<OrderDto> OnToggleSeconds { get; set; }
+
+    private OrderDto? _rendered;
+    private List<OrderItemDto> _food = new();
+    private bool _allFoodReady;
+    private List<(string Icon, string Label, List<OrderItemDto> Items)> _groups = new();
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_rendered, Order)) Partition();
+    }
+
+    protected override bool ShouldRender()
+    {
+        if (ReferenceEquals(_rendered, Order)) return false;
+        _rendered = Order;
+        return true;
+    }
+
+    // Same course grouping/labels as the waiter's OrderCard (First course / Second course /
+    // Desserts), so the kitchen sees the same vocabulary.
+    private void Partition()
+    {
+        _food = Order.Items.Where(i => !i.IsDrink && i.Status != OrderItemStatus.Delivered).ToList();
+        _groups = new List<(string, string, List<OrderItemDto>)>
+        {
+            ("salad", "First course", _food.Where(i => i.Course == CourseType.Starter).ToList()),
+            ("utensils", "Second course", _food.Where(i => i.Course == CourseType.Main).ToList()),
+            ("cake-slice", "Desserts", _food.Where(i => i.Course == CourseType.Dessert).ToList()),
+        }.Where(g => g.Item3.Count > 0).ToList();
+        _allFoodReady = _food.Count > 0 && _food.All(i => i.Status == OrderItemStatus.Ready);
+    }
+
+    private static string TicketStatusLabel(OrderStatus s) => s switch
+    {
+        OrderStatus.Ready => Loc.T("Ready"),
+        OrderStatus.InPreparation => Loc.T("In preparation"),
+        _ => Loc.T("Sent")
+    };
+}

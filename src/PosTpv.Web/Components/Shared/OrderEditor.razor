@@ -4,10 +4,12 @@
 @inject IOrderService Orders
 @inject IProductService Products
 @inject ICategoryService Categories
+@inject ITableService Tables
+@inject IJSRuntime JS
 
 @if (OrderId is not null)
 {
-    <div class="order-editor-page">
+    <div class="order-editor-page @(FullScreen ? "order-editor-page--full" : "")">
         <div class="order-editor-page__body">
         @if (_order is null)
         {
@@ -21,9 +23,11 @@
                     <div class="editor__error" @onclick="() => _error = null">@_error <LucideIcon Name="x" Size="14" /></div>
                 }
 
-                <div class="pos editor__pos">
+                <div class="pos editor__pos" @ref="_editorPosEl">
                     <div class="pos__main">
-                        <!-- Left: categories, same vertical rail as /pos -->
+                        <!-- Left: categories, same vertical rail as /pos — spans both rows so it
+                             sits flush against the screen edge for the topbar's full height too,
+                             instead of the topbar starting from the screen edge above it. -->
                         <div class="pos__cats">
                             @foreach (var c in _categories)
                             {
@@ -41,6 +45,27 @@
                                     </span>
                                     <span class="cat__name">@c.Name</span>
                                 </button>
+                            }
+                        </div>
+
+                        @* Large-screen only (hidden below the layout's stacking breakpoint, see
+                           .editor__topbar in OrderEditor.razor.css): starts right of the category
+                           rail and spans to the order panel, so the Serve/Fire actions live up
+                           here instead of eating into the order panel's height — that panel is
+                           then free to show just the product lines. *@
+                        <div class="editor__topbar">
+                            <div class="editor__topbar-meta">
+                                <LucideIcon Name="armchair" Size="15" />
+                                <span class="editor__topbar-title">@Loc.T("Editing table") @_order.TableName</span>
+                                <span class="editor__topbar-sep">·</span>
+                                <div class="editor__topbar-stack">
+                                    <span class="editor__topbar-item"><LucideIcon Name="users" Size="13" />@_tableSeats</span>
+                                    <span class="editor__topbar-item"><LucideIcon Name="clock" Size="13" />@_order.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
+                                </div>
+                            </div>
+                            @if (_drinks.Count > 0 || _hasSeconds || _showServeFirsts)
+                            {
+                                <div class="editor__topbar-actions">@ActionsRow</div>
                             }
                         </div>
 
@@ -62,6 +87,10 @@
                         </div>
                     </div>
 
+                    @* Drag left/right to resize the order panel — clamped in JS between a width
+                       where every line's controls still fit on one line, and a generous max. *@
+                    <div class="pos__resize-handle" @ref="_resizeHandleEl"></div>
+
                     <!-- Right: current order, same panel as /pos -->
                     <div class="pos__order card">
                         <div class="order__head">
@@ -71,55 +100,20 @@
                             </div>
                             <div class="order__head-right">
                                 @* X closes the editor without discarding anything — added lines are already saved. *@
-                                <button class="btn btn--icon btn--ghost" title="@Loc.T("Close")" @onclick="OnClose" type="button"><LucideIcon Name="x" Size="14" /></button>
+                                <button class="btn btn--icon btn--ghost" title="@Loc.T("Close")" @onclick="OnClose" type="button"><LucideIcon Name="x" Size="18" /></button>
                                 @* Single confirm tick: sends food to the kitchen (skipped for a drinks-only order) and closes. *@
-                                <button class="btn btn--success btn--tick"
+                                <button class="btn btn--icon btn--ghost"
                                         title="@(HasKitchenItems ? Loc.T("Send to kitchen and close") : Loc.T("Confirm and close"))"
-                                        disabled="@_busy" @onclick="ConfirmAndClose" type="button"><LucideIcon Name="check" Size="14" /></button>
+                                        disabled="@_busy" @onclick="ConfirmAndClose" type="button"><LucideIcon Name="check" Size="18" /></button>
                             </div>
                         </div>
 
-                        @* Same Serve/Fire actions row as the board card (OrderCard.razor), so editing an
-                           order doesn't lose access to these. *@
+                        @* Same Serve/Fire actions as the top bar above (.editor__topbar-actions) — this copy
+                           only shows up below the layout's stacking breakpoint, where that bar is hidden and
+                           there's no room for a separate row above the columns. *@
                         @if (_drinks.Count > 0 || _hasSeconds || _showServeFirsts)
                         {
-                            <div class="order-card__actions">
-                                <div class="order-card__actions-row">
-                                    @if (_drinks.Count > 0)
-                                    {
-                                        <button class="btn btn--sm @(_hasPendingDrinks ? "btn--primary" : "btn--ghost")"
-                                                title="@(_hasPendingDrinks ? null : Loc.T("Click to undo"))" disabled="@_busy"
-                                                @onclick="OnToggleDrinksClick" type="button">
-                                            <LucideIcon Name="cup-soda" Size="14" />@DrinksLabel()
-                                        </button>
-                                    }
-                                    @if (_hasSeconds && ShowFireSeconds)
-                                    {
-                                        <button class="btn btn--sm @(SecondsAlreadyDone ? "btn--ghost" : "btn--primary")"
-                                                title="@(SecondsAlreadyDone ? null : Loc.T("Tell the kitchen to start the second courses"))"
-                                                disabled="@(_busy || SecondsAlreadyDone)"
-                                                @onclick="OnToggleSecondsClick" type="button">
-                                            <LucideIcon Name="bell" Size="14" />@SecondsSentLabel()
-                                        </button>
-                                    }
-                                </div>
-                                @if (_showServeFirsts)
-                                {
-                                    <button class="btn btn--sm @(_firstsPendingToServe ? "btn--primary" : "btn--ghost")"
-                                            title="@(_firstsPendingToServe ? null : Loc.T("Click to undo"))" disabled="@_busy"
-                                            @onclick="OnToggleServeFirstsClick" type="button">
-                                        <LucideIcon Name="salad" Size="14" />@FirstsServeLabel()
-                                    </button>
-                                }
-                                @if (_showServeSeconds)
-                                {
-                                    <button class="btn btn--sm @(_secondsPendingToServe ? "btn--primary" : "btn--ghost")"
-                                            title="@(_secondsPendingToServe ? null : Loc.T("Click to undo"))" disabled="@_busy"
-                                            @onclick="OnToggleServeSecondsClick" type="button">
-                                        <LucideIcon Name="utensils" Size="14" />@SecondsServeLabel()
-                                    </button>
-                                }
-                            </div>
+                            <div class="order-card__actions order-card__actions--inline">@ActionsRow</div>
                         }
 
                         <div class="order__items">
@@ -143,13 +137,26 @@
                                                         <div class="orderLine">
                                                             <div class="orderLine__main">
                                                                 <span class="orderLine__name">@it.ProductName</span>
-                                                                @if (it.UnitPrice == 0m)
+                                                                @if (it.IsInvited)
                                                                 {
                                                                     <span class="orderLine__invited" title="@Loc.T("Invited — not charged")">@Loc.T("Invitation")</span>
                                                                 }
                                                                 <span class="spacer"></span>
                                                                 <div class="orderLine__ctrl">
-                                                                    <button class="btn btn--icon btn--ghost orderLine__remove" title="@Loc.T("Remove")" disabled="@_busy" @onclick="() => RemoveItem(it.Id)"><LucideIcon Name="x" Size="13" /></button>
+                                                                    @if (_deleteMode)
+                                                                    {
+                                                                        <button class="btn btn--icon btn--ghost orderLine__remove" title="@Loc.T("Remove")" disabled="@_busy" @onclick="() => RemoveItem(it.Id)"><LucideIcon Name="x" Size="13" /></button>
+                                                                    }
+                                                                    @* Invitación armed: a checkbox per line, so already-added items can be marked/unmarked
+                                                                       as comped too — not just new taps from the product grid. *@
+                                                                    @if (_invitationMode)
+                                                                    {
+                                                                        <button class="orderLine__invite-box @(it.IsInvited ? "orderLine__invite-box--on" : "")"
+                                                                                title="@Loc.T("Toggle invitation")" disabled="@_busy"
+                                                                                @onclick="() => ToggleItemInvited(it)" type="button">
+                                                                            @if (it.IsInvited) { <LucideIcon Name="check" Size="12" /> }
+                                                                        </button>
+                                                                    }
                                                                     <button class="btn btn--icon btn--ghost" title="@Loc.T("Edit")" disabled="@_busy" @onclick="() => OpenEditItem(it)"><LucideIcon Name="pencil" Size="16" /></button>
                                                                     <button class="btn btn--icon btn--ghost" disabled="@_busy" @onclick="() => ChangeQty(it.Id, -1)">−</button>
                                                                     <span class="orderLine__qty">@it.Quantity</span>
@@ -181,15 +188,22 @@
                                 <span>@_order.Total.ToString("N2")</span>
                             </div>
                             <div class="order__grand-actions">
+                                @* Toggles per-line remove buttons on/off, so a stray tap can't delete a
+                                   line by accident — press again to leave delete mode. *@
+                                <button class="btn btn--delete @(_deleteMode ? "btn--delete-active" : "")"
+                                        title="@Loc.T("Delete")" disabled="@_busy"
+                                        @onclick="ToggleDeleteMode" type="button">
+                                    <LucideIcon Name="trash-2" Size="14" />@Loc.T("Delete")
+                                </button>
                                 @* Arms a single free line: the next product tap is captured at zero price
                                    instead of opening the payment dialog. *@
                                 <button class="btn btn--invite @(_invitationMode ? "btn--invite-active" : "")"
                                         title="@Loc.T("Tap a product to invite it (not charged)")" disabled="@_busy"
                                         @onclick="ToggleInvitation" type="button">
-                                    <LucideIcon Name="gift" Size="16" />@Loc.T("Invitation")
+                                    <LucideIcon Name="gift" Size="14" />@Loc.T("Invitation")
                                 </button>
                                 <button class="btn btn--pay" title="@Loc.T("Charge")" @onclick="OpenPayment" type="button">
-                                    <LucideIcon Name="credit-card" Size="16" />@Loc.T("Charge")
+                                    <LucideIcon Name="credit-card" Size="14" />@Loc.T("Charge")
                                 </button>
                             </div>
                         </div>
@@ -265,15 +279,41 @@
     /// <summary>Raised after any change so the parent can refresh the affected board card.</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
 
+    /// <summary>
+    /// True when the caller's own page already covers the bottom navbar itself (e.g. /tables'
+    /// expanded map, which is a full-viewport takeover) — extends the editor all the way to the
+    /// bottom instead of leaving its usual gap for that navbar, which would otherwise just reveal
+    /// whatever page is behind the editor instead of the (already-hidden) nav.
+    /// </summary>
+    [Parameter] public bool FullScreen { get; set; }
+
     private OrderDto? _order;
     private List<CategoryDto> _categories = new();
     private List<ProductDto> _products = new();
+    private List<TableDto> _tables = new();
+    private int _tableSeats;
     private int _selectedCategoryId;
     private int? _loadedOrderId;
     private bool _busy;
     private string? _error;
+
+    private ElementReference _editorPosEl;
+    private ElementReference _resizeHandleEl;
+    private bool _resizeBound;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Order is not null only once the editor has actually rendered its grid, so bind on the
+        // first render where that's true rather than strictly the component's first render.
+        if (!_resizeBound && _order is not null)
+        {
+            _resizeBound = true;
+            await JS.InvokeVoidAsync("posOrderResize", _resizeHandleEl, _editorPosEl, 280, 640);
+        }
+    }
     private bool _showPayment;
     private bool _invitationMode;
+    private bool _deleteMode;
 
     private List<CategoryCommentDto> _commentPresets = new();
     private string? _commentText;
@@ -309,6 +349,11 @@
             _categories = await Categories.GetAllAsync(onlyVisible: true);
             _selectedCategoryId = _categories.FirstOrDefault()?.Id ?? 0;
         }
+        if (_tables.Count == 0)
+        {
+            _tables = await Tables.GetAllAsync();
+        }
+        _tableSeats = _tables.FirstOrDefault(t => t.Id == _order!.TableId)?.Seats ?? 0;
         await LoadProducts();
     }
 
@@ -317,17 +362,7 @@
     private void Repartition()
     {
         if (_order is null) return;
-        List<OrderItemDto> drinks = new(), starters = new(), mains = new(), desserts = new();
-        foreach (var it in _order.Items)
-        {
-            if (it.IsDrink) { drinks.Add(it); continue; }
-            switch (it.Course)
-            {
-                case CourseType.Starter: starters.Add(it); break;
-                case CourseType.Dessert: desserts.Add(it); break;
-                default: mains.Add(it); break;   // CourseType.Main
-            }
-        }
+        var (drinks, starters, mains, _) = OrderPresentation.Partition(_order.Items);
 
         _drinks = drinks;
         _hasPendingDrinks = drinks.Any(d => d.Status != OrderItemStatus.Delivered);
@@ -342,25 +377,13 @@
         _hasSeconds = mains.Count > 0;
     }
 
-    private string DrinksLabel() => _hasPendingDrinks
-        ? Loc.T("Serve drinks")
-        : _order?.DrinksServedAt is null
-            ? Loc.T("Drinks served")
-            : $"{Loc.T("Drinks served")} · {_order.DrinksServedAt.Value.ToLocalTime():HH:mm}";
+    private string DrinksLabel() => OrderPresentation.DrinksLabel(_hasPendingDrinks, _order?.DrinksServedAt);
 
-    private string FirstsServeLabel()
-    {
-        if (_firstsPendingToServe) return Loc.T("Serve firsts");
-        var lastServedAt = _starters.Where(s => s.Status == OrderItemStatus.Delivered).Max(s => (DateTime?)s.UpdatedAt);
-        return lastServedAt is null ? Loc.T("Firsts served") : $"{Loc.T("Firsts served")} · {lastServedAt.Value.ToLocalTime():HH:mm}";
-    }
+    private string FirstsServeLabel() =>
+        OrderPresentation.CourseServeLabel(_firstsPendingToServe, _starters, "Serve firsts", "Firsts served");
 
-    private string SecondsServeLabel()
-    {
-        if (_secondsPendingToServe) return Loc.T("Serve seconds");
-        var lastServedAt = _mains.Where(s => s.Status == OrderItemStatus.Delivered).Max(s => (DateTime?)s.UpdatedAt);
-        return lastServedAt is null ? Loc.T("Seconds served") : $"{Loc.T("Seconds served")} · {lastServedAt.Value.ToLocalTime():HH:mm}";
-    }
+    private string SecondsServeLabel() =>
+        OrderPresentation.SecondsServeLabel(_secondsPendingToServe, _mains, _order!.SecondsSentAt);
 
     // Seconds can reach the customer without ever being fired (e.g. auto-served the moment a
     // dessert is ordered) — in that case the "Serve seconds" chip alone already reads "Seconds
@@ -376,6 +399,47 @@
     private string SecondsSentLabel() => _order!.SecondsSentAt is not null
         ? $"{Loc.T("Seconds prepared")} · {_order.SecondsSentAt.Value.ToLocalTime():HH:mm}"
         : Loc.T("Fire seconds");
+
+    // Rendered twice — once in the large-screen top bar, once inline in the order panel for
+    // small screens — so the buttons and their state live in one place instead of two copies.
+    private RenderFragment ActionsRow => @<div class="order-card__actions-row">
+        @if (_drinks.Count > 0)
+        {
+            <button class="btn btn--sm @(_hasPendingDrinks ? "btn--primary" : "btn--ghost")"
+                    title="@(_hasPendingDrinks ? null : Loc.T("Click to undo"))" disabled="@_busy"
+                    @onclick="OnToggleDrinksClick" type="button">
+                <LucideIcon Name="cup-soda" Size="14" />@DrinksLabel()
+            </button>
+        }
+        @if (_hasSeconds)
+        {
+            @if (_showServeSeconds)
+            {
+                <button class="btn btn--sm @(_secondsPendingToServe ? "btn--primary" : "btn--ghost")"
+                        title="@(_secondsPendingToServe ? null : Loc.T("Click to undo"))" disabled="@_busy"
+                        @onclick="OnToggleServeSecondsClick" type="button">
+                    <LucideIcon Name="utensils" Size="14" />@SecondsServeLabel()
+                </button>
+            }
+            else if (ShowFireSeconds)
+            {
+                <button class="btn btn--sm @(SecondsAlreadyDone ? "btn--ghost" : "btn--primary")"
+                        title="@(SecondsAlreadyDone ? null : Loc.T("Tell the kitchen to start the second courses"))"
+                        disabled="@(_busy || SecondsAlreadyDone)"
+                        @onclick="OnToggleSecondsClick" type="button">
+                    <LucideIcon Name="bell" Size="14" />@SecondsSentLabel()
+                </button>
+            }
+        }
+        @if (_showServeFirsts)
+        {
+            <button class="btn btn--sm @(_firstsPendingToServe ? "btn--primary" : "btn--ghost")"
+                    title="@(_firstsPendingToServe ? null : Loc.T("Click to undo"))" disabled="@_busy"
+                    @onclick="OnToggleServeFirstsClick" type="button">
+                <LucideIcon Name="salad" Size="14" />@FirstsServeLabel()
+            </button>
+        }
+    </div>;
 
     private Task OnToggleDrinksClick() => Mutate(async () =>
     {
@@ -434,23 +498,31 @@
     }
 
     // Tapping a product adds it straight away, as its own line (no dialog in the way).
-    // Extras/comment can be set afterwards from the line itself. When invitation mode is armed,
-    // this one tap is captured at zero price and the mode disarms itself right away.
+    // Extras/comment can be set afterwards from the line itself. While invitation mode is
+    // armed, every tap is captured at zero price — it stays armed (like delete mode) until
+    // the Invitación button is pressed again, so several products can be invited in a row.
     private Task OnProductClick(ProductDto p)
     {
         if (_order is null) return Task.CompletedTask;
         var orderId = _order.Id;
         var invited = _invitationMode;
-        _invitationMode = false;
         return Mutate(async () => await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id, Merge: false, Invited: invited)));
     }
 
     private void ToggleInvitation() => _invitationMode = !_invitationMode;
 
+    // Flips an already-added line between invited (comped, zero price) and its normal catalog
+    // price — the per-line checkbox shown while Invitación is armed (see the orderLine markup).
+    private Task ToggleItemInvited(OrderItemDto item) =>
+        Mutate(() => Orders.SetItemInvitedAsync(item.Id, !item.IsInvited));
+
+    private void ToggleDeleteMode() => _deleteMode = !_deleteMode;
+
     // Edit an already-added line: extras and the kitchen note together, same as OpenEditItem
     // in Pos.razor. Shows the dialog immediately, then fetches extras/comment presets.
     private async Task OpenEditItem(OrderItemDto item)
     {
+        _deleteMode = false;
         _editingItem = item;
         _customizeExtras = new();
         _selectedExtraIds.Clear();
@@ -490,8 +562,11 @@
         });
     }
 
-    private Task ChangeQty(int itemId, int delta) =>
-        Mutate(() => Orders.ChangeQuantityAsync(itemId, delta));
+    private Task ChangeQty(int itemId, int delta)
+    {
+        _deleteMode = false;
+        return Mutate(async () => await Orders.ChangeQuantityAsync(itemId, delta));
+    }
 
     private Task RemoveItem(int itemId) =>
         Mutate(() => Orders.RemoveItemAsync(itemId));
@@ -541,67 +616,20 @@
         _ => s.ToString()
     });
 
-    private sealed record OrderSection(string? Icon, string? Label, List<OrderItemDto> Items);
-
-    // Same Drinks/First/Second/Desserts grouping as /pos (see OrderSections in Pos.razor), so
+    // Same Drinks/First/Second/Desserts grouping as /pos (OrderPresentation.Sections), so
     // editing an order reads the same way instead of one undifferentiated column.
-    private List<OrderSection> OrderSections()
-    {
-        if (_order is null) return new();
-        if (_order.Items.Count < 5)
-            return new() { new OrderSection(null, null, _order.Items.ToList()) };
+    private List<OrderPresentation.OrderSection> OrderSections() =>
+        _order is null ? new() : OrderPresentation.Sections(_order.Items);
 
-        var sections = new List<OrderSection>();
-        void AddGroup(string icon, string label, IEnumerable<OrderItemDto> items)
-        {
-            var list = items.ToList();
-            if (list.Count == 0) return;
-            sections.Add(new OrderSection(icon, label, list));
-        }
-        AddGroup("cup-soda", "Drinks", _order.Items.Where(i => i.IsDrink));
-        AddGroup("salad", "First course", _order.Items.Where(i => !i.IsDrink && i.Course == CourseType.Starter));
-        AddGroup("utensils", "Second course", _order.Items.Where(i => !i.IsDrink && i.Course == CourseType.Main));
-        AddGroup("cake-slice", "Desserts", _order.Items.Where(i => !i.IsDrink && i.Course == CourseType.Dessert));
-        return sections;
-    }
+    private static string GroupLinesClass(OrderPresentation.OrderSection section) => OrderPresentation.GroupLinesClass(section);
 
-    private static string GroupLinesClass(OrderSection section) =>
-        section.Items.Count > 6 ? "order__group-lines order__group-lines--scroll" : "order__group-lines";
+    // Same "served together" batching as OrderCard.razor, so a batch already marked served
+    // gets the same green shaded frame here while editing.
+    private static List<OrderPresentation.ServeBatch> GroupByServeBatch(List<OrderItemDto> items) =>
+        OrderPresentation.GroupByServeBatch(items);
 
-    private sealed record ServeBatch(DateTime? ServedAt, List<OrderItemDto> Items);
-
-    // Same "served together" batching as OrderCard.razor's GroupByServeBatch, so a batch
-    // already marked served gets the same green shaded frame here while editing.
-    private static List<ServeBatch> GroupByServeBatch(List<OrderItemDto> items)
-    {
-        var groups = new List<ServeBatch>();
-        foreach (var it in items)
-        {
-            var servedAt = it.Status == OrderItemStatus.Delivered ? it.UpdatedAt : null;
-            if (groups.Count > 0 && groups[^1].ServedAt == servedAt)
-                groups[^1].Items.Add(it);
-            else
-                groups.Add(new ServeBatch(servedAt, new List<OrderItemDto> { it }));
-        }
-        return groups;
-    }
-
-    private sealed record TimeGroup(DateTime Time, List<OrderItemDto> Items);
-
-    // Same "ordered in the same minute" grouping as OrderCard.razor's GroupByOrderTime, so a
-    // long ticket edited here reads the same way (shared timestamp + connecting bracket
-    // instead of repeating it per line).
-    private static List<TimeGroup> GroupByOrderTime(List<OrderItemDto> items)
-    {
-        var groups = new List<TimeGroup>();
-        foreach (var it in items)
-        {
-            var minute = new DateTime(it.CreatedAt.Year, it.CreatedAt.Month, it.CreatedAt.Day, it.CreatedAt.Hour, it.CreatedAt.Minute, 0, it.CreatedAt.Kind);
-            if (groups.Count > 0 && groups[^1].Time == minute)
-                groups[^1].Items.Add(it);
-            else
-                groups.Add(new TimeGroup(minute, new List<OrderItemDto> { it }));
-        }
-        return groups;
-    }
+    // Same "ordered in the same minute" grouping as OrderCard.razor, so a long ticket edited
+    // here reads the same way (shared timestamp + connecting bracket instead of repeating it per line).
+    private static List<OrderPresentation.TimeGroup> GroupByOrderTime(List<OrderItemDto> items) =>
+        OrderPresentation.GroupByOrderTime(items);
 }

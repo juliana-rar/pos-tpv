@@ -12,6 +12,10 @@ public class OrderItem : BaseEntity
     public string? Comment { get; set; }
     public OrderItemStatus Status { get; set; } = OrderItemStatus.Pending;
 
+    /// <summary>True when this line was added as a comp/invitation (zero price by choice, not because
+    /// the product's catalog price happens to be zero).</summary>
+    public bool IsInvited { get; set; }
+
     public int OrderId { get; set; }
     public Order Order { get; set; } = null!;
 

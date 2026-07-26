@@ -25,23 +25,25 @@ public class DashboardService : IDashboardService
         var today = DateTime.Today;
         var monthStart = new DateTime(today.Year, today.Month, 1);
 
-        var invoices = _uow.Repository<Invoice>().Query();
+        var invoices = _uow.Repository<Invoice>().QueryNoTracking();
         var salesToday = await invoices.Where(i => i.CreatedAt >= today).SumAsync(i => (decimal?)i.Total, ct) ?? 0m;
         var salesMonth = await invoices.Where(i => i.CreatedAt >= monthStart).SumAsync(i => (decimal?)i.Total, ct) ?? 0m;
 
-        var orders = _uow.Repository<Order>().Query();
+        var orders = _uow.Repository<Order>().QueryNoTracking();
         var ordersToday = await orders.CountAsync(o => o.CreatedAt >= today, ct);
         var openOrders = await orders.CountAsync(o => ActiveStatuses.Contains(o.Status), ct);
 
-        var tables = _uow.Repository<RestaurantTable>().Query();
+        var tables = _uow.Repository<RestaurantTable>().QueryNoTracking().Where(t => !t.IsArchived);
         var totalTables = await tables.CountAsync(ct);
         var occupiedTables = await tables.CountAsync(t => t.Status == TableStatus.Occupied, ct);
 
-        var reservationsToday = await _uow.Repository<Reservation>().Query()
+        var reservationsToday = await _uow.Repository<Reservation>().QueryNoTracking()
             .CountAsync(r => r.Date == today && r.Status != ReservationStatus.Cancelled, ct);
 
-        var topRaw = await _uow.Repository<OrderItem>().Query()
-            .Where(i => i.Order.Status == OrderStatus.Paid)
+        // Bounded to the current month, like salesMonth above — an all-time scan of every paid
+        // order item ever sold would grow unbounded as order history accumulates.
+        var topRaw = await _uow.Repository<OrderItem>().QueryNoTracking()
+            .Where(i => i.Order.Status == OrderStatus.Paid && i.Order.CreatedAt >= monthStart)
             .GroupBy(i => i.Product.Name)
             .Select(g => new { Name = g.Key, Qty = g.Sum(i => i.Quantity), Revenue = g.Sum(i => i.UnitPrice * i.Quantity) })
             .OrderByDescending(x => x.Qty)

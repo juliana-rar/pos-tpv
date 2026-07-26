@@ -31,7 +31,7 @@ public class UserService : IUserService
 
     public async Task<List<UserDto>> GetAllAsync(CancellationToken ct = default)
     {
-        var users = await _uow.Repository<User>().Query()
+        var users = await _uow.Repository<User>().QueryNoTracking()
             .OrderBy(u => u.Role).ThenBy(u => u.FullName).ToListAsync(ct);
         return _mapper.Map<List<UserDto>>(users);
     }
@@ -73,18 +73,18 @@ public class UserService : IUserService
     {
         var entity = await _uow.Repository<User>().GetByIdAsync(id, ct);
         if (entity is null) return;
-        try
-        {
-            _uow.Repository<User>().Remove(entity);
-            await _uow.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException)
-        {
-            // The user has orders on record (Order.WaiterId is a Restrict FK) — deactivating
-            // instead of deleting keeps history intact and blocks further sign-ins.
+
+        // The user has orders on record (Order.WaiterId is a Restrict FK) — deactivating instead
+        // of deleting keeps history intact and blocks further sign-ins. Checked proactively (like
+        // TableService/CategoryService's equivalent "still referenced" guards) instead of relying
+        // on a caught DbUpdateException for expected business flow.
+        var hasOrders = await _uow.Repository<Order>().QueryNoTracking().AnyAsync(o => o.WaiterId == id, ct);
+        if (hasOrders)
             throw new InvalidOperationException(
                 "This user has orders on record and can't be deleted. Deactivate it instead.");
-        }
+
+        _uow.Repository<User>().Remove(entity);
+        await _uow.SaveChangesAsync(ct);
     }
 
     public async Task UnlockAsync(int id, CancellationToken ct = default)

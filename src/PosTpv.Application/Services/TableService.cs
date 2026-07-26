@@ -12,6 +12,10 @@ public interface ITableService
     Task<List<TableDto>> GetAllAsync(CancellationToken ct = default);
     Task<int> CreateAsync(TableFormDto form, CancellationToken ct = default);
     Task UpdateInfoAsync(TableFormDto form, CancellationToken ct = default);
+
+    /// <summary>Sets just a table's accent colour — the "paint" tool on the floor plan, so tapping
+    /// tables one after another doesn't need the full properties form open each time.</summary>
+    Task SetColorAsync(int id, string? color, CancellationToken ct = default);
     Task DeleteAsync(int id, CancellationToken ct = default);
     Task SaveLayoutAsync(IEnumerable<TableLayoutDto> layout, CancellationToken ct = default);
     Task JoinTablesAsync(IEnumerable<int> tableIds, string? groupName = null, CancellationToken ct = default);
@@ -35,10 +39,11 @@ public class TableService : ITableService
 
     public async Task<List<TableDto>> GetAllAsync(CancellationToken ct = default)
     {
-        var tables = await _uow.Repository<RestaurantTable>().Query()
+        var tables = await _uow.Repository<RestaurantTable>().QueryNoTracking()
+            .Where(t => !t.IsArchived)
             .OrderBy(t => t.Name).ToListAsync(ct);
 
-        var activeOrders = await _uow.Repository<Order>().Query()
+        var activeOrders = await _uow.Repository<Order>().QueryNoTracking()
             .Where(o => ActiveStatuses.Contains(o.Status))
             .Include(o => o.Items).ThenInclude(i => i.Extras)
             .ToListAsync(ct);
@@ -72,6 +77,8 @@ public class TableService : ITableService
             Shape = form.Shape,
             Zone = form.Zone,
             Color = form.Color,
+            Width = RestaurantTable.DefaultWidthForSeats(form.Seats),
+            Height = RestaurantTable.DefaultHeight,
         };
 
         // Land the new table near the middle of the floor plan instead of the top-left corner
@@ -101,6 +108,20 @@ public class TableService : ITableService
         await _uow.SaveChangesAsync(ct);
     }
 
+    public async Task SetColorAsync(int id, string? color, CancellationToken ct = default)
+    {
+        var entity = await _uow.Repository<RestaurantTable>().GetByIdAsync(id, ct);
+        if (entity is null) return;
+        entity.Color = color;
+        _uow.Repository<RestaurantTable>().Update(entity);
+        await _uow.SaveChangesAsync(ct);
+    }
+
+    // Archives rather than hard-deletes: Order.TableId is a Restrict FK, so physically removing
+    // a table row that has ever had an order (paid or not) would fail with a foreign-key
+    // violation and every past invoice/report referencing it would break. Archiving hides the
+    // table from the active list/floor plan (see GetAllAsync) while keeping its full order
+    // history intact.
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         var entity = await _uow.Repository<RestaurantTable>().GetByIdAsync(id, ct);
@@ -111,17 +132,26 @@ public class TableService : ITableService
         if (hasActive)
             throw new InvalidOperationException("Cannot delete a table with an open order.");
 
-        _uow.Repository<RestaurantTable>().Remove(entity);
+        entity.IsArchived = true;
+        entity.GroupId = null;
+        entity.GroupName = null;
+        _uow.Repository<RestaurantTable>().Update(entity);
         await _uow.SaveChangesAsync(ct);
     }
 
     public async Task SaveLayoutAsync(IEnumerable<TableLayoutDto> layout, CancellationToken ct = default)
     {
         var repo = _uow.Repository<RestaurantTable>();
-        foreach (var patch in layout)
+        var patches = layout.ToList();
+        var ids = patches.Select(p => p.Id).ToList();
+        // One round-trip for every dragged table instead of one GetByIdAsync per table — this
+        // fires on every floor-plan drag-drop save, so a busy floor with a dozen tables moved at
+        // once was previously a dozen sequential DB reads.
+        var entities = await repo.Query().Where(t => ids.Contains(t.Id)).ToDictionaryAsync(t => t.Id, ct);
+
+        foreach (var patch in patches)
         {
-            var entity = await repo.GetByIdAsync(patch.Id, ct);
-            if (entity is null) continue;
+            if (!entities.TryGetValue(patch.Id, out var entity)) continue;
             entity.PositionX = patch.PositionX;
             entity.PositionY = patch.PositionY;
             entity.Width = patch.Width;

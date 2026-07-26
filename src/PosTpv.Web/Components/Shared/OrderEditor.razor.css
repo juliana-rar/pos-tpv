@@ -12,6 +12,10 @@
     background: var(--background);
     animation: fade var(--transition);
 }
+/* FullScreen mode (see the FullScreen parameter): the caller's own page already covers the
+   navbar itself (a full-viewport takeover, e.g. /tables' expanded map), so leaving the usual
+   gap here would only reveal that page peeking through underneath instead of the nav. */
+.order-editor-page--full { bottom: 0; }
 /* No separate header bar any more (title/status/tick/close all live inside .order__head at the
    top of the order-detail panel itself), so the body — and the panel inside it — starts almost
    flush against the top of the page and can use its full height. No left padding either, so the
@@ -29,21 +33,74 @@
     background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); font-weight: 600;
 }
 
+/* Large-screen strip above the products/order-panel row: table + party size + open time on the
+   left, the Serve/Fire actions on the right — freeing the order panel below from having to
+   carry that row itself, so it's just the product lines. Hidden below the layout's stacking
+   breakpoint (see the @media block at the end of this file), where .order-card__actions--inline
+   takes over instead. Placed in .pos__main's grid (column 2, row 1) rather than spanning the
+   full page width, so it starts to the right of the category rail — which spans both rows —
+   instead of starting from the screen's left edge. Widened past its own grid cell (the width
+   calc bleeds across .editor__pos's column gap + resize-handle track + gap, both .3rem) so its
+   right edge actually touches the order panel's left edge instead of stopping short at the handle. */
+.editor__topbar {
+    grid-column: 2;
+    grid-row: 1;
+    width: calc(100% + 8px + .6rem);
+    display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+    padding: .75rem .7rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card);
+}
+.editor__topbar-meta { display: flex; align-items: center; gap: .4rem; min-width: 0; color: var(--text-soft); }
+.editor__topbar-title { font-weight: 800; color: var(--text); white-space: nowrap; }
+.editor__topbar-item { display: flex; align-items: center; gap: .25rem; white-space: nowrap; font-size: .85rem; }
+.editor__topbar-sep { opacity: .5; }
+/* Party size above the open time instead of both inline with the table title, since party size
+   is now just the icon + number (no "Party"/"Comensales" label). */
+.editor__topbar-stack { display: flex; flex-direction: column; gap: .1rem; }
+.editor__topbar-actions { display: flex; gap: .3rem; flex: none; }
+/* Stacked (Serve drinks above Fire seconds above Serve firsts) instead of side by side, only
+   in this large-screen topbar — the inline mobile copy (.order-card__actions--inline further
+   down) keeps its own horizontal row. */
+.editor__topbar-actions .order-card__actions-row { flex-direction: column; }
+.editor__topbar-actions .order-card__actions-row .btn { flex: none; }
+
 /* --- Same categories/products/order-panel layout and look as /pos, so editing a comanda
    here feels like the same screen instead of a stripped-down modal. --- */
 .editor__pos {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: 1fr minmax(280px, 21rem);
+    /* Order-panel width is user-adjustable (drag .pos__resize-handle) between a floor where
+       every line's controls still fit on one row and a generous ceiling — --order-w is set
+       inline by posOrderResize() in pos.js. */
+    grid-template-columns: 1fr 8px clamp(280px, var(--order-w, 21rem), 640px);
     gap: .3rem;
 }
-.pos__main { display: grid; grid-template-columns: 150px 1fr; gap: .35rem; min-height: 0; }
+.pos__resize-handle {
+    cursor: col-resize;
+    width: 8px;
+    position: relative;
+    z-index: 2;
+}
+.pos__resize-handle::after {
+    content: '';
+    position: absolute; top: 10%; bottom: 10%; left: 50%;
+    width: 3px; transform: translateX(-50%);
+    background: var(--border); border-radius: 3px;
+    transition: background var(--transition);
+}
+.pos__resize-handle:hover::after { background: var(--text-soft); }
+/* Row 1 is the topbar's height (auto), row 2 is products; the category rail spans both (see
+   .pos__cats) so it reads as one continuous column beside the topbar and the products below it. */
+.pos__main { display: grid; grid-template-columns: 150px 1fr; grid-template-rows: auto 1fr; gap: .35rem; min-height: 0; }
 
 /* Flush against the screen's left edge (see .order-editor-page__body's left padding), square
    corners, and no gap between buttons — reads as one continuous strip instead of separate
-   floating chips. */
-.pos__cats { display: flex; flex-direction: column; gap: 0; overflow-y: auto; }
+   floating chips. Spans both grid rows so it sits beside the topbar (row 1) and the products
+   (row 2) alike, instead of starting only below the topbar. */
+.pos__cats { grid-column: 1; grid-row: 1 / 3; display: flex; flex-direction: column; gap: 0; overflow-y: auto; }
 .cat {
     display: flex; flex-direction: row; align-items: center; gap: .4rem;
     flex: none;
@@ -73,7 +130,7 @@
 .cat__icon img { width: 100%; height: 100%; object-fit: cover; }
 .cat__name { font-size: .7rem; font-weight: 600; text-align: left; line-height: 1.15; white-space: nowrap; }
 
-.pos__products { display: flex; flex-direction: column; min-height: 0; }
+.pos__products { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; min-height: 0; }
 /* Always exactly 6 columns (not auto-fill) so cards stay a fixed, wider size regardless of
    how many products are in the category. */
 .product-grid {
@@ -132,24 +189,48 @@
     margin: 0 -1rem -1rem 0;
     border-radius: 0;
 }
-.order__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .25rem; }
+/* Thin rule under the title/tick row, spanning its full width, separating it from the order
+   lines below instead of the two blending together. */
+.order__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .25rem; padding-bottom: .4rem; border-bottom: 1px solid var(--border); }
 .order__head .badge { font-size: .54rem; padding: .08rem .35rem; }
-/* Table title reads as the panel's heading, so it's noticeably bigger than the status pill
-   next to it. */
-.order__head .badge--primary { font-size: .92rem; font-weight: 800; padding: .15rem .5rem; }
+/* Table title reads as the panel's heading, so it's a bit bigger than the status pill next to
+   it — but compact, not a full section title. */
+.order__head .badge--primary { font-size: .7rem; font-weight: 800; padding: .12rem .4rem; }
 /* Status sits right next to the table badge on the left, instead of drifting to the far side
    of the panel with the tick/close cluster. */
 .order__head-left { display: flex; align-items: center; gap: .35rem; }
 /* Confirm tick and close clustered together on the right, instead of sitting apart in the
    page's outer header. */
 .order__head-right { display: flex; align-items: center; gap: .35rem; }
-.order__head-right .btn--icon { width: 22px; height: 22px; padding: 0; }
-.order__head-right .btn--tick { font-size: .68rem; min-width: 1.7rem; padding: .12rem .4rem; }
+/* Close and confirm are both plain .btn--icon .btn--ghost now — same size, same gray "physical"
+   keycap depth (matching .order-card__head-right .btn--icon in OrderCard.razor.css: a raised
+   gradient chip with a glossy top edge and a pressed-in look on click) instead of the confirm
+   tick standing out in green, so the two read as one consistent control pair. */
+.order__head-right .btn--icon {
+    width: 32px; height: 32px; padding: 0;
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--card) 98%, white 2%), var(--card-2));
+    border: 1px solid var(--border);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .65) inset,
+        0 -4px 6px -4px color-mix(in srgb, var(--text) 25%, transparent) inset,
+        0 2px 5px rgba(0, 0, 0, .12);
+    transform: translateY(0);
+    transition: transform 110ms ease, background 110ms ease, box-shadow 110ms ease;
+}
+.order__head-right .btn--icon:active {
+    transform: translateY(1px);
+    background: color-mix(in srgb, var(--text) 20%, var(--card-2));
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, .3), inset 0 1px 2px rgba(0, 0, 0, .15);
+    transition-duration: 40ms;
+}
 
 /* Same Serve/Fire action row as the board card (.order-card__actions in OrderCard.razor.css),
    including its "physical" keycap button treatment — no min-height reservation here since
    this is a single full-page panel, not a card in a grid that needs to stay aligned with others. */
 .order-card__actions { flex: none; display: flex; flex-direction: column; gap: .3rem; margin-bottom: .3rem; }
+/* This copy lives inside the order panel and only shows up below the layout's stacking
+   breakpoint — above it, .editor__topbar carries these buttons instead (see @media block below). */
+.order-card__actions--inline { display: none; }
 /* Fire seconds sits next to Serve drinks on the same row instead of stacking below it. */
 .order-card__actions-row { display: flex; gap: .3rem; }
 .order-card__actions-row .btn { width: auto; flex: 1; min-width: 0; }
@@ -166,10 +247,28 @@
     text-overflow: ellipsis;
 }
 .order-card__actions .btn svg { flex: none; }
+/* Same label/icon sizing as above, but width stays auto — these sit in a horizontal row
+   (.editor__topbar-actions), not the vertical full-width stack .order-card__actions is for. */
+.editor__topbar-actions .btn {
+    gap: .5rem;
+    padding: .32rem .6rem;
+    font-size: .6rem;
+    font-weight: 700;
+    letter-spacing: .01em;
+    white-space: nowrap;
+}
+.editor__topbar-actions .btn svg { flex: none; }
 
+/* Same "physical" gray keycap treatment as the topbar's inline (mobile) twin further down and
+   the board card (.order-card__actions in OrderCard.razor.css) — the large-screen topbar copy
+   was missing it since its buttons sit under .editor__topbar-actions, not .order-card__actions,
+   so it fell back to the plain colored .btn--primary/.btn--ghost look instead of matching. */
 .order-card__actions .btn,
 .order-card__actions .btn--primary,
-.order-card__actions .btn--ghost {
+.order-card__actions .btn--ghost,
+.editor__topbar-actions .btn,
+.editor__topbar-actions .btn--primary,
+.editor__topbar-actions .btn--ghost {
     background: linear-gradient(to bottom, color-mix(in srgb, white 14%, var(--card)), var(--card-2) 70%);
     border: 1px solid var(--border);
     color: var(--text);
@@ -181,12 +280,15 @@
     transform: translateY(0);
     transition: transform 120ms cubic-bezier(.34, 1.56, .64, 1), background 120ms ease, box-shadow 120ms ease;
 }
-.order-card__actions .btn--ghost { color: var(--text-soft); }
-.order-card__actions .btn--ghost .lucide { opacity: .6; }
+.order-card__actions .btn--ghost, .editor__topbar-actions .btn--ghost { color: var(--text-soft); }
+.order-card__actions .btn--ghost .lucide, .editor__topbar-actions .btn--ghost .lucide { opacity: .6; }
 
 .order-card__actions .btn:hover,
 .order-card__actions .btn--primary:hover,
-.order-card__actions .btn--ghost:hover {
+.order-card__actions .btn--ghost:hover,
+.editor__topbar-actions .btn:hover,
+.editor__topbar-actions .btn--primary:hover,
+.editor__topbar-actions .btn--ghost:hover {
     background: linear-gradient(to bottom, color-mix(in srgb, white 18%, var(--card)), color-mix(in srgb, var(--card-2) 90%, black 6%) 70%);
     box-shadow:
         0 1px 0 rgba(255, 255, 255, .8) inset,
@@ -198,7 +300,10 @@
 
 .order-card__actions .btn:active,
 .order-card__actions .btn--primary:active,
-.order-card__actions .btn--ghost:active {
+.order-card__actions .btn--ghost:active,
+.editor__topbar-actions .btn:active,
+.editor__topbar-actions .btn--primary:active,
+.editor__topbar-actions .btn--ghost:active {
     background: color-mix(in srgb, var(--text) 24%, var(--card-2));
     transform: translateY(3px);
     box-shadow: inset 0 4px 9px rgba(0, 0, 0, .38), inset 0 1px 3px rgba(0, 0, 0, .22);
@@ -212,30 +317,8 @@
    course groups out of view (same pattern as .order__group-lines--scroll in Pos.razor.css). */
 .order__group-lines--scroll { max-height: 12.5rem; overflow-y: auto; padding-right: .2rem; }
 
-/* A batch already marked served gets the same green shaded frame as the board card (see
-   .order-card__drink-batch[data-served] in OrderCard.razor.css), so it's clear at a glance
-   which lines already went out while editing. */
-.order-card__drink-batch { display: flex; flex-direction: column; gap: .22rem; }
-.order-card__drink-batch[data-served="true"] {
-    background: color-mix(in srgb, var(--success) 8%, transparent);
-    border: 1px solid color-mix(in srgb, var(--success) 22%, transparent);
-    border-radius: .5rem;
-    padding: .3rem .4rem;
-}
-
-/* Every line — even a lone one — sits in this time bracket: the ordered-at minute on the
-   left with a connecting vertical bar, shared across any other lines ordered the same
-   minute. Always the bracket layout here, never an inline timestamp. */
-.order__time-group { display: flex; gap: .4rem; }
-.order__time-group-time {
-    flex: none;
-    display: flex; align-items: center; justify-content: center;
-    min-width: 1.7rem;
-    font-size: .68rem; font-weight: 700; color: var(--text-soft);
-    border-right: 2px solid var(--border);
-    padding-right: .4rem;
-}
-.order__time-group-items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
+/* .order-card__drink-batch (served-batch frame) and .order__time-group* (ordered-together
+   bracket) live in app.css — shared with OrderCard.razor, which renders the same patterns. */
 
 /* Course headers (Drinks/First/Second/Desserts) shown once the order reaches 5 lines — same
    convention as /pos and /orders. */
@@ -262,12 +345,12 @@
 .orderLine__comment { margin-top: .15rem; font-size: .7rem; font-style: italic; }
 .orderLine__extras { margin-top: .15rem; font-size: .68rem; font-weight: 600; }
 .order__totals { border-top: 1px solid var(--border); margin-top: auto; padding-top: .4rem; display: flex; flex-direction: column; gap: .5rem; }
-.order__grand { display: flex; justify-content: space-between; align-items: center; font-size: .92rem; font-weight: 800; }
+.order__grand { display: flex; justify-content: space-between; align-items: center; font-size: .74rem; font-weight: 800; }
 
 /* Invitación + Cobrar sit as one joined control spanning the full width of the order panel:
    Invitación keeps the rounded corner on its outer (left) edge, Cobrar on its outer (right)
    edge, flat where the two meet in the middle. */
-.order__grand-actions { display: flex; align-items: stretch; }
+.order__grand-actions { display: flex; align-items: stretch; width: 100%; }
 
 .orderLine__invited {
     flex: none;
@@ -278,36 +361,66 @@
     color: color-mix(in srgb, var(--warning) 60%, var(--text) 40%);
 }
 
-/* Flat, modern, neutral-gray CTAs — each takes half the panel's width so the pair always
-   spans it edge to edge, however wide the panel is. */
-.btn--invite, .btn--pay {
-    flex: 1;
-    display: flex; align-items: center; justify-content: center; gap: .4rem;
-    padding: .55rem .9rem;
+/* Per-line checkbox shown while Invitación is armed — a plain empty box, filled with a check
+   and the warning tint (matching .orderLine__invited above) once that line is marked invited. */
+.orderLine__invite-box {
+    flex: none;
+    display: grid; place-items: center;
+    width: 15px; height: 15px;
+    margin-left: .2rem;
+    padding: 0;
+    border-radius: 3px;
     border: 1px solid var(--border);
-    font-size: .82rem;
+    background: var(--card-2);
+    color: transparent;
+    cursor: pointer;
+}
+.orderLine__invite-box:first-child { margin-left: 0; }
+.orderLine__invite-box--on {
+    background: color-mix(in srgb, var(--warning) 22%, transparent);
+    border-color: color-mix(in srgb, var(--warning) 70%, var(--border));
+    color: color-mix(in srgb, var(--warning) 60%, var(--text) 40%);
+}
+
+/* Flat, modern, neutral-gray CTAs — each takes a third of the panel's width so the trio
+   always spans it edge to edge, however wide the panel is. */
+.btn--delete, .btn--invite, .btn--pay {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center; gap: .3rem;
+    padding: .4rem .6rem;
+    border: 1px solid var(--border);
+    font-size: .7rem;
     font-weight: 700;
     color: var(--text);
     background: var(--card-2);
     cursor: pointer;
     transition: background 120ms ease, color 120ms ease, transform 80ms ease;
 }
-.btn--invite:disabled, .btn--pay:disabled { opacity: .5; cursor: default; }
+.btn--delete:disabled, .btn--invite:disabled, .btn--pay:disabled { opacity: .5; cursor: default; }
 
-.btn--invite { border-radius: var(--radius-sm) 0 0 var(--radius-sm); border-right: none; }
+.btn--delete { border-radius: var(--radius-sm) 0 0 var(--radius-sm); border-right: none; }
+.btn--invite { border-radius: 0; border-right: none; }
 .btn--pay { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 
-.btn--invite:hover:not(:disabled), .btn--pay:hover:not(:disabled) { background: var(--border); }
-.btn--invite:active:not(:disabled), .btn--pay:active:not(:disabled) { transform: scale(.98); transition-duration: 40ms; }
-.btn--invite-active { background: var(--text-soft); color: var(--card); }
+.btn--delete:hover:not(:disabled), .btn--invite:hover:not(:disabled), .btn--pay:hover:not(:disabled) { background: var(--border); }
+.btn--delete:active:not(:disabled), .btn--invite:active:not(:disabled), .btn--pay:active:not(:disabled) { transform: scale(.98); transition-duration: 40ms; }
+.btn--delete-active, .btn--invite-active { background: var(--text-soft); color: var(--card); }
 
 @media (max-width: 1100px) {
     .editor__pos { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
     .pos__order { max-height: 46vh; }
+    /* Stacked layout — nothing to drag left/right any more. */
+    .pos__resize-handle { display: none; }
+    /* No room for a bar above the stacked columns — the actions move back inside the order panel. */
+    .editor__topbar { display: none; }
+    .order-card__actions--inline { display: flex; }
 }
 @media (max-width: 640px) {
     .pos__main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-    .pos__cats { flex-direction: row; overflow-x: auto; }
+    /* Single column now, so cats/products go back to stacking top-to-bottom instead of the
+       2-column placement used above 640px (.editor__topbar is already hidden below 1100px). */
+    .pos__cats { grid-column: 1; grid-row: 1; flex-direction: row; overflow-x: auto; }
+    .pos__products { grid-column: 1; grid-row: 2; }
     .product-grid { grid-template-columns: repeat(3, 1fr); }
 }
 

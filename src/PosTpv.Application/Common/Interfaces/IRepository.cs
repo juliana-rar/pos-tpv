@@ -6,6 +6,9 @@ namespace PosTpv.Application.Common.Interfaces;
 public interface IRepository<T> where T : BaseEntity
 {
     IQueryable<T> Query();
+
+    /// <summary>Read-only query with EF Core change tracking disabled. Use for data that is only displayed, never mutated and saved.</summary>
+    IQueryable<T> QueryNoTracking();
     Task<T?> GetByIdAsync(int id, CancellationToken ct = default);
     Task AddAsync(T entity, CancellationToken ct = default);
     void Update(T entity);

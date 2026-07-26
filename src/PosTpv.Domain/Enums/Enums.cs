@@ -89,3 +89,23 @@ public enum PaymentMethod
     Card = 1,
     Other = 2
 }
+
+/// <summary>
+/// Non-table decoration/architecture element placed on the floor map — either a decorative plant
+/// or an interior-design element (wall, door, bar, column, window) used to sketch the room's real
+/// layout instead of a bare grid of tables.
+/// </summary>
+public enum FloorDecorType
+{
+    PottedPlant = 0,
+    SmallPlant = 1,
+    HangingPlant = 2,
+    Wall = 3,
+    Door = 4,
+    BarCounter = 5,
+    Column = 6,
+    Window = 7,
+    Bush = 8,
+    SmallTree = 9,
+    Fern = 10
+}

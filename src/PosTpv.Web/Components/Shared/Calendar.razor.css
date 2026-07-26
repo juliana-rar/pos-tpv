@@ -1,13 +1,19 @@
-.cal { display: flex; flex-direction: column; gap: .5rem; max-width: 320px; margin: 0 auto; }
+.cal { display: flex; flex-direction: column; gap: .25rem; max-width: 320px; margin: 0 auto; }
 
 .cal__head { display: flex; align-items: center; justify-content: space-between; }
-.cal__title { font-weight: 800; font-size: .9rem; text-transform: capitalize; }
+.cal__title { font-weight: 800; font-size: .85rem; text-transform: capitalize; }
+/* Compact nav arrows — the shared .btn--icon size (38x38, .5rem padding) is meant for
+   standalone toolbar buttons and reads as oversized next to this small "Month Year" title. */
+.cal__head .btn--icon {
+    width: 24px; height: 24px;
+    padding: .2rem;
+}
 
 .cal__weekdays, .cal__days { display: grid; grid-template-columns: repeat(7, 1fr); gap: .2rem; }
 .cal__weekdays span { text-align: center; font-size: .68rem; font-weight: 700; color: var(--text-soft); padding: .2rem 0; }
 
 .cal__day {
-    aspect-ratio: 1;
+    height: 30px;
     display: flex; align-items: center; justify-content: center;
     border: 1px solid transparent; border-radius: var(--radius-sm);
     background: var(--card); color: var(--text);

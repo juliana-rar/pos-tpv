@@ -19,6 +19,8 @@ public class PosDbContext : DbContext
     public DbSet<Extra> Extras => Set<Extra>();
     public DbSet<Allergen> Allergens => Set<Allergen>();
     public DbSet<RestaurantTable> Tables => Set<RestaurantTable>();
+    public DbSet<FloorDecor> FloorDecors => Set<FloorDecor>();
+    public DbSet<FloorZone> FloorZones => Set<FloorZone>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Order> Orders => Set<Order>();
@@ -88,6 +90,12 @@ public class PosDbContext : DbContext
             e.HasIndex(x => x.GroupId);
         });
 
+        b.Entity<FloorZone>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(60).IsRequired();
+            e.Property(x => x.Color).HasMaxLength(9);
+        });
+
         b.Entity<Reservation>(e =>
         {
             e.Property(x => x.CustomerName).HasMaxLength(120).IsRequired();
@@ -118,6 +126,9 @@ public class PosDbContext : DbContext
             e.Ignore(x => x.Subtotal);
             e.Ignore(x => x.VatTotal);
             e.Ignore(x => x.Total);
+            // Both are filtered on every open-orders/kitchen/dashboard load.
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.CreatedAt);
         });
 
         b.Entity<OrderItem>(e =>
@@ -152,6 +163,8 @@ public class PosDbContext : DbContext
             e.Property(x => x.Total).HasPrecision(10, 2);
             e.HasOne(x => x.Order).WithOne(o => o.Invoice)
                 .HasForeignKey<Invoice>(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
+            // Filtered by date range in the billing report and by the dashboard's daily/monthly totals.
+            e.HasIndex(x => x.CreatedAt);
         });
 
         b.Entity<Payment>(e =>
@@ -165,6 +178,7 @@ public class PosDbContext : DbContext
         {
             e.Property(x => x.Title).HasMaxLength(80).IsRequired();
             e.Property(x => x.FloorTexture).HasMaxLength(20).IsRequired();
+            e.Property(x => x.ReservationPolicy).HasMaxLength(20).IsRequired();
         });
     }
 

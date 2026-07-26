@@ -159,8 +159,12 @@
 
 /* --- Right: order panel --- */
 .pos__order { display: flex; flex-direction: column; min-height: 0; padding: .5rem .6rem; }
-.order__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .25rem; }
+/* Same thin rule under the title/actions row as the order editor (OrderEditor.razor.css's
+   .order__head), separating it from the order lines below instead of the two blending together —
+   and the same compact title size, rather than the bigger default .badge--primary. */
+.order__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .25rem; padding-bottom: .4rem; border-bottom: 1px solid var(--border); }
 .order__head h2 { margin: 0; }
+.order__head .badge--primary { font-size: .7rem; font-weight: 800; padding: .12rem .4rem; }
 .order__head-right { display: flex; align-items: center; gap: .4rem; }
 
 /* Realistic "physical" keycap button, same as .order-card__head-right .btn--icon in
@@ -305,7 +309,7 @@
    push to stay pinned at the card's bottom edge rather than trailing right after a short list. */
 .order__totals { border-top: 1px solid var(--border); margin-top: auto; padding-top: .25rem; display: grid; gap: .15rem; }
 .order__totals > div { display: flex; justify-content: space-between; align-items: center; color: var(--text-soft); font-size: .82rem; }
-.order__grand { font-size: .92rem; font-weight: 800; color: var(--text) !important; }
+.order__grand { font-size: .74rem; font-weight: 800; color: var(--text) !important; }
 .order__grand-right { display: flex; align-items: center; gap: .6rem; }
 
 .order__pay { position: relative; }

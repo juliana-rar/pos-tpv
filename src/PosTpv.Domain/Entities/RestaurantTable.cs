@@ -21,10 +21,17 @@ public class RestaurantTable : BaseEntity
     // Floor-map geometry (pixels on the plan canvas).
     public double PositionX { get; set; }
     public double PositionY { get; set; }
-    public double Width { get; set; } = 90;
-    public double Height { get; set; } = 90;
+    public double Width { get; set; } = 70;
+    public double Height { get; set; } = 70;
     public double Rotation { get; set; }
     public bool IsLocked { get; set; }
+
+    /// <summary>
+    /// True once the table has been "deleted" from the floor plan. Kept as a row (never hard-deleted)
+    /// because Order.TableId is a Restrict FK — removing the row would break every past order/invoice
+    /// that references it. Archived tables are excluded from the active table list and floor plan.
+    /// </summary>
+    public bool IsArchived { get; set; }
 
     /// <summary>
     /// Tables sharing a non-null GroupId are joined and served as one unit with a single order.
@@ -47,4 +54,18 @@ public class RestaurantTable : BaseEntity
 
     public ICollection<Order> Orders { get; set; } = new List<Order>();
     public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+
+    /// <summary>Fixed default depth for every table regardless of seat count — extra seats make a
+    /// table wider (like two 4-tops pushed end to end), not taller, matching how an actual
+    /// multi-seat table is put together.</summary>
+    public const double DefaultHeight = 70;
+
+    /// <summary>
+    /// Default floor-plan width for a table with the given seat count, so a bigger table visibly
+    /// reads as bigger instead of every table using the same box regardless of capacity.
+    /// Calibrated so a 6-seat table is exactly double the width of the 4-seat baseline (70),
+    /// linearly beyond that; floored at 50 (the smallest size the floor-plan editor allows) so a
+    /// 1-2 seat table doesn't shrink to nothing.
+    /// </summary>
+    public static double DefaultWidthForSeats(int seats) => Math.Max(50, 70 + 35.0 * (seats - 4));
 }

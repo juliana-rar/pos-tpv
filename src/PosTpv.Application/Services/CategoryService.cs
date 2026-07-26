@@ -1,5 +1,6 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using PosTpv.Application.Common;
 using PosTpv.Application.Common.Interfaces;
 using PosTpv.Application.DTOs;
 using PosTpv.Domain.Entities;
@@ -92,16 +93,8 @@ public class CategoryService : ICategoryService
         var repo = _uow.Repository<Category>();
         var ordered = await repo.Query().OrderBy(c => c.DisplayOrder).ThenBy(c => c.Name).ToListAsync(ct);
 
-        var index = ordered.FindIndex(c => c.Id == id);
-        var target = index + Math.Sign(direction);
-        if (index < 0 || target < 0 || target >= ordered.Count) return;
-
-        // Reindex sequentially first so the swap moves the row even when orders collide (e.g. all 0).
-        for (var i = 0; i < ordered.Count; i++) ordered[i].DisplayOrder = i;
-        (ordered[index].DisplayOrder, ordered[target].DisplayOrder) = (target, index);
-        repo.Update(ordered[index]);
-        repo.Update(ordered[target]);
-        await _uow.SaveChangesAsync(ct);
+        if (ReorderHelper.TrySwap(repo, ordered, id, direction))
+            await _uow.SaveChangesAsync(ct);
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
@@ -110,7 +103,7 @@ public class CategoryService : ICategoryService
         var entity = await repo.GetByIdAsync(id, ct);
         if (entity is null) return;
 
-        var hasProducts = await _uow.Repository<Product>().Query().AnyAsync(p => p.CategoryId == id, ct);
+        var hasProducts = await _uow.Repository<Product>().QueryNoTracking().AnyAsync(p => p.CategoryId == id, ct);
         if (hasProducts)
             throw new InvalidOperationException("Cannot delete a category that still has products.");
 
@@ -166,14 +159,7 @@ public class CategoryService : ICategoryService
             .OrderBy(c => c.DisplayOrder).ThenBy(c => c.Id)
             .ToListAsync(ct);
 
-        var index = ordered.FindIndex(c => c.Id == id);
-        var target = index + Math.Sign(direction);
-        if (index < 0 || target < 0 || target >= ordered.Count) return;
-
-        for (var i = 0; i < ordered.Count; i++) ordered[i].DisplayOrder = i;
-        (ordered[index].DisplayOrder, ordered[target].DisplayOrder) = (target, index);
-        repo.Update(ordered[index]);
-        repo.Update(ordered[target]);
-        await _uow.SaveChangesAsync(ct);
+        if (ReorderHelper.TrySwap(repo, ordered, id, direction))
+            await _uow.SaveChangesAsync(ct);
     }
 }

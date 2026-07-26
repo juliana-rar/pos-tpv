@@ -1,5 +1,6 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using PosTpv.Application.Common;
 using PosTpv.Application.Common.Interfaces;
 using PosTpv.Application.DTOs;
 using PosTpv.Domain.Entities;
@@ -41,7 +42,7 @@ public class ProductService : IProductService
 
     public async Task<List<ProductDto>> GetAllAsync(CancellationToken ct = default)
     {
-        var list = await _uow.Repository<Product>().Query()
+        var list = await _uow.Repository<Product>().QueryNoTracking()
             .Include(p => p.Category)
             .Include(p => p.Extras)
             .Include(p => p.Allergens)
@@ -52,7 +53,7 @@ public class ProductService : IProductService
 
     public async Task<List<ProductDto>> GetByCategoryAsync(int categoryId, bool onlyAvailable = false, bool includeHidden = false, CancellationToken ct = default)
     {
-        var query = _uow.Repository<Product>().Query()
+        var query = _uow.Repository<Product>().QueryNoTracking()
             .Include(p => p.Category)
             .Include(p => p.Extras)
             .Include(p => p.Allergens)
@@ -65,7 +66,7 @@ public class ProductService : IProductService
 
     public async Task<List<ExtraDto>> GetExtrasAsync(int productId, CancellationToken ct = default)
     {
-        var product = await _uow.Repository<Product>().Query()
+        var product = await _uow.Repository<Product>().QueryNoTracking()
             .Include(p => p.Extras)
             .FirstOrDefaultAsync(p => p.Id == productId, ct);
 
@@ -77,7 +78,7 @@ public class ProductService : IProductService
 
     public async Task<ProductFormDto?> GetForEditAsync(int id, CancellationToken ct = default)
     {
-        var entity = await _uow.Repository<Product>().Query()
+        var entity = await _uow.Repository<Product>().QueryNoTracking()
             .Include(p => p.Allergens)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
         return entity is null ? null : _mapper.Map<ProductFormDto>(entity);
@@ -124,7 +125,7 @@ public class ProductService : IProductService
     public async Task<int> DuplicateAsync(int id, CancellationToken ct = default)
     {
         var repo = _uow.Repository<Product>();
-        var source = await repo.Query().Include(p => p.Extras).Include(p => p.Allergens).FirstOrDefaultAsync(p => p.Id == id, ct)
+        var source = await repo.QueryNoTracking().Include(p => p.Extras).Include(p => p.Allergens).FirstOrDefaultAsync(p => p.Id == id, ct)
             ?? throw new KeyNotFoundException($"Product {id} not found.");
 
         var nextOrder = await repo.Query()
@@ -166,16 +167,8 @@ public class ProductService : IProductService
             .OrderBy(p => p.DisplayOrder).ThenBy(p => p.Name)
             .ToListAsync(ct);
 
-        var index = siblings.FindIndex(p => p.Id == id);
-        var swapWith = index + Math.Sign(direction);
-        if (index < 0 || swapWith < 0 || swapWith >= siblings.Count) return;
-
-        // Reindex sequentially first so the swap moves the row even when orders collide (e.g. all 0).
-        for (var i = 0; i < siblings.Count; i++) siblings[i].DisplayOrder = i;
-        (siblings[index].DisplayOrder, siblings[swapWith].DisplayOrder) = (swapWith, index);
-        repo.Update(siblings[index]);
-        repo.Update(siblings[swapWith]);
-        await _uow.SaveChangesAsync(ct);
+        if (ReorderHelper.TrySwap(repo, siblings, id, direction))
+            await _uow.SaveChangesAsync(ct);
     }
 
     public async Task SetCategoryAsync(int id, int categoryId, CancellationToken ct = default)

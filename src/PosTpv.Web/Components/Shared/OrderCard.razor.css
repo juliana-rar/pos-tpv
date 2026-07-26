@@ -20,30 +20,8 @@
 .order-card__lines--scroll { max-height: 13rem; overflow-y: auto; padding-right: .3rem; }
 .order-card__line { min-height: 1.6rem; display: flex; justify-content: space-between; font-size: .9rem; }
 .order-card__time { font-size: .72rem; color: var(--text-soft); font-weight: 400; }
-/* One badge per serve batch: lines served together get a shared tinted frame instead of
-   a repeated badge per line, so it reads as "these came out together". */
-.order-card__drink-batch { display: flex; flex-direction: column; gap: .15rem; }
-.order-card__drink-batch[data-served="true"] {
-    background: color-mix(in srgb, var(--success) 8%, transparent);
-    border: 1px solid color-mix(in srgb, var(--success) 22%, transparent);
-    border-radius: .5rem;
-    padding: .3rem .5rem;
-}
-.order-card__drink-batch[data-served="true"] .badge { align-self: flex-start; margin-top: .2rem; }
-
-/* Lines ordered in the same minute share one timestamp behind a connecting bracket instead of
-   repeating it per line — mirrors the served-batch frame above, but for "these were ordered
-   together" rather than "these came out together". */
-.order-card__time-group { display: flex; gap: .4rem; }
-.order-card__time-group-time {
-    flex: none;
-    display: flex; align-items: center; justify-content: center;
-    min-width: 1.7rem;
-    font-size: .68rem; font-weight: 700; color: var(--text-soft);
-    border-right: 2px solid var(--border);
-    padding-right: .4rem;
-}
-.order-card__time-group-items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .15rem; }
+/* .order-card__drink-batch and .order-card__time-group* (served-batch frame / ordered-together
+   bracket) live in app.css — shared with OrderEditor.razor, which renders the same patterns. */
 .badge--btn { border: none; cursor: pointer; transition: filter .15s; }
 .badge--btn:hover { filter: brightness(0.9); }
 /* Reserves the height of the typical action rows (Serve drinks / Serve firsts / Fire

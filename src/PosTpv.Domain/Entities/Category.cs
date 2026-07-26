@@ -4,7 +4,7 @@ using PosTpv.Domain.Enums;
 namespace PosTpv.Domain.Entities;
 
 /// <summary>Product grouping shown in the left rail of the POS (Drinks, Pizzas, ...).</summary>
-public class Category : BaseEntity
+public class Category : BaseEntity, IOrderable
 {
     public string Name { get; set; } = string.Empty;
 

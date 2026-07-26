@@ -125,13 +125,18 @@ public class DbSeeder : IDbSeeder
             {
                 var col = (i - 1) % 4;
                 var row = (i - 1) / 4;
+                var seats = i % 3 == 0 ? 6 : 4;
                 _db.Tables.Add(new RestaurantTable
                 {
                     Name = $"T{i}",
-                    Seats = i % 3 == 0 ? 6 : 4,
+                    Seats = seats,
                     Shape = i % 4 == 0 ? TableShape.Round : TableShape.Square,
-                    PositionX = 40 + col * 170,
-                    PositionY = 40 + row * 170,
+                    Width = RestaurantTable.DefaultWidthForSeats(seats),
+                    Height = RestaurantTable.DefaultHeight,
+                    // 220px pitch leaves enough clearance for neighbouring tables' chairs not to
+                    // visually touch even for the wider, double-width 6-seat tables in this grid.
+                    PositionX = 40 + col * 220,
+                    PositionY = 40 + row * 220,
                     Zone = i >= 7 ? "Bar" : "Main hall",
                 });
             }

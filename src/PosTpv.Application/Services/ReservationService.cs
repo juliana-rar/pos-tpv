@@ -1,5 +1,6 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using PosTpv.Application.Common.Interfaces;
 using PosTpv.Application.DTOs;
 using PosTpv.Domain.Entities;
@@ -29,20 +30,26 @@ public class ReservationService : IReservationService
     private readonly IUnitOfWork _uow;
     private readonly IMapper _mapper;
     private readonly ITableService _tableService;
+    private readonly ILogger<ReservationService> _logger;
 
-    public ReservationService(IUnitOfWork uow, IMapper mapper, ITableService tableService)
+    public ReservationService(IUnitOfWork uow, IMapper mapper, ITableService tableService, ILogger<ReservationService> logger)
     {
         _uow = uow;
         _mapper = mapper;
         _tableService = tableService;
+        _logger = logger;
     }
 
     private IQueryable<Reservation> WithTable() =>
         _uow.Repository<Reservation>().Query().Include(r => r.Tables);
 
+    /// <summary>Same shape as <see cref="WithTable"/> but untracked — for endpoints that only ever return a DTO.</summary>
+    private IQueryable<Reservation> WithTableReadOnly() =>
+        _uow.Repository<Reservation>().QueryNoTracking().Include(r => r.Tables);
+
     public async Task<List<ReservationDto>> GetByDateAsync(DateTime date, CancellationToken ct = default)
     {
-        var list = await WithTable()
+        var list = await WithTableReadOnly()
             .Where(r => r.Date == date.Date)
             .OrderBy(r => r.Time).ToListAsync(ct);
         return _mapper.Map<List<ReservationDto>>(list);
@@ -50,7 +57,7 @@ public class ReservationService : IReservationService
 
     public async Task<List<ReservationDto>> GetUpcomingAsync(CancellationToken ct = default)
     {
-        var list = await WithTable()
+        var list = await WithTableReadOnly()
             .Where(r => r.Date >= DateTime.Today && r.Status != ReservationStatus.Cancelled)
             .OrderBy(r => r.Date).ThenBy(r => r.Time).ToListAsync(ct);
         return _mapper.Map<List<ReservationDto>>(list);
@@ -58,14 +65,14 @@ public class ReservationService : IReservationService
 
     public async Task<List<ReservationDto>> GetAllAsync(CancellationToken ct = default)
     {
-        var list = await WithTable()
+        var list = await WithTableReadOnly()
             .OrderByDescending(r => r.Date).ThenByDescending(r => r.Time).ToListAsync(ct);
         return _mapper.Map<List<ReservationDto>>(list);
     }
 
     public async Task<ReservationFormDto?> GetForEditAsync(int id, CancellationToken ct = default)
     {
-        var entity = await WithTable().FirstOrDefaultAsync(r => r.Id == id, ct);
+        var entity = await WithTableReadOnly().FirstOrDefaultAsync(r => r.Id == id, ct);
         return entity is null ? null : _mapper.Map<ReservationFormDto>(entity);
     }
 
@@ -131,7 +138,12 @@ public class ReservationService : IReservationService
         var tableIds = entity.Tables.Select(t => t.Id).ToList();
         if (tableIds.Count < 2) return;
         try { await _tableService.JoinTablesAsync(tableIds, ct: ct); }
-        catch (InvalidOperationException) { /* e.g. a member table has an open order — leave grouping to the user */ }
+        catch (InvalidOperationException ex)
+        {
+            // e.g. a member table has an open order — leave grouping to the user, but log it so a
+            // failed auto-join isn't completely silent (the reservation itself still saves fine).
+            _logger.LogWarning(ex, "Auto-join skipped for reservation {ReservationId}: {Reason}", entity.Id, ex.Message);
+        }
     }
 
     public async Task SetStatusAsync(int id, ReservationStatus status, CancellationToken ct = default)
@@ -169,13 +181,23 @@ public class ReservationService : IReservationService
     // is left untouched and is only cleared on full payment, in OrderService).
     private async Task ReleaseTablesIfFreeAsync(Reservation reservation, CancellationToken ct)
     {
-        foreach (var table in reservation.Tables.Where(t => t.Status == TableStatus.Reserved))
+        var reservedTables = reservation.Tables.Where(t => t.Status == TableStatus.Reserved).ToList();
+        if (reservedTables.Count == 0) return;
+
+        var tableIds = reservedTables.Select(t => t.Id).ToList();
+        // Single batched lookup instead of one "is this table still claimed?" query per table.
+        var stillNeededTableIds = await _uow.Repository<Reservation>().QueryNoTracking()
+            .Where(r => r.Id != reservation.Id
+                        && r.Status != ReservationStatus.Finished && r.Status != ReservationStatus.Cancelled
+                        && r.Tables.Any(t => tableIds.Contains(t.Id)))
+            .SelectMany(r => r.Tables.Select(t => t.Id))
+            .Where(id => tableIds.Contains(id))
+            .Distinct()
+            .ToListAsync(ct);
+
+        foreach (var table in reservedTables)
         {
-            var stillNeeded = await _uow.Repository<Reservation>().Query().AnyAsync(r =>
-                r.Id != reservation.Id &&
-                r.Tables.Any(t2 => t2.Id == table.Id) &&
-                r.Status != ReservationStatus.Finished && r.Status != ReservationStatus.Cancelled, ct);
-            if (!stillNeeded)
+            if (!stillNeededTableIds.Contains(table.Id))
             {
                 table.Status = TableStatus.Available;
                 _uow.Repository<RestaurantTable>().Update(table);

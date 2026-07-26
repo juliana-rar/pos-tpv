@@ -1,6 +1,6 @@
 namespace PosTpv.Application.DTOs;
 
-public record AppSettingsDto(string Title, TimeOnly LunchStart, TimeOnly LunchEnd, TimeOnly DinnerStart, TimeOnly DinnerEnd, string FloorTexture);
+public record AppSettingsDto(string Title, TimeOnly LunchStart, TimeOnly LunchEnd, TimeOnly DinnerStart, TimeOnly DinnerEnd, string FloorTexture, string ReservationPolicy);
 
 public class AppSettingsFormDto
 {
@@ -10,6 +10,7 @@ public class AppSettingsFormDto
     public TimeOnly DinnerStart { get; set; } = new(20, 0);
     public TimeOnly DinnerEnd { get; set; } = new(23, 30);
     public string FloorTexture { get; set; } = "grid";
+    public string ReservationPolicy { get; set; } = "open";
 }
 
 /// <summary>Current-service-period lookup shared by the dashboard badge and the reservation

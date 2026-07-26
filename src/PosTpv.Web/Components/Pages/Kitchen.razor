@@ -17,7 +17,7 @@
     <div class="orders-quicknav__chips @(_chipsExpanded ? "orders-quicknav__chips--expanded" : "")">
         @foreach (var o in Filtered)
         {
-            <button class="orders-quicknav__chip" data-status="@o.Status.ToString().ToLower()"
+            <button @key="o.Id" class="orders-quicknav__chip" data-status="@o.Status.ToString().ToLower()"
                     title="@o.TableName · @Loc.T(o.Status.ToString())" @onclick="() => JumpToTicket(o.Id)" type="button">
                 <span class="orders-quicknav__chip-name">@o.TableName</span>
             </button>
@@ -66,7 +66,7 @@
                     }
                 </div>
             }
-            <input class="input" style="max-width:130px" placeholder="@Loc.T("Search table…")" @bind="_tableSearch" @bind:event="oninput" />
+            <input class="input" style="max-width:130px" placeholder="@Loc.T("Search table…")" @bind="_tableSearch" @bind:event="oninput" @bind:after="RefreshCaches" />
         }
         <button class="btn btn--icon btn--ghost" title="@Loc.T("Refresh")" @onclick="Reload"><LucideIcon Name="rotate-cw" Size="16" /></button>
         <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost")" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters">
@@ -89,101 +89,11 @@ else
     <div class="kds">
         @foreach (var o in Filtered)
         {
-            <div id="ticket-@o.Id" class="ticket @(o.SecondsFiredAt is null ? "" : "ticket--seconds")">
-                <div class="ticket__head">
-                    <span class="ticket__table"><LucideIcon Name="armchair" Size="16" /> @o.TableName</span>
-                    <span class="badge ticket__status">@TicketStatusLabel(o.Status)</span>
-                    <span class="spacer"></span>
-                    <span class="ticket__time">@o.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
-                </div>
-
-                <div class="ticket__fired-row">
-                    <button type="button" class="btn btn--sm btn--ghost ticket__fired @(o.SecondsSentAt is null ? "ticket__fired--empty" : "")"
-                            title="@(o.SecondsSentAt is null ? Loc.T("Click to mark as fired") : Loc.T("Click to mark as not fired"))" @onclick="() => ToggleSeconds(o)">
-                        <LucideIcon Name="bell" Size="14" />
-                        @Loc.T("Seconds prepared")@(o.SecondsSentAt is { } secondsAt ? $" · {secondsAt.ToLocalTime():HH:mm}" : "")
-                    </button>
-                </div>
-
-                @if (o.SecondsFiredAt is not null)
-                {
-                    <div class="ticket__fire">
-                        <span class="ticket__fire-label"><LucideIcon Name="bell" Size="15" /> @Loc.T("Fire second courses")</span>
-                        <button class="btn btn--icon" title="@Loc.T("Got it")"
-                                @onclick="() => AcknowledgeSeconds(o)"><LucideIcon Name="check" Size="18" /></button>
-                    </div>
-                }
-
-                @{
-                    var food = o.Items.Where(i => !i.IsDrink && i.Status != OrderItemStatus.Delivered).ToList();
-                    // Same course grouping/labels as the waiter's OrderCard (First course /
-                    // Second course / Desserts), so the kitchen sees the same vocabulary.
-                    var groups = new List<(string Icon, string Label, List<OrderItemDto> Items)>
-                    {
-                        ("salad", "First course", food.Where(i => i.Course == CourseType.Starter).ToList()),
-                        ("utensils", "Second course", food.Where(i => i.Course == CourseType.Main).ToList()),
-                        ("cake-slice", "Desserts", food.Where(i => i.Course == CourseType.Dessert).ToList()),
-                    }.Where(g => g.Items.Count > 0).ToList();
-                    var allFoodReady = food.Count > 0 && food.All(i => i.Status == OrderItemStatus.Ready);
-                }
-
-                <div class="ticket__items">
-                    @foreach (var group in groups)
-                    {
-                        <div class="ticket__group"><LucideIcon Name="@group.Icon" Size="14" /> @Loc.T(group.Label)</div>
-                        @* Same ordered-together bracket as /orders (OrderCard.razor's GroupByOrderTime): items tapped
-                           in the same minute share one timestamp behind a connecting bar instead of repeating it. *@
-                        @foreach (var timeGroup in GroupByOrderTime(group.Items))
-                        {
-                            <div class="ticket__time-group">
-                                <span class="ticket__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
-                                <div class="ticket__time-group-items">
-                                    @foreach (var it in timeGroup.Items)
-                                    {
-                                        <div class="kitem kitem--@it.Status.ToString().ToLower()">
-                                            <div class="kitem__row">
-                                                <span class="kitem__qty">@it.Quantity×</span>
-                                                <span class="kitem__name">@it.ProductName</span>
-                                                <span class="spacer"></span>
-                                                @if (it.Status == OrderItemStatus.Preparing)
-                                                {
-                                                    <button class="btn btn--icon btn--success" title="@Loc.T("Ready")"
-                                                            @onclick="() => SetItem(it.Id, OrderItemStatus.Ready)"><LucideIcon Name="arrow-right" Size="18" /></button>
-                                                }
-                                                else
-                                                {
-                                                    <LucideIcon Name="check" Size="16" />
-                                                }
-                                            </div>
-                                            @if (it.Extras.Count > 0)
-                                            {
-                                                <div class="kitem__extras">＋ @string.Join(", ", it.Extras.Select(e => e.Name))</div>
-                                            }
-                                            @if (!string.IsNullOrWhiteSpace(it.Comment))
-                                            {
-                                                <div class="kitem__comment"><LucideIcon Name="triangle-alert" Size="14" /> @it.Comment</div>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        }
-                    }
-                </div>
-
-                @if (food.Count > 0)
-                {
-                    <div class="ticket__foot">
-                        <button class="btn btn--ghost btn--block" title="@(allFoodReady ? Loc.T("Click to undo") : null)" @onclick="() => ToggleAllReady(o)">
-                            @if (allFoodReady)
-                            {
-                                <LucideIcon Name="check" Size="16" />
-                            }
-                            @(allFoodReady ? Loc.T("All ready") : Loc.T("Mark all ready"))
-                        </button>
-                    </div>
-                }
-            </div>
+            <KitchenTicket @key="o.Id" Order="o"
+                           OnSetItem="args => SetItem(args.OrderId, args.ItemId, args.Status)"
+                           OnToggleAllReady="ToggleAllReady"
+                           OnAcknowledgeSeconds="AcknowledgeSeconds"
+                           OnToggleSeconds="ToggleSeconds" />
         }
     </div>
 }
@@ -197,13 +107,13 @@ else
     private OrderStatus? _statusFilterValue;
     private bool _statusMenuOpen;
     private void ToggleStatusMenu() => _statusMenuOpen = !_statusMenuOpen;
-    private void ChooseStatusFilter(OrderStatus? value) { _statusFilterValue = value; _statusMenuOpen = false; }
+    private void ChooseStatusFilter(OrderStatus? value) { _statusFilterValue = value; _statusMenuOpen = false; RefreshCaches(); }
     private string StatusFilterLabel() => _statusFilterValue is null ? Loc.T("All statuses") : Loc.T(_statusFilterValue.ToString()!);
 
     private string _sortOrder = "oldest"; // "newest" | "oldest" | "number" — oldest first matches the kitchen's natural cook-order priority
     private bool _sortMenuOpen;
     private void ToggleSortMenu() => _sortMenuOpen = !_sortMenuOpen;
-    private void ChooseSort(string value) { _sortOrder = value; _sortMenuOpen = false; }
+    private void ChooseSort(string value) { _sortOrder = value; _sortMenuOpen = false; RefreshCaches(); }
     private string SortLabel(string value) => value switch
     {
         "newest" => Loc.T("Newest first"),
@@ -213,29 +123,37 @@ else
 
     private bool _zoneMenuOpen;
     private void ToggleZoneMenu() => _zoneMenuOpen = !_zoneMenuOpen;
-    private void ChooseZone(string value) { _zoneFilter = value; _zoneMenuOpen = false; }
+    private void ChooseZone(string value) { _zoneFilter = value; _zoneMenuOpen = false; RefreshCaches(); }
     private string _zoneFilter = "";
     private string _tableSearch = "";
-    private List<string> Zones => _orders
-        .Select(o => o.Zone)
-        .Where(z => !string.IsNullOrWhiteSpace(z))
-        .Distinct()
-        .OrderBy(z => z)
-        .ToList()!;
-    private List<OrderDto> Filtered
+
+    // Both were plain get-only properties re-running their LINQ pipeline on every access — up to
+    // 3x per render for Filtered (quicknav strip, the empty-state check, and the ticket loop) even
+    // though nothing changed between them. Cached fields instead, refreshed only when the data or
+    // a filter actually changes (RefreshCaches, called from Load/Reload and every filter setter).
+    private List<string> _zones = new();
+    private List<OrderDto> _filtered = new();
+    private List<string> Zones => _zones;
+    private List<OrderDto> Filtered => _filtered;
+
+    private void RefreshCaches()
     {
-        get
+        _zones = _orders
+            .Select(o => o.Zone)
+            .Where(z => !string.IsNullOrWhiteSpace(z))
+            .Distinct()
+            .OrderBy(z => z)
+            .ToList()!;
+
+        var list = _statusFilterValue is null ? _orders : _orders.Where(o => o.Status == _statusFilterValue);
+        if (!string.IsNullOrEmpty(_zoneFilter)) list = list.Where(o => o.Zone == _zoneFilter);
+        if (!string.IsNullOrWhiteSpace(_tableSearch)) list = list.Where(o => o.TableName.Contains(_tableSearch, StringComparison.OrdinalIgnoreCase));
+        _filtered = (_sortOrder switch
         {
-            var list = _statusFilterValue is null ? _orders : _orders.Where(o => o.Status == _statusFilterValue);
-            if (!string.IsNullOrEmpty(_zoneFilter)) list = list.Where(o => o.Zone == _zoneFilter);
-            if (!string.IsNullOrWhiteSpace(_tableSearch)) list = list.Where(o => o.TableName.Contains(_tableSearch, StringComparison.OrdinalIgnoreCase));
-            return (_sortOrder switch
-            {
-                "newest" => list.OrderByDescending(o => o.CreatedAt),
-                "number" => list.OrderBy(o => o.Number),
-                _ => list.OrderBy(o => o.CreatedAt)
-            }).ToList();
-        }
+            "newest" => list.OrderByDescending(o => o.CreatedAt),
+            "number" => list.OrderBy(o => o.Number),
+            _ => list.OrderBy(o => o.CreatedAt)
+        }).ToList();
     }
 
     protected override async Task OnInitializedAsync()
@@ -249,41 +167,67 @@ else
             .WithAutomaticReconnect()
             .Build();
 
-        _hub.On<int>(KitchenHub.OrderSent, async _ => await Reload());
-        _hub.On<int, int>(KitchenHub.ItemStatusChanged, async (_, _) => await Reload());
-        _hub.On<int>(KitchenHub.OrderReady, async _ => await Reload());
-        _hub.On<int>(KitchenHub.SecondsFired, async _ =>
+        // Every event carries the affected order id, so — same as /orders — we refresh just that
+        // one ticket instead of re-fetching and re-rendering the whole board on every event from
+        // every waiter station.
+        _hub.On<int>(KitchenHub.OrderSent, RefreshOrder);
+        _hub.On<int, int>(KitchenHub.ItemStatusChanged, (orderId, _) => RefreshOrder(orderId));
+        _hub.On<int>(KitchenHub.OrderReady, RefreshOrder);
+        _hub.On<int>(KitchenHub.SecondsFired, async orderId =>
         {
-            await Reload();
+            await RefreshOrder(orderId);
             await JS.InvokeVoidAsync("posBeep");
         });
-        _hub.Reconnected += async _ => await Reload();
+        _hub.Reconnected += OnReconnected;
 
         await _hub.StartAsync();
         StateHasChanged();
     }
 
+    // A reconnect may have missed several targeted events while disconnected, so this one still
+    // does a full reload to resync. Kept as a named handler (not a lambda) so it can be
+    // unsubscribed in DisposeAsync instead of only relying on the whole connection being torn down.
+    private Task OnReconnected(string? _) => Reload();
+
     private void JumpToTicket(int orderId) => Nav.NavigateTo($"/kitchen#ticket-{orderId}");
 
-    // Same bracket grouping as OrderCard.razor's GroupByOrderTime: items ordered in the same
-    // minute share one timestamp instead of each line carrying its own repeated time.
-    private static List<TimeGroup> GroupByOrderTime(List<OrderItemDto> items)
+    // Refresh a single ticket in place: one DB read for that order, and only its subtree
+    // re-renders — mirrors Orders.razor's RefreshOrder for the kitchen board.
+    private async Task RefreshOrder(int orderId)
     {
-        var groups = new List<TimeGroup>();
-        foreach (var it in items)
+        var fresh = await Orders.GetByIdAsync(orderId);
+        var idx = _orders.FindIndex(o => o.Id == orderId);
+        var belongsOnBoard = fresh is not null
+            && fresh.Status is OrderStatus.Sent or OrderStatus.InPreparation or OrderStatus.Ready
+            && fresh.Items.Any(i => !i.IsDrink);
+
+        if (!belongsOnBoard)
         {
-            var minute = new DateTime(it.CreatedAt.Year, it.CreatedAt.Month, it.CreatedAt.Day, it.CreatedAt.Hour, it.CreatedAt.Minute, 0, it.CreatedAt.Kind);
-            if (groups.Count > 0 && groups[^1].Time == minute)
-                groups[^1].Items.Add(it);
-            else
-                groups.Add(new TimeGroup(minute, new List<OrderItemDto> { it }));
+            if (idx >= 0) _orders.RemoveAt(idx);             // paid/cancelled, or no food left to cook
         }
-        return groups;
+        else if (idx >= 0)
+        {
+            _orders[idx] = fresh!;                           // replace just this ticket's snapshot
+        }
+        else
+        {
+            _orders.Add(fresh!);                              // newly sent order appeared
+            _orders.Sort((a, b) => a.CreatedAt.CompareTo(b.CreatedAt));
+        }
+
+        // Rebuilds Filtered/Zones from the now-updated _orders. The untouched tickets keep the
+        // exact same OrderDto references (LINQ filters/reorders, it doesn't clone), so
+        // KitchenTicket's ShouldRender still skips re-rendering everything except the one that
+        // actually changed.
+        RefreshCaches();
+        await InvokeAsync(StateHasChanged);
     }
 
-    private sealed record TimeGroup(DateTime Time, List<OrderItemDto> Items);
-
-    private async Task Load() => _orders = await Orders.GetKitchenOrdersAsync();
+    private async Task Load()
+    {
+        _orders = await Orders.GetKitchenOrdersAsync();
+        RefreshCaches();
+    }
 
     private async Task Reload()
     {
@@ -291,16 +235,14 @@ else
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task SetItem(int itemId, OrderItemStatus status)
-    {
+    // No local reload after any of these: each backend call broadcasts its own SignalR event,
+    // and this page is subscribed to all of them (see OnInitializedAsync), so the echo refreshes
+    // just the affected ticket via RefreshOrder — same zero-local-fetch pattern as /orders.
+    private async Task SetItem(int orderId, int itemId, OrderItemStatus status) =>
         await Orders.SetItemStatusAsync(itemId, status);
-        await Load();
-    }
 
     // Marks every non-delivered food item Ready; once they're all Ready, the same button
     // flips to undo and puts them all back to Preparing (same toggle pattern as /orders).
-    // Both directions are single-round-trip service calls (not a per-item loop), so they can't
-    // race the page's own SignalR reload on the same DbContext.
     private async Task ToggleAllReady(OrderDto o)
     {
         var food = o.Items.Where(i => !i.IsDrink && i.Status != OrderItemStatus.Delivered).ToList();
@@ -309,32 +251,19 @@ else
             await Orders.UnmarkFoodReadyAsync(o.Id);
         else
             await Orders.MarkFoodReadyAsync(o.Id);
-        await Load();
     }
 
-    private async Task AcknowledgeSeconds(OrderDto o)
-    {
-        await Orders.AcknowledgeSecondCoursesAsync(o.Id);
-        await Load();
-    }
+    private Task AcknowledgeSeconds(OrderDto o) => Orders.AcknowledgeSecondCoursesAsync(o.Id);
 
-    private async Task ToggleSeconds(OrderDto o)
-    {
-        if (o.SecondsSentAt is null) await Orders.FireSecondCoursesAsync(o.Id);
-        else await Orders.UndoSecondCoursesFiredAsync(o.Id);
-        await Load();
-    }
-
-    private static string TicketStatusLabel(OrderStatus s) => s switch
-    {
-        OrderStatus.Ready => Loc.T("Ready"),
-        OrderStatus.InPreparation => Loc.T("In preparation"),
-        _ => Loc.T("Sent")
-    };
-
+    private Task ToggleSeconds(OrderDto o) =>
+        o.SecondsSentAt is null ? Orders.FireSecondCoursesAsync(o.Id) : Orders.UndoSecondCoursesFiredAsync(o.Id);
 
     public async ValueTask DisposeAsync()
     {
-        if (_hub is not null) await _hub.DisposeAsync();
+        if (_hub is not null)
+        {
+            _hub.Reconnected -= OnReconnected;
+            await _hub.DisposeAsync();
+        }
     }
 }
