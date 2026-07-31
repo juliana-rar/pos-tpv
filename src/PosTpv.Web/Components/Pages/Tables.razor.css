@@ -368,22 +368,9 @@
        gradient like every other "material" surface on this page. */
     border: 10px solid;
     border-image: linear-gradient(155deg, #a3a3a5, #86868a) 1;
-    /* Soft vignette plus a faint single-source key light from the top-left (two offsetting
-       inset shadows) instead of a flat, edge-to-edge texture — the same trick premium design
-       tools (Figma boards, floor-plan CAD canvases) use to give a plain background real depth
-       without adding any actual decoration. Anchored to the viewport, not the scrolled content,
-       so it stays put as a large floor plan is panned around underneath it. */
-    box-shadow:
-        inset 0 0 70px rgba(0, 0, 0, .05),
-        inset 46px 46px 100px -70px rgba(255, 255, 255, .55),
-        inset -46px -46px 100px -70px rgba(0, 0, 0, .14);
 }
 [data-theme="dark"] .floor {
     border-image: linear-gradient(155deg, #4b4b50, #333338) 1;
-    box-shadow:
-        inset 0 0 70px rgba(0, 0, 0, .3),
-        inset 46px 46px 100px -70px rgba(255, 255, 255, .07),
-        inset -46px -46px 100px -70px rgba(0, 0, 0, .4);
 }
 
 /* Everything positioned on the map (tables, decor, group badges) lives in here instead of
@@ -1353,44 +1340,78 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='pot1' cx='0.35' cy='0.3' r='0.75'%3E%3Cstop offset='0' stop-color='%23c98f66'/%3E%3Cstop offset='1' stop-color='%23935f3f'/%3E%3C/radialGradient%3E%3CradialGradient id='fA' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%232d6b3c'/%3E%3Cstop offset='1' stop-color='%23123018'/%3E%3C/radialGradient%3E%3CradialGradient id='fB' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%233f8a4c'/%3E%3Cstop offset='1' stop-color='%231f4a2c'/%3E%3C/radialGradient%3E%3CradialGradient id='fC' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2354a862'/%3E%3Cstop offset='1' stop-color='%232c6438'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='38' fill='url(%23pot1)'/%3E%3Ccircle cx='50' cy='50' r='31' fill='%232e1c12'/%3E%3Cg stroke='%230f2814' stroke-width='0.5' stroke-opacity='0.5'%3E%3Cpath d='M50 48 C63 46,75 47,88 50 C75 53,63 54,50 52 Z' fill='url(%23fA)' transform='rotate(0 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,85 50 C73 53,62 54,50 52 Z' fill='url(%23fB)' transform='rotate(45 50 50)'/%3E%3Cpath d='M50 48 C63 46,75 47,89 50 C75 53,63 54,50 52 Z' fill='url(%23fC)' transform='rotate(90 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,84 50 C73 53,62 54,50 52 Z' fill='url(%23fA)' transform='rotate(135 50 50)'/%3E%3Cpath d='M50 48 C63 46,75 47,87 50 C75 53,63 54,50 52 Z' fill='url(%23fB)' transform='rotate(180 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,83 50 C73 53,62 54,50 52 Z' fill='url(%23fC)' transform='rotate(225 50 50)'/%3E%3Cpath d='M50 48 C63 46,75 47,86 50 C75 53,63 54,50 52 Z' fill='url(%23fA)' transform='rotate(270 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,82 50 C73 53,62 54,50 52 Z' fill='url(%23fB)' transform='rotate(315 50 50)'/%3E%3C/g%3E%3C/svg%3E");
 }
 
-/* Wall — a plain thick structural bar; the only decor type without rounded corners, so it reads
-   as a fixed architectural line rather than a placed object. */
+/* Wall — a concrete-block course, not a flat gradient bar: a repeating vertical joint pattern
+   (blocks in a running-bond stagger, offset row to row) plus a horizontal mid-course line, on
+   top of the base gradient. The only decor type without rounded corners, so it still reads as a
+   fixed architectural line rather than a placed object. */
 .decor--wall {
     border-radius: 2px;
-    background: linear-gradient(to bottom, #9a9a9c, #7d7d80);
+    background:
+        repeating-linear-gradient(to right,
+            transparent 0 31px, rgba(0, 0, 0, .16) 31px 32px),
+        repeating-linear-gradient(to right,
+            transparent 0 15px, rgba(0, 0, 0, .1) 15px 16px),
+        linear-gradient(to bottom,
+            rgba(255, 255, 255, .1) 0 1px, transparent 1px 50%,
+            rgba(0, 0, 0, .1) 50% calc(50% + 1px), transparent calc(50% + 1px) 100%),
+        linear-gradient(to bottom, #9d9d9f, #7d7d80);
+    background-position: 0 0, 16px 0, 0 0, 0 0;
     border: 1px solid #5f5f62;
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, .25),
         inset 0 -2px 3px rgba(0, 0, 0, .3),
         0 4px 8px -4px rgba(0, 0, 0, .4);
 }
-[data-theme="dark"] .decor--wall { background: linear-gradient(to bottom, #4b4b50, #333338); border-color: #222225; }
+[data-theme="dark"] .decor--wall {
+    background:
+        repeating-linear-gradient(to right,
+            transparent 0 31px, rgba(0, 0, 0, .35) 31px 32px),
+        repeating-linear-gradient(to right,
+            transparent 0 15px, rgba(0, 0, 0, .22) 15px 16px),
+        linear-gradient(to bottom,
+            rgba(255, 255, 255, .05) 0 1px, transparent 1px 50%,
+            rgba(0, 0, 0, .3) 50% calc(50% + 1px), transparent calc(50% + 1px) 100%),
+        linear-gradient(to bottom, #4b4b50, #333338);
+    background-position: 0 0, 16px 0, 0 0, 0 0;
+    border-color: #222225;
+}
 
-/* Door — warm wood panel with a small handle dot standing off the latch edge. */
+/* Door — a real architectural plan-view door symbol, not an elevation photo of a wood panel:
+   a pale threshold bar (the wall opening) plus a swung-open leaf and its dashed quarter-circle
+   sweep arc, drawn as an SVG anchored at the hinge (the frame's own bottom-left corner) so it
+   reads instantly as "a door" from directly above, the way it actually appears on the map. The
+   arc square is sized to the frame's own width via aspect-ratio (not a fixed px value) so it
+   scales correctly when a door is resized. */
 .decor--door {
     border-radius: 2px;
-    background: linear-gradient(120deg, #a9764f, #8a5b3a);
+    background: linear-gradient(to bottom, #e9ddc8, #d8c9a8);
     border: 2px solid #6b4426;
     box-shadow:
-        inset 0 1px 2px rgba(255, 255, 255, .25), inset 0 -2px 3px rgba(0, 0, 0, .3),
+        inset 0 1px 2px rgba(255, 255, 255, .4), inset 0 -2px 3px rgba(0, 0, 0, .15),
         0 5px 8px -5px rgba(0, 0, 0, .45);
 }
 .decor--door::after {
     content: "";
     position: absolute;
-    right: 10%; top: 50%;
-    width: 5px; height: 5px;
-    transform: translateY(-50%);
-    border-radius: 50%;
-    background: #f1d9a0;
-    box-shadow: 0 0 2px rgba(0, 0, 0, .5);
+    left: 0; top: 100%;
+    width: 100%;
+    aspect-ratio: 1;
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M0,100 C55.23,100 100,55.23 100,0' fill='none' stroke='%236b4426' stroke-width='1.6' stroke-dasharray='4 3' stroke-opacity='.55'/%3E%3Cline x1='0' y1='0' x2='0' y2='100' stroke='%236b4426' stroke-width='7' stroke-linecap='round'/%3E%3Ccircle cx='0' cy='0' r='3' fill='%234a2d1a'/%3E%3C/svg%3E");
+    pointer-events: none;
 }
 
-/* Bar counter — dark lacquered wood with a glossy highlight strip along the top edge, same
-   "real material, not a flat swatch" sheen convention as the coloured tabletops above. */
+/* Bar counter — dark lacquered wood with grain streaks running its length (not a flat gradient),
+   a glossy highlight along the top edge like the coloured tabletops above, and a footrail — a
+   thin brass tube standing slightly proud of the front edge, the one detail that reads as
+   "a bar" rather than just "a dark counter" from directly above. */
 .decor--barcounter {
     border-radius: 6px;
-    background: linear-gradient(to bottom, #6b4a34 0%, #4a3021 55%, #3a2418 100%);
+    background:
+        repeating-linear-gradient(to right,
+            rgba(255, 255, 255, .05) 0 1px, transparent 1px 5px, rgba(0, 0, 0, .07) 5px 6px, transparent 6px 9px),
+        linear-gradient(to bottom, #6b4a34 0%, #4a3021 55%, #3a2418 100%);
     border: 1px solid #2a1a10;
     box-shadow:
         inset 0 -3px 5px rgba(0, 0, 0, .4),
@@ -1404,11 +1425,24 @@
     border-radius: 4px;
     background: linear-gradient(to bottom, rgba(255, 255, 255, .35), transparent);
 }
+.decor--barcounter::after {
+    content: "";
+    position: absolute;
+    left: 6%; right: 6%; bottom: -5px;
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, #f3d98a, #b8862f);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .5);
+}
 
-/* Column — round marble-look pillar. */
+/* Column — round marble-look pillar: the base radial "sheen" gradient plus a fine repeating
+   conic overlay of subtly alternating wedges, so the surface reads as thin veining/fluting on
+   the stone instead of one perfectly smooth gradient disc. */
 .decor--column {
     border-radius: 50%;
     background:
+        repeating-conic-gradient(from 0deg,
+            rgba(255, 255, 255, .12) 0deg 1.5deg, transparent 1.5deg 9deg, rgba(0, 0, 0, .07) 9deg 10.5deg, transparent 10.5deg 18deg),
         radial-gradient(circle at 32% 28%,
             rgba(255, 255, 255, .65) 0%, #d8d3ca 30%, #b6b0a4 65%, #948d7f 100%);
     box-shadow:
@@ -1417,14 +1451,21 @@
 }
 [data-theme="dark"] .decor--column {
     background:
+        repeating-conic-gradient(from 0deg,
+            rgba(255, 255, 255, .08) 0deg 1.5deg, transparent 1.5deg 9deg, rgba(0, 0, 0, .18) 9deg 10.5deg, transparent 10.5deg 18deg),
         radial-gradient(circle at 32% 28%,
             rgba(255, 255, 255, .3) 0%, #6b6a66 30%, #4c4b48 65%, #38372f 100%);
 }
 
-/* Window — pale glass pane in a frame, with a cross of mullions dividing it into four lights. */
+/* Window — glass pane in a frame, with a cross of mullions dividing it into four lights and a
+   soft diagonal reflection streak across the glass so it reads as a translucent material rather
+   than a flat tinted rectangle. */
 .decor--window {
     border-radius: 3px;
-    background: linear-gradient(160deg, #cfe8f5 0%, #a9d3e6 55%, #8fc2da 100%);
+    background:
+        linear-gradient(115deg,
+            transparent 30%, rgba(255, 255, 255, .5) 42%, rgba(255, 255, 255, .12) 52%, transparent 62%),
+        linear-gradient(160deg, #cfe8f5 0%, #a9d3e6 55%, #8fc2da 100%);
     border: 3px solid #7d716280;
     box-shadow:
         inset 0 0 8px rgba(255, 255, 255, .6), inset 0 0 0 1px rgba(255, 255, 255, .4),
@@ -1455,11 +1496,33 @@
 .decor-swatch--bush { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='bg1' cx='0.32' cy='0.28' r='0.85'%3E%3Cstop offset='0' stop-color='%236fbf7c'/%3E%3Cstop offset='0.55' stop-color='%233f8350'/%3E%3Cstop offset='1' stop-color='%23234a2c'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg stroke='%23173a20' stroke-width='0.5' stroke-opacity='0.35'%3E%3Ccircle cx='38' cy='42' r='27' fill='url(%23bg1)'/%3E%3Ccircle cx='64' cy='40' r='25' fill='url(%23bg1)'/%3E%3Ccircle cx='50' cy='64' r='26' fill='url(%23bg1)'/%3E%3Ccircle cx='50' cy='46' r='29' fill='url(%23bg1)'/%3E%3Ccircle cx='28' cy='35' r='7' fill='%235aa668'/%3E%3Ccircle cx='42' cy='23' r='6' fill='%235aa668'/%3E%3Ccircle cx='58' cy='21' r='6.5' fill='%236fbf7c'/%3E%3Ccircle cx='73' cy='31' r='7' fill='%233f8350'/%3E%3Ccircle cx='77' cy='50' r='6.5' fill='%232a5233'/%3E%3Ccircle cx='71' cy='69' r='7' fill='%233f8350'/%3E%3Ccircle cx='50' cy='79' r='6.5' fill='%232a5233'/%3E%3Ccircle cx='29' cy='68' r='6.5' fill='%235aa668'/%3E%3Ccircle cx='22' cy='49' r='6' fill='%233f8350'/%3E%3C/g%3E%3C/svg%3E"); }
 .decor-swatch--smalltree { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='bg1' cx='0.32' cy='0.28' r='0.85'%3E%3Cstop offset='0' stop-color='%236fbf7c'/%3E%3Cstop offset='0.55' stop-color='%233f8350'/%3E%3Cstop offset='1' stop-color='%23234a2c'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg stroke='%23173a20' stroke-width='0.5' stroke-opacity='0.35'%3E%3Ccircle cx='50' cy='50' r='44' fill='url(%23bg1)'/%3E%3Ccircle cx='36' cy='38' r='30' fill='url(%23bg1)'/%3E%3Ccircle cx='66' cy='40' r='28' fill='url(%23bg1)'/%3E%3Ccircle cx='50' cy='66' r='27' fill='url(%23bg1)'/%3E%3Ccircle cx='24' cy='30' r='8' fill='%235aa668'/%3E%3Ccircle cx='42' cy='16' r='7' fill='%235aa668'/%3E%3Ccircle cx='62' cy='14' r='7.5' fill='%236fbf7c'/%3E%3Ccircle cx='80' cy='27' r='8' fill='%233f8350'/%3E%3Ccircle cx='85' cy='50' r='7.5' fill='%232a5233'/%3E%3Ccircle cx='77' cy='73' r='8' fill='%233f8350'/%3E%3Ccircle cx='50' cy='85' r='7.5' fill='%232a5233'/%3E%3Ccircle cx='22' cy='71' r='7.5' fill='%235aa668'/%3E%3Ccircle cx='14' cy='48' r='7' fill='%233f8350'/%3E%3C/g%3E%3Ccircle cx='50' cy='50' r='7' fill='%234a3521'/%3E%3C/svg%3E"); }
 .decor-swatch--fern { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='pot1' cx='0.35' cy='0.3' r='0.75'%3E%3Cstop offset='0' stop-color='%23c98f66'/%3E%3Cstop offset='1' stop-color='%23935f3f'/%3E%3C/radialGradient%3E%3CradialGradient id='fA' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%232d6b3c'/%3E%3Cstop offset='1' stop-color='%23123018'/%3E%3C/radialGradient%3E%3CradialGradient id='fB' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%233f8a4c'/%3E%3Cstop offset='1' stop-color='%231f4a2c'/%3E%3C/radialGradient%3E%3CradialGradient id='fC' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2354a862'/%3E%3Cstop offset='1' stop-color='%232c6438'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='38' fill='url(%23pot1)'/%3E%3Ccircle cx='50' cy='50' r='31' fill='%232e1c12'/%3E%3Cg stroke='%230f2814' stroke-width='0.5' stroke-opacity='0.5'%3E%3Cpath d='M50 48 C63 46,75 47,88 50 C75 53,63 54,50 52 Z' fill='url(%23fA)' transform='rotate(0 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,85 50 C73 53,62 54,50 52 Z' fill='url(%23fB)' transform='rotate(45 50 50)'/%3E%3Cpath d='M50 48 C63 46,75 47,89 50 C75 53,63 54,50 52 Z' fill='url(%23fC)' transform='rotate(90 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,84 50 C73 53,62 54,50 52 Z' fill='url(%23fA)' transform='rotate(135 50 50)'/%3E%3Cpath d='M50 48 C63 46,75 47,87 50 C75 53,63 54,50 52 Z' fill='url(%23fB)' transform='rotate(180 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,83 50 C73 53,62 54,50 52 Z' fill='url(%23fC)' transform='rotate(225 50 50)'/%3E%3Cpath d='M50 48 C63 46,75 47,86 50 C75 53,63 54,50 52 Z' fill='url(%23fA)' transform='rotate(270 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,82 50 C73 53,62 54,50 52 Z' fill='url(%23fB)' transform='rotate(315 50 50)'/%3E%3C/g%3E%3C/svg%3E"); }
-.decor-swatch--wall { background: linear-gradient(to bottom, #9a9a9c, #7d7d80); }
-.decor-swatch--door { background: linear-gradient(120deg, #a9764f, #8a5b3a); }
-.decor-swatch--barcounter { background: linear-gradient(to bottom, #6b4a34, #3a2418); }
-.decor-swatch--column { background: radial-gradient(circle at 32% 28%, #e7e3da 0%, #b6b0a4 65%, #948d7f 100%); }
-.decor-swatch--window { background: linear-gradient(160deg, #cfe8f5 0%, #8fc2da 100%); }
+.decor-swatch--wall {
+    background:
+        repeating-linear-gradient(to right, transparent 0 9px, rgba(0, 0, 0, .18) 9px 10px),
+        linear-gradient(to bottom, #9a9a9c, #7d7d80);
+}
+.decor-swatch--door {
+    background-color: #d8c9a8;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 85%;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M2,98 C57.23,98 98,57.23 98,2' fill='none' stroke='%236b4426' stroke-width='4' stroke-dasharray='9 7' stroke-opacity='.55'/%3E%3Cline x1='2' y1='2' x2='2' y2='98' stroke='%236b4426' stroke-width='9' stroke-linecap='round'/%3E%3Ccircle cx='2' cy='2' r='5' fill='%234a2d1a'/%3E%3C/svg%3E");
+}
+.decor-swatch--barcounter {
+    background:
+        repeating-linear-gradient(to right, rgba(255, 255, 255, .06) 0 1px, transparent 1px 4px),
+        linear-gradient(to bottom, #6b4a34, #3a2418);
+}
+.decor-swatch--column {
+    background:
+        repeating-conic-gradient(from 0deg, rgba(255, 255, 255, .15) 0deg 3deg, transparent 3deg 18deg, rgba(0, 0, 0, .08) 18deg 21deg, transparent 21deg 36deg),
+        radial-gradient(circle at 32% 28%, #e7e3da 0%, #b6b0a4 65%, #948d7f 100%);
+}
+.decor-swatch--window {
+    background:
+        linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, .55) 45%, transparent 60%),
+        linear-gradient(160deg, #cfe8f5 0%, #8fc2da 100%);
+}
 
 @media (max-width: 900px) {
     .floor-layout--split { flex-direction: column; }
