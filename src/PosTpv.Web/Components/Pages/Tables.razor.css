@@ -142,7 +142,10 @@
     /* Reserves room for .floor-settings (always absolutely positioned in this same corner, see
        below) so the Edit/Select/Reassign/default row content never renders underneath it. */
     padding-right: 2.7rem;
-    background: color-mix(in srgb, var(--card) 90%, transparent);
+    /* Solid, same as .floor-tools-menu's background below — was color-mix(...90%, transparent),
+       which let the map's wood texture bleed through faintly and read as a seam/gap where this
+       bar met the opaque dropdown hanging off the gear. */
+    background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     box-shadow: var(--shadow-sm);
