@@ -14,7 +14,7 @@
 @* Same quick-jump chip strip as /orders (.orders-quicknav in Orders.razor.css) — one chip per
    ticket on screen, click to scroll straight to it instead of hunting across the board. *@
 <div class="orders-quicknav @(_showFilters ? "orders-quicknav--filters-open" : "")">
-    <div class="orders-quicknav__chips @(_chipsExpanded ? "orders-quicknav__chips--expanded" : "")">
+    <div class="orders-quicknav__chips">
         @foreach (var o in Filtered)
         {
             <button @key="o.Id" class="orders-quicknav__chip" data-status="@o.Status.ToString().ToLower()"
@@ -72,11 +72,6 @@
         <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost")" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters">
             <LucideIcon Name="settings" Size="16" />
         </button>
-        <button class="btn btn--icon @(_chipsExpanded ? "btn--primary" : "btn--ghost")"
-                title="@(_chipsExpanded ? Loc.T("Show fewer tables") : Loc.T("Show all tables"))"
-                @onclick="() => _chipsExpanded = !_chipsExpanded">
-            <LucideIcon Name="@(_chipsExpanded ? "chevron-up" : "chevron-down")" Size="16" />
-        </button>
     </div>
 </div>
 
@@ -103,7 +98,6 @@ else
     private HubConnection? _hub;
 
     private bool _showFilters;
-    private bool _chipsExpanded;
     private OrderStatus? _statusFilterValue;
     private bool _statusMenuOpen;
     private void ToggleStatusMenu() => _statusMenuOpen = !_statusMenuOpen;

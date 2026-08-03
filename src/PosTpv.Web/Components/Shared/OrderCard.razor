@@ -78,25 +78,15 @@
                 <div class="order-card__drink-batch" data-served="@(group.ServedAt is not null ? "true" : "false")">
                     @foreach (var timeGroup in GroupByOrderTime(group.Items))
                     {
-                        @if (timeGroup.Items.Count > 1)
-                        {
-                            <div class="order-card__time-group">
-                                <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
-                                <div class="order-card__time-group-items">
-                                    @foreach (var it in timeGroup.Items)
-                                    {
-                                        <div class="order-card__line"><span>@it.Quantity× @it.ProductName</span></div>
-                                    }
-                                </div>
+                        <div class="order-card__time-group">
+                            <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
+                            <div class="order-card__time-group-items">
+                                @foreach (var it in timeGroup.Items)
+                                {
+                                    <div class="order-card__line"><span>@it.Quantity× @it.ProductName</span></div>
+                                }
                             </div>
-                        }
-                        else
-                        {
-                            var it = timeGroup.Items[0];
-                            <div class="order-card__line">
-                                <span>@it.Quantity× @it.ProductName <span class="order-card__time">@it.CreatedAt.ToLocalTime().ToString("HH:mm")</span></span>
-                            </div>
-                        }
+                        </div>
                     }
                     @if (group.ServedAt is { } at)
                     {
@@ -119,29 +109,18 @@
                 <div class="order-card__drink-batch" data-served="@(group.ServedAt is not null ? "true" : "false")">
                     @foreach (var timeGroup in GroupByOrderTime(group.Items))
                     {
-                        @if (timeGroup.Items.Count > 1)
-                        {
-                            <div class="order-card__time-group">
-                                <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
-                                <div class="order-card__time-group-items">
-                                    @foreach (var it in timeGroup.Items)
-                                    {
-                                        <div class="order-card__line">
-                                            <span>@it.Quantity× @it.ProductName</span>
-                                            <span>@it.LineTotal.ToString("N2")</span>
-                                        </div>
-                                    }
-                                </div>
+                        <div class="order-card__time-group">
+                            <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
+                            <div class="order-card__time-group-items">
+                                @foreach (var it in timeGroup.Items)
+                                {
+                                    <div class="order-card__line">
+                                        <span>@it.Quantity× @it.ProductName</span>
+                                        <span>@it.LineTotal.ToString("N2")</span>
+                                    </div>
+                                }
                             </div>
-                        }
-                        else
-                        {
-                            var it = timeGroup.Items[0];
-                            <div class="order-card__line">
-                                <span>@it.Quantity× @it.ProductName <span class="order-card__time">@it.CreatedAt.ToLocalTime().ToString("HH:mm")</span></span>
-                                <span>@it.LineTotal.ToString("N2")</span>
-                            </div>
-                        }
+                        </div>
                     }
                     @if (group.ServedAt is { } at)
                     {
@@ -164,29 +143,18 @@
                 <div class="order-card__drink-batch" data-served="@(group.ServedAt is not null ? "true" : "false")">
                     @foreach (var timeGroup in GroupByOrderTime(group.Items))
                     {
-                        @if (timeGroup.Items.Count > 1)
-                        {
-                            <div class="order-card__time-group">
-                                <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
-                                <div class="order-card__time-group-items">
-                                    @foreach (var it in timeGroup.Items)
-                                    {
-                                        <div class="order-card__line">
-                                            <span>@it.Quantity× @it.ProductName</span>
-                                            <span>@it.LineTotal.ToString("N2")</span>
-                                        </div>
-                                    }
-                                </div>
+                        <div class="order-card__time-group">
+                            <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
+                            <div class="order-card__time-group-items">
+                                @foreach (var it in timeGroup.Items)
+                                {
+                                    <div class="order-card__line">
+                                        <span>@it.Quantity× @it.ProductName</span>
+                                        <span>@it.LineTotal.ToString("N2")</span>
+                                    </div>
+                                }
                             </div>
-                        }
-                        else
-                        {
-                            var it = timeGroup.Items[0];
-                            <div class="order-card__line">
-                                <span>@it.Quantity× @it.ProductName <span class="order-card__time">@it.CreatedAt.ToLocalTime().ToString("HH:mm")</span></span>
-                                <span>@it.LineTotal.ToString("N2")</span>
-                            </div>
-                        }
+                        </div>
                     }
                     @if (group.ServedAt is { } at)
                     {
@@ -209,29 +177,18 @@
                 <div class="order-card__drink-batch" data-served="@(group.ServedAt is not null ? "true" : "false")">
                     @foreach (var timeGroup in GroupByOrderTime(group.Items))
                     {
-                        @if (timeGroup.Items.Count > 1)
-                        {
-                            <div class="order-card__time-group">
-                                <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
-                                <div class="order-card__time-group-items">
-                                    @foreach (var it in timeGroup.Items)
-                                    {
-                                        <div class="order-card__line">
-                                            <span>@it.Quantity× @it.ProductName</span>
-                                            <span>@it.LineTotal.ToString("N2")</span>
-                                        </div>
-                                    }
-                                </div>
+                        <div class="order-card__time-group">
+                            <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
+                            <div class="order-card__time-group-items">
+                                @foreach (var it in timeGroup.Items)
+                                {
+                                    <div class="order-card__line">
+                                        <span>@it.Quantity× @it.ProductName</span>
+                                        <span>@it.LineTotal.ToString("N2")</span>
+                                    </div>
+                                }
                             </div>
-                        }
-                        else
-                        {
-                            var it = timeGroup.Items[0];
-                            <div class="order-card__line">
-                                <span>@it.Quantity× @it.ProductName <span class="order-card__time">@it.CreatedAt.ToLocalTime().ToString("HH:mm")</span></span>
-                                <span>@it.LineTotal.ToString("N2")</span>
-                            </div>
-                        }
+                        </div>
                     }
                     @if (group.ServedAt is { } at)
                     {
@@ -330,7 +287,10 @@
         _starters = starters;
         _starterGroups = OrderPresentation.GroupByServeBatch(starters);
         _firstsPendingToServe = starters.Any(s => s.Status == OrderItemStatus.Ready);
-        _showServeFirsts = starters.Any(s => s.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered);
+        // No standalone "Serve firsts" button once the order also has mains: "Serve seconds"
+        // already serves the firsts alongside them, so a separate button would be redundant.
+        // Starter-only orders (no mains) still need it as their only way to mark firsts served.
+        _showServeFirsts = mains.Count == 0 && starters.Any(s => s.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered);
 
         _mains = mains;
         _mainGroups = OrderPresentation.GroupByServeBatch(mains);

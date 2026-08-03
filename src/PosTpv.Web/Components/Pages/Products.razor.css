@@ -21,19 +21,42 @@
     cursor: pointer;
 }
 
+/* The Allergens row above the category list (see .catRow--allergens below) and the hairline
+   that separates it from the categories themselves, so it reads as its own section rather than
+   a weird first entry in the category list. */
+.catalog__cats-sep { height: 1px; background: var(--border); margin: .7rem 0; flex: none; }
+
 .catalog__cats-list { display: flex; flex-direction: column; gap: .5rem; overflow-y: auto; padding-right: .2rem; }
 
+/* Every row (categories and the Allergens row alike) gets its own soft tinted background/border
+   from its own --cat colour instead of a flat hover-only grey — each reads as its own "branded"
+   card rather than a plain list item, and the tint/border/dot all key off the same --cat value
+   so a category's colour and the Allergens row's warning colour both flow through consistently. */
 .catRow {
     display: flex; align-items: center; gap: .55rem;
     padding: .55rem .6rem;
-    border: 1px solid transparent;
+    border: 1px solid color-mix(in srgb, var(--cat, var(--primary)) 16%, var(--border));
     border-radius: var(--radius-sm);
-    background: transparent;
+    background: color-mix(in srgb, var(--cat, var(--primary)) 5%, transparent);
     cursor: pointer;
     transition: box-shadow var(--transition), border-color var(--transition), background var(--transition);
 }
-.catRow:hover { background: var(--card-2); }
-.catRow[data-active] { border-color: var(--border); background: var(--card-2); box-shadow: var(--shadow-sm); }
+.catRow:hover { background: color-mix(in srgb, var(--cat, var(--primary)) 9%, transparent); }
+.catRow[data-active] {
+    border-color: var(--cat, var(--primary));
+    background: color-mix(in srgb, var(--cat, var(--primary)) 14%, transparent);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Reuses --cat (see .catRow__thumb below) so the Allergens row's icon tile, dot and trailing
+   chevron all key off the warning colour instead of falling back to --primary like an ordinary
+   category would. The chevron marks it as a fixed nav destination rather than a re-orderable,
+   deletable list entry like the categories below it — hence no .catRow__actions on this one. */
+.catRow--allergens { --cat: var(--warning); }
+.catRow--allergens .catRow__thumb { color: var(--warning); }
+.catRow--allergens .catRow__dot { background: var(--warning); }
+.catRow__nav { flex: none; display: flex; color: var(--text-soft); opacity: .7; }
+.catRow--allergens:hover .catRow__nav, .catRow--allergens[data-active] .catRow__nav { opacity: 1; color: var(--warning); }
 
 .catRow__thumb {
     display: grid; place-items: center;
@@ -61,50 +84,125 @@
 /* --- Right panel: products --- */
 .catalog__products { display: flex; flex-direction: column; min-height: 0; }
 .catalog__products .toolbar { margin-bottom: 1rem; }
-.catalog__products .grid-cards { overflow-y: auto; padding: .2rem; align-content: start; gap: .8rem; }
+/* align-items:stretch (overriding the base .grid-cards' align-items:start) so every card in a
+   row fills that row's full height instead of shrinking to its own content — combined with
+   .mgmt-card's flex column + .mgmt-card__actions' margin-top:auto below, this is what makes
+   every card in the grid come out the same size regardless of name length/photo/allergen count. */
+.catalog__products .grid-cards { overflow-y: auto; padding: .2rem; align-content: start; align-items: stretch; gap: .8rem; }
 
-/* Lighter than the default .mgmt-card: a thinner border and no resting shadow, so a page full
-   of them reads as a calm admin grid instead of a wall of stacked/elevated tiles — the lift on
-   hover is enough to show a card is interactive. */
+/* A quieter, more "premium" tile than the default .mgmt-card: bigger radius, no resting border/
+   shadow so the grid reads as a clean catalogue, and a soft lift + shadow bloom on hover instead
+   of the flat hover state elsewhere — the price reads as a pill instead of plain text, and the
+   VAT/order-index line that used to sit under the title is gone entirely (still editable in the
+   form, just not printed on every tile). */
 .mgmt-card {
-    padding: .85rem .9rem;
-    gap: .4rem;
-    border-color: var(--border);
-    box-shadow: none;
-}
-.mgmt-card:hover { box-shadow: var(--shadow-sm); }
-.mgmt-card[data-off] { opacity: .6; }
-.mgmt-card__thumb {
-    width: 100%; aspect-ratio: 16 / 9;
-    border-radius: var(--radius-sm);
+    position: relative;
+    padding: 1rem 1rem .9rem;
+    gap: .5rem;
+    border-color: transparent;
+    border-radius: var(--radius);
+    background: var(--card);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
     overflow: hidden;
-    margin-bottom: .5rem;
-    background: var(--card-2);
+    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
-.mgmt-card__thumb img { width: 100%; height: 100%; object-fit: cover; }
-.mgmt-card__head strong { font-size: .95rem; font-weight: 600; }
-.mgmt-card__price { font-size: .95rem; font-weight: 700; }
+/* A slim brand-colour rule along the top edge — each product's own accent colour (set in the
+   edit form), so a whole catalogue grid reads as a set of distinct "product lines" instead of
+   one flat grey wall, the way a proper catalogue/menu system would brand each item. */
+.mgmt-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--prod, var(--primary));
+}
+.mgmt-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--border);
+    box-shadow: 0 12px 28px -12px rgba(0, 0, 0, .22), 0 2px 6px rgba(0, 0, 0, .06);
+}
+.mgmt-card[data-off] { opacity: .55; filter: grayscale(.4); }
+.mgmt-card[data-off]:hover { transform: none; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+/* A small avatar-style tile next to the name instead of a full-width banner photo — same
+   compact, icon-forward pattern as .catRow__thumb/.allergenRow__thumb elsewhere in this
+   catalogue, so a product row reads as a dense professional list item rather than a photo
+   card, and the image itself is genuinely small instead of just cropped shorter. */
+.mgmt-card__thumb {
+    flex: none;
+    width: 42px; height: 42px;
+    border-radius: calc(var(--radius) - 8px);
+    overflow: hidden;
+    background: linear-gradient(155deg, var(--card-2), color-mix(in srgb, var(--card-2) 70%, black 6%));
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .05);
+}
+.mgmt-card__thumb img { width: 100%; height: 100%; object-fit: cover; transition: transform 220ms ease; }
+.mgmt-card:hover .mgmt-card__thumb img { transform: scale(1.08); }
+/* Products without their own photo still get a tinted tile instead of no icon at all — a soft
+   tint of the product's own accent colour, consistent whether or not an item has real
+   photography yet. */
+.mgmt-card__thumb--empty {
+    display: grid; place-items: center;
+    background:
+        radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--prod, var(--primary)) 22%, transparent), transparent 65%),
+        var(--card-2);
+}
+.mgmt-card__thumb--empty span {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--prod, var(--primary));
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--prod, var(--primary)) 16%, transparent);
+}
+.mgmt-card__head { min-width: 0; }
+.mgmt-card__head strong {
+    min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 1.2rem; font-weight: 700; letter-spacing: -.01em;
+}
+.mgmt-card__price {
+    flex: none;
+    padding: .3rem .7rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    color: var(--primary);
+    font-size: 1.05rem; font-weight: 800; letter-spacing: -.01em;
+    font-variant-numeric: tabular-nums;
+}
 /* Tight enough that the switch + all six action icons stay on one row instead of the last
-   one wrapping onto an orphan line below. */
-.mgmt-card__actions { gap: .2rem; }
-.mgmt-card__actions .btn--icon { width: 26px; height: 26px; padding: 0; }
-.mgmt-card__actions .btn--ghost { color: var(--text-soft); }
-.mgmt-card__actions .btn--ghost:hover { color: var(--text); }
+   one wrapping onto an orphan line below. A hairline separates the destructive delete button
+   from the rest so it doesn't read as just another peer action. margin-top:auto pins this row
+   to the card's bottom edge — combined with .grid-cards' align-items:stretch above, that's what
+   soaks up the extra height on a card stretched to match a taller sibling in the same row. */
+.mgmt-card__actions { gap: .1rem; margin-top: auto; padding-top: .3rem; border-top: 1px solid var(--border); }
+.mgmt-card__actions .btn--icon { width: 27px; height: 27px; padding: 0; border-radius: 999px; }
+.mgmt-card__actions .btn--ghost { color: var(--text-soft); background: transparent; border-color: transparent; box-shadow: none; }
+.mgmt-card__actions .btn--ghost:hover { color: var(--text); background: var(--card-2); }
+.mgmt-card__actions .btn--danger {
+    margin-left: .3rem;
+    background: transparent; border-color: transparent; box-shadow: none;
+    color: color-mix(in srgb, var(--danger) 75%, var(--text-soft));
+}
+.mgmt-card__actions .btn--danger:hover { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
 
 /* --- Allergen tags on a product card --- */
-.mgmt-card__allergens { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; }
+/* Always rendered now (even with zero tags) so it reserves one row's height on every card,
+   whether or not that product actually has allergens — see .mgmt-card__actions above for how
+   the remaining slack then gets absorbed at the bottom instead. */
+.mgmt-card__allergens { display: flex; flex-wrap: wrap; align-content: flex-start; gap: .3rem; min-height: 1.5rem; }
 .allergen-tag {
     display: inline-flex; align-items: center; gap: .25rem;
-    padding: .12rem .5rem;
+    padding: .15rem .55rem;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--warning) 14%, transparent);
-    color: var(--warning);
-    font-size: .7rem; font-weight: 700;
+    background: color-mix(in srgb, var(--warning) 10%, transparent);
+    color: color-mix(in srgb, var(--warning) 85%, var(--text));
+    font-size: .68rem; font-weight: 700;
 }
 .allergen-tag img { width: 14px; height: 14px; border-radius: 50%; object-fit: cover; }
 
 /* --- Allergen manager modal: list of allergens with a thumbnail image --- */
-.allergenManager__list { display: flex; flex-direction: column; gap: .5rem; margin-top: .8rem; }
+/* No longer inside a modal (the section lives inline in .catalog__products now, see
+   .catRow--allergens), so no extra top margin is needed — the toolbar above it already has
+   its own margin-bottom. */
+.allergenManager__list { display: flex; flex-direction: column; gap: .5rem; max-width: 32rem; }
 .allergenRow {
     display: flex; align-items: center; gap: .6rem;
     padding: .5rem .7rem;
@@ -122,7 +220,9 @@
     overflow: hidden;
 }
 .allergenRow__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.allergenRow__main { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
 .allergenRow__name { font-weight: 700; }
+.allergenRow__desc { font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* --- Allergen multi-select on the product form: toggle chips with a thumbnail --- */
 .allergen-pick { display: flex; flex-wrap: wrap; gap: .4rem; }

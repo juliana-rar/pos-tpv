@@ -33,6 +33,18 @@ else if (_tab == "general")
             <input class="input" @bind="_settings.Title" maxlength="80" />
             <span class="muted settings__hint">@Loc.T("This name appears in the sidebar, the login page and the browser tab.")</span>
         </div>
+        <div class="field">
+            <label>@Loc.T("Accent colour")</label>
+            <div class="color-pick">
+                @foreach (var c in AccentPresets)
+                {
+                    <button type="button" class="color-swatch @(string.Equals(_settings.PrimaryColor, c, StringComparison.OrdinalIgnoreCase) ? "color-swatch--on" : "")"
+                            style="--sw:@c" title="@c" @onclick="() => _settings.PrimaryColor = c"></button>
+                }
+                <input type="color" class="color-swatch color-swatch--custom" title="@Loc.T("Custom colour")" @bind="_settings.PrimaryColor" />
+            </div>
+            <span class="muted settings__hint">@Loc.T("Used for primary buttons, links and highlights across the whole app.")</span>
+        </div>
         @if (_settingsError is not null) { <div class="field-error">@_settingsError</div> }
         <div class="settings__save">
             <button class="btn btn--primary" @onclick="SaveSettings">@Loc.T("Save")</button>
@@ -133,6 +145,9 @@ else if (_tab == "users")
 </Modal>
 
 @code {
+    private static readonly string[] AccentPresets =
+        { "#6366f1", "#3b82f6", "#0ea5e9", "#10b981", "#f59e0b", "#f43f5e", "#a855f7", "#475569" };
+
     private string _tab = "general";
 
     private AppSettingsFormDto? _settings;

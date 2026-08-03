@@ -19,12 +19,13 @@ public class UserFormDto
 
 public record ExtraDto(int Id, string Name, decimal Price);
 
-public record AllergenDto(int Id, string Name, string? ImageUrl);
+public record AllergenDto(int Id, string Name, string? Description, string? ImageUrl);
 
 public class AllergenFormDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public string? ImageUrl { get; set; }
 }
 

@@ -233,7 +233,7 @@
 .order-card__actions--inline { display: none; }
 /* Fire seconds sits next to Serve drinks on the same row instead of stacking below it. */
 .order-card__actions-row { display: flex; gap: .3rem; }
-.order-card__actions-row .btn { width: auto; flex: 1; min-width: 0; }
+.order-card__actions-row .btn { width: auto; flex: 1; min-width: 0; justify-content: flex-start; }
 .order-card__actions .btn {
     width: 100%;
     justify-content: flex-start;

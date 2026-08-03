@@ -49,41 +49,15 @@
        fills the whole panel height. *@
     <div class="toolbar toolbar--tables">
         <span class="spacer"></span>
-        @if (_editing)
-        {
-            <button class="btn btn--ghost btn--sm" @onclick="CancelEdit">@Loc.T("Cancel")</button>
-            <button class="btn btn--primary btn--sm" @onclick="SaveLayout"><LucideIcon Name="save" Size="14" />@Loc.T("Save layout")</button>
-        }
-        else if (_selecting)
-        {
-            <span class="badge badge--primary">@_selection.Count @Loc.T("selected")</span>
-            <button class="btn btn--ghost btn--sm" @onclick="CancelSelect">@Loc.T("Cancel")</button>
-            @if (SelectedGroupId is not null)
+        @* Rendered unconditionally (outside the Edit/Select/Reassign/default branches below) and
+           absolutely positioned (.floor-settings) so it always sits in the map's top-right corner —
+           it used to live inside the "default" toolbar-actions row only, so it vanished entirely
+           whenever _editing/_selecting/_reassigning replaced that row with their own controls. *@
+        <div class="floor-tex-widget floor-settings">
+            <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters"><LucideIcon Name="settings" Size="16" /></button>
+            @if (_showFilters)
             {
-                <button class="btn btn--danger btn--sm" @onclick="SeparateSelectedGroup"><LucideIcon Name="split" Size="14" />@Loc.T("Separate")</button>
-            }
-            else
-            {
-                <button class="btn btn--primary btn--sm" disabled="@(_selection.Count < 2)" @onclick="OpenJoinNamePrompt"><LucideIcon Name="link" Size="14" />@Loc.T("Join")</button>
-            }
-        }
-        else if (_reassigning)
-        {
-            <button class="btn btn--ghost btn--sm" @onclick="CancelReassign">@Loc.T("Cancel")</button>
-        }
-        else
-        {
-            <div class="toolbar-actions">
-                @if (_showFilters)
-                {
-                    <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("New table")" @onclick="() => OpenForm(null)"><LucideIcon Name="plus" Size="16" /></button>
-                    <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Join tables")" @onclick="StartSelect"><LucideIcon Name="link" Size="16" /></button>
-                    <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Assign tables")" @onclick="StartReassign"><LucideIcon Name="arrow-right-left" Size="16" /></button>
-                    <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Edit layout")" @onclick="StartEdit"><LucideIcon Name="move" Size="16" /></button>
-                }
-                <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters"><LucideIcon Name="settings" Size="16" /></button>
-                @if (_showFilters)
-                {
+                <div class="floor-tools-menu">
                     <div class="floor-tex-widget">
                         <button class="btn btn--icon @(_floorMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Floor style")" @onclick="ToggleFloorMenu"><LucideIcon Name="image" Size="16" /></button>
                         @if (_floorMenuOpen)
@@ -149,18 +123,52 @@
                     <div class="floor-tex-widget">
                         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Draw zone")" @onclick="AddZone"><LucideIcon Name="square-dashed" Size="16" /></button>
                     </div>
-                }
-                <span class="zoom-group">
-                    <button class="btn btn--icon btn--ghost btn--sm" type="button" disabled="@(_zoom <= ZoomMin)" title="@Loc.T("Zoom out")" @onclick="ZoomOut"><LucideIcon Name="zoom-out" Size="16" /></button>
-                    <button class="zoom-group__level" type="button" title="@Loc.T("Reset zoom")" @onclick="ZoomReset">@((_zoom * 100).ToString("0"))%</button>
-                    <button class="btn btn--icon btn--ghost btn--sm" type="button" disabled="@(_zoom >= ZoomMax)" title="@Loc.T("Zoom in")" @onclick="ZoomIn"><LucideIcon Name="zoom-in" Size="16" /></button>
-                </span>
-                <button class="btn btn--icon btn--ghost btn--sm" type="button"
-                        title="@(_mapExpanded ? Loc.T("Minimise map") : Loc.T("Expand map"))" @onclick="() => _mapExpanded = !_mapExpanded">
-                    <LucideIcon Name="@(_mapExpanded ? "minimize-2" : "maximize-2")" Size="16" />
-                </button>
+                </div>
+            }
+        </div>
+        @if (_editing)
+        {
+            <button class="btn btn--ghost btn--sm" @onclick="CancelEdit">@Loc.T("Cancel")</button>
+            <button class="btn btn--primary btn--sm" @onclick="SaveLayout"><LucideIcon Name="save" Size="14" />@Loc.T("Save layout")</button>
+        }
+        else if (_selecting)
+        {
+            <span class="badge badge--primary">@_selection.Count @Loc.T("selected")</span>
+            <button class="btn btn--ghost btn--sm" @onclick="CancelSelect">@Loc.T("Cancel")</button>
+            @if (SelectedGroupId is not null)
+            {
+                <button class="btn btn--danger btn--sm" @onclick="SeparateSelectedGroup"><LucideIcon Name="split" Size="14" />@Loc.T("Separate")</button>
+            }
+            else
+            {
+                <button class="btn btn--primary btn--sm" disabled="@(_selection.Count < 2)" @onclick="OpenJoinNamePrompt"><LucideIcon Name="link" Size="14" />@Loc.T("Join")</button>
+            }
+        }
+        else if (_reassigning)
+        {
+            <button class="btn btn--ghost btn--sm" @onclick="CancelReassign">@Loc.T("Cancel")</button>
+        }
+        else if (_showFilters)
+        {
+            <div class="toolbar-actions">
+                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("New table")" @onclick="() => OpenForm(null)"><LucideIcon Name="plus" Size="16" /></button>
+                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Join tables")" @onclick="StartSelect"><LucideIcon Name="link" Size="16" /></button>
+                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Assign tables")" @onclick="StartReassign"><LucideIcon Name="arrow-right-left" Size="16" /></button>
+                <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Edit layout")" @onclick="StartEdit"><LucideIcon Name="move" Size="16" /></button>
             </div>
         }
+        @* Zoom and expand/collapse always render, regardless of Edit/Select/Reassign/Filters mode,
+           so the map stays navigable while any of those tools is active instead of only from the
+           bare default toolbar. *@
+        <span class="zoom-group">
+            <button class="btn btn--icon btn--ghost btn--sm" type="button" disabled="@(_zoom <= ZoomMin)" title="@Loc.T("Zoom out")" @onclick="ZoomOut"><LucideIcon Name="zoom-out" Size="16" /></button>
+            <button class="zoom-group__level" type="button" title="@Loc.T("Reset zoom")" @onclick="ZoomReset">@((_zoom * 100).ToString("0"))%</button>
+            <button class="btn btn--icon btn--ghost btn--sm" type="button" disabled="@(_zoom >= ZoomMax)" title="@Loc.T("Zoom in")" @onclick="ZoomIn"><LucideIcon Name="zoom-in" Size="16" /></button>
+        </span>
+        <button class="btn btn--icon btn--ghost btn--sm" type="button"
+                title="@(_mapExpanded ? Loc.T("Minimise map") : Loc.T("Expand map"))" @onclick="() => _mapExpanded = !_mapExpanded">
+            <LucideIcon Name="@(_mapExpanded ? "minimize-2" : "maximize-2")" Size="16" />
+        </button>
     </div>
     @if (!_editing && !_selecting && _assignReservationId is null && Zones.Count > 0)
     {
@@ -289,8 +297,8 @@
                 }
             </div>
         }
-        @* One badge per group, floating above the midpoint between its member tables — rather
-           than pinned to a single anchor table — so it still reads as "where they join" once
+        @* One badge per group, centered on the bounding box of its member tables — rather
+           than pinned to a single anchor table — so it sits right where they join once
            dragged, and carries the group's own name now that no single member shows it. *@
         @foreach (var gid in visible.Where(t => t.GroupId.HasValue).Select(t => t.GroupId!.Value).Distinct())
         {
@@ -1053,9 +1061,11 @@
     {
         var members = visible.Where(t => t.GroupId == gid).ToList();
         if (members.Count == 0) return "";
-        var cx = members.Average(t => t.PositionX + t.Width / 2);
-        var topY = members.Min(t => t.PositionY);
-        return $"left:{N(cx)}px; top:{N(topY)}px;";
+        var left = members.Min(t => t.PositionX);
+        var right = members.Max(t => t.PositionX + t.Width);
+        var top = members.Min(t => t.PositionY);
+        var bottom = members.Max(t => t.PositionY + t.Height);
+        return $"left:{N((left + right) / 2)}px; top:{N((top + bottom) / 2)}px;";
     }
 
     private string? _zoneFilter;

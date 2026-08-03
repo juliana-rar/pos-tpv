@@ -7,8 +7,8 @@
     justify-content: space-between;
     flex-wrap: nowrap;
     gap: 1rem;
-    margin-bottom: .8rem;
-    padding: .5rem .6rem;
+    margin-bottom: .4rem;
+    padding: .35rem .6rem;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -35,18 +35,21 @@
 }
 
 /* ---- Quick-jump strip: one small chip per ticket on screen, straight to it ---- */
+/* Capped to a couple of rows — matching the map's height (calc(100vh-160px)) made this take up
+   nearly the whole screen above the ticket board, which was way too tall for what's just a
+   row of small jump-chips. overflow-y:auto scrolls instead of growing further if there are
+   enough active tables to exceed that. */
 .orders-quicknav__chips {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-start;
+    align-content: flex-start;
     gap: .4rem;
     flex: 1 1 auto;
     min-width: 0;
     max-height: calc(2 * 2.15rem + .4rem);
-    overflow: hidden;
-    transition: max-height var(--transition);
+    overflow-y: auto;
 }
-.orders-quicknav__chips--expanded { max-height: none; }
 .orders-quicknav__chip {
     flex: none;
     display: flex;
@@ -183,8 +186,8 @@
 
 .kds {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: .6rem;
     align-items: start;
 }
 

@@ -369,7 +369,9 @@
 
         _starters = starters;
         _firstsPendingToServe = starters.Any(s => s.Status == OrderItemStatus.Ready);
-        _showServeFirsts = starters.Any(s => s.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered);
+        // Same rule as OrderCard.razor: hide the standalone button once the order has mains,
+        // since "Serve seconds" already serves the firsts alongside them.
+        _showServeFirsts = mains.Count == 0 && starters.Any(s => s.Status is OrderItemStatus.Ready or OrderItemStatus.Delivered);
 
         _mains = mains;
         _secondsPendingToServe = mains.Any(s => s.Status == OrderItemStatus.Ready);

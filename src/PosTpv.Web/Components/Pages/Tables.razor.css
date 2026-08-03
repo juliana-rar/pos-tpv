@@ -74,9 +74,9 @@
     gap: .4rem;
     margin: 0;
 }
-/* One unified row for every map tool (New table/Join/Assign/Edit layout, Filters, the five
-   Filters-gated widgets, Zoom, Expand) instead of splitting the widgets off into a second row —
-   wraps as a last resort on narrow screens rather than overflowing the floating toolbar box. */
+/* Holds the Filters-gated New table/Join/Assign/Edit layout buttons — Zoom and Expand render
+   as their own always-on siblings in .toolbar--tables (see Tables.razor) so they stay available
+   in every mode instead of disappearing whenever Filters/Edit/Select/Reassign replaces this row. */
 .toolbar-actions { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; max-width: 21rem; }
 .toolbar-actions .btn--icon,
 .floor-tex-widget .btn--icon { width: 32px; height: 32px; padding: 0; }
@@ -139,6 +139,9 @@
     z-index: 4;
     margin: 0;
     padding: .3rem .5rem;
+    /* Reserves room for .floor-settings (always absolutely positioned in this same corner, see
+       below) so the Edit/Select/Reassign/default row content never renders underneath it. */
+    padding-right: 2.7rem;
     background: color-mix(in srgb, var(--card) 90%, transparent);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -147,17 +150,19 @@
 }
 .floor-wrap > .toolbar--tables .spacer { display: none; }
 
-/* Wraps the floor-style toggle and the paint-colour toggle so they stack one below the
-   other under the main toolbar row, right-aligned under the expand/collapse (minimise map)
-   button, instead of crowding the 7-icon row above. .toolbar--tables is the positioned
-   ancestor, so top:100%/right:0 here drops the whole stack flush against the toolbar's
-   own bottom-right corner. */
+/* Rendered unconditionally, unlike the rest of .toolbar--tables' content which swaps between
+   the Edit/Select/Reassign/default rows — absolutely positioned (relative to .toolbar--tables,
+   itself position:absolute) so it always sits flush in the map's top-right corner no matter
+   which of those rows is showing or how wide it is. */
+.floor-settings {
+    position: absolute;
+    top: .3rem;
+    right: .4rem;
+}
+
 /* Each toggle's own small widget — position:relative so its popover menu (.floor-tex-menu)
-   anchors to it individually. Sits inline as an ordinary member of .toolbar-actions now (same
-   row as New table/Join/Assign/Edit layout/Filters/Zoom/Expand), rather than a separate stack
-   wrapped below the main row — one continuous joined toolbar instead of two disconnected
-   pieces. Same fixed size as the row's other icon buttons so it lines up cleanly regardless of
-   which icon it holds. */
+   anchors to it individually. Same fixed size as the row's other icon buttons so it lines up
+   cleanly regardless of which icon it holds. */
 .floor-tex-widget {
     position: relative;
     display: flex;
@@ -166,6 +171,26 @@
     width: 32px;
     height: 32px;
     padding: 0;
+}
+
+/* The gear's own dropdown: gallery/palette/plant/furniture/zone toggles stack vertically below
+   it instead of widening the toolbar row, so opening Filters never changes how many icons sit
+   left of the gear — its own position (top-right corner, via .toolbar--tables) stays put whether
+   the dropdown is open or closed. */
+.floor-tools-menu {
+    position: absolute;
+    top: calc(100% + .4rem);
+    right: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    padding: .3rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    animation: pop var(--transition);
 }
 
 /* Popover itself opens below the toggle button (.floor-tex-widget is its positioned
@@ -362,15 +387,6 @@
     min-height: 0;
     overflow: auto;
     box-sizing: border-box;
-    /* A real wall frames the whole room instead of the floor texture just stopping at a plain
-       rectangle — same material language as .decor--wall, so the border reads as the room's own
-       perimeter rather than a UI panel edge. border-image (not border-color) so it can carry a
-       gradient like every other "material" surface on this page. */
-    border: 10px solid;
-    border-image: linear-gradient(155deg, #a3a3a5, #86868a) 1;
-}
-[data-theme="dark"] .floor {
-    border-image: linear-gradient(155deg, #4b4b50, #333338) 1;
 }
 
 /* Everything positioned on the map (tables, decor, group badges) lives in here instead of
@@ -750,8 +766,8 @@
    single member shows it. pointer-events:none so it never steals the drag from the table below. */
 .tbl__group {
     position: absolute;
-    transform-origin: top center;
-    transform: translate(-50%, 8px) scale(var(--text-boost, 1));
+    transform-origin: center;
+    transform: translate(-50%, -50%) scale(var(--text-boost, 1));
     z-index: 3;
     display: flex; flex-direction: column; align-items: center; gap: .05rem;
     padding: .2rem .5rem;

@@ -32,6 +32,7 @@ public class AllergenFormValidator : AbstractValidator<AllergenFormDto>
     public AllergenFormValidator()
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(80);
+        RuleFor(x => x.Description).MaximumLength(500);
         RuleFor(x => x.ImageUrl).MaximumLength(300);
     }
 }
@@ -74,6 +75,7 @@ public class AppSettingsFormValidator : AbstractValidator<AppSettingsFormDto>
         RuleFor(x => x.Title).NotEmpty().MaximumLength(80);
         RuleFor(x => x.LunchEnd).GreaterThan(x => x.LunchStart).WithMessage("Lunch end must be after lunch start.");
         RuleFor(x => x.DinnerEnd).GreaterThan(x => x.DinnerStart).WithMessage("Dinner end must be after dinner start.");
+        RuleFor(x => x.PrimaryColor).Matches("^#[0-9a-fA-F]{6}$").WithMessage("Primary colour must be a hex value like #6366f1.");
     }
 }
 

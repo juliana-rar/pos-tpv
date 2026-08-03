@@ -4,4 +4,22 @@
 
 .settings__hint { display: block; font-size: .78rem; margin-top: .2rem; }
 
+/* Same swatch language as /tables' paint-colour picker (each screen keeps its own copy —
+   Blazor's CSS isolation scopes rules per component) — round presets plus a native colour
+   input styled to sit in the same row, so the accent picker reads as one deliberate UI
+   piece instead of a bare <input type=color> + hex box. Built entirely from var(--border)/
+   var(--card)/var(--text*) tokens, so it re-themes itself with the rest of the app instead
+   of needing its own light/dark rules. */
+.color-pick { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.color-swatch {
+    width: 30px; height: 30px; padding: 0; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--border); background: var(--sw, transparent);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer; transition: transform var(--transition), border-color var(--transition);
+}
+.color-swatch:hover { transform: scale(1.08); }
+.color-swatch--on { border-color: var(--text); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--sw); }
+.color-swatch--custom { background: none; border-style: dashed; }
+
 .settings__save { display: flex; align-items: center; gap: .7rem; margin-top: 1rem; }

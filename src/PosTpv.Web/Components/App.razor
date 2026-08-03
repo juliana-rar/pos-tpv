@@ -1,5 +1,6 @@
 @* Root document. Interactivity is declared per-page so the login page can run as static SSR
    (required to set the authentication cookie). *@
+@inject AppSettingsCache Branding
 <!DOCTYPE html>
 <html lang="@(Loc.IsSpanish ? "es" : "en")" data-theme="light">
 
@@ -9,6 +10,16 @@
     <base href="/" />
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["PosTpv.Web.styles.css"]" />
+    @* Overrides app.css's default --primary for both themes with the Settings-configured accent
+       colour. Same specificity as app.css's ":root"/"[data-theme=dark]" rules, so it wins purely
+       by coming later in the cascade — no !important needed. --primary-strong is derived from it
+       so a custom colour still gets a matching hover shade instead of clashing with the default. *@
+    <style>
+        :root {
+            --primary: @Branding.Current.PrimaryColor;
+            --primary-strong: color-mix(in srgb, black 12%, @Branding.Current.PrimaryColor);
+        }
+    </style>
     <ImportMap />
     <link rel="icon" type="image/png" href="favicon.png" />
     <HeadOutlet />

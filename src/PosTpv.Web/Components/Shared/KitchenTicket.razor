@@ -6,7 +6,7 @@
 
 <div id="ticket-@Order.Id" class="ticket @(Order.SecondsFiredAt is null ? "" : "ticket--seconds")">
     <div class="ticket__head">
-        <span class="ticket__table"><LucideIcon Name="armchair" Size="16" /> @Order.TableName</span>
+        <span class="ticket__table"><LucideIcon Name="armchair" Size="13" /> @Order.TableName</span>
         <span class="badge ticket__status">@TicketStatusLabel(Order.Status)</span>
         <span class="spacer"></span>
         <span class="ticket__time">@Order.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
@@ -15,7 +15,7 @@
     <div class="ticket__fired-row">
         <button type="button" class="btn btn--sm btn--ghost ticket__fired @(Order.SecondsSentAt is null ? "ticket__fired--empty" : "")"
                 title="@(Order.SecondsSentAt is null ? Loc.T("Click to mark as fired") : Loc.T("Click to mark as not fired"))" @onclick="() => OnToggleSeconds.InvokeAsync(Order)">
-            <LucideIcon Name="bell" Size="14" />
+            <LucideIcon Name="bell" Size="12" />
             @Loc.T("Seconds prepared")@(Order.SecondsSentAt is { } secondsAt ? $" · {secondsAt.ToLocalTime():HH:mm}" : "")
         </button>
     </div>
@@ -23,16 +23,16 @@
     @if (Order.SecondsFiredAt is not null)
     {
         <div class="ticket__fire">
-            <span class="ticket__fire-label"><LucideIcon Name="bell" Size="15" /> @Loc.T("Fire second courses")</span>
+            <span class="ticket__fire-label"><LucideIcon Name="bell" Size="13" /> @Loc.T("Fire second courses")</span>
             <button class="btn btn--icon" title="@Loc.T("Got it")"
-                    @onclick="() => OnAcknowledgeSeconds.InvokeAsync(Order)"><LucideIcon Name="check" Size="18" /></button>
+                    @onclick="() => OnAcknowledgeSeconds.InvokeAsync(Order)"><LucideIcon Name="check" Size="14" /></button>
         </div>
     }
 
     <div class="ticket__items">
         @foreach (var group in _groups)
         {
-            <div class="ticket__group"><LucideIcon Name="@group.Icon" Size="14" /> @Loc.T(group.Label)</div>
+            <div class="ticket__group"><LucideIcon Name="@group.Icon" Size="12" /> @Loc.T(group.Label)</div>
             @* Same ordered-together bracket as /orders (OrderCard.razor's GroupByOrderTime): items tapped
                in the same minute share one timestamp behind a connecting bar instead of repeating it. *@
             @foreach (var timeGroup in OrderPresentation.GroupByOrderTime(group.Items))
@@ -50,11 +50,11 @@
                                     @if (it.Status == OrderItemStatus.Preparing)
                                     {
                                         <button class="btn btn--icon btn--success" title="@Loc.T("Ready")"
-                                                @onclick="() => OnSetItem.InvokeAsync((Order.Id, it.Id, OrderItemStatus.Ready))"><LucideIcon Name="arrow-right" Size="18" /></button>
+                                                @onclick="() => OnSetItem.InvokeAsync((Order.Id, it.Id, OrderItemStatus.Ready))"><LucideIcon Name="arrow-right" Size="14" /></button>
                                     }
                                     else
                                     {
-                                        <LucideIcon Name="check" Size="16" />
+                                        <LucideIcon Name="check" Size="13" />
                                     }
                                 </div>
                                 @if (it.Extras.Count > 0)
@@ -63,7 +63,7 @@
                                 }
                                 @if (!string.IsNullOrWhiteSpace(it.Comment))
                                 {
-                                    <div class="kitem__comment"><LucideIcon Name="triangle-alert" Size="14" /> @it.Comment</div>
+                                    <div class="kitem__comment"><LucideIcon Name="triangle-alert" Size="12" /> @it.Comment</div>
                                 }
                             </div>
                         }
@@ -79,7 +79,7 @@
             <button class="btn btn--ghost btn--block" title="@(_allFoodReady ? Loc.T("Click to undo") : null)" @onclick="() => OnToggleAllReady.InvokeAsync(Order)">
                 @if (_allFoodReady)
                 {
-                    <LucideIcon Name="check" Size="16" />
+                    <LucideIcon Name="check" Size="13" />
                 }
                 @(_allFoodReady ? Loc.T("All ready") : Loc.T("Mark all ready"))
             </button>

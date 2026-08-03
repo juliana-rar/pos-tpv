@@ -105,14 +105,16 @@ public class OrderService : IOrderService
         .Include(o => o.Table)
         .Include(o => o.Waiter)
         .Include(o => o.Items).ThenInclude(i => i.Product).ThenInclude(p => p.Category)
-        .Include(o => o.Items).ThenInclude(i => i.Extras);
+        .Include(o => o.Items).ThenInclude(i => i.Extras)
+        .AsSplitQuery();
 
     /// <summary>Same shape as <see cref="FullOrders"/> but untracked — for endpoints that only ever return a DTO.</summary>
     private IQueryable<Order> FullOrdersReadOnly() => _uow.Repository<Order>().QueryNoTracking()
         .Include(o => o.Table)
         .Include(o => o.Waiter)
         .Include(o => o.Items).ThenInclude(i => i.Product).ThenInclude(p => p.Category)
-        .Include(o => o.Items).ThenInclude(i => i.Extras);
+        .Include(o => o.Items).ThenInclude(i => i.Extras)
+        .AsSplitQuery();
 
     /// <summary>Loads a tracked order with its items' products/categories, for the serve/unserve/status mutation paths.</summary>
     private async Task<Order> LoadOrderWithCategoriesAsync(int orderId, CancellationToken ct) =>
@@ -512,13 +514,18 @@ public class OrderService : IOrderService
         await _notifier.FirstCoursesServedAsync(order.Id);
     }
 
+    // Serving seconds implies the firsts are long gone from the table, so any starter still
+    // waiting to be marked served rides along in the same click instead of leaving a stale
+    // "Serve firsts" button behind.
     public async Task ServeSecondCoursesAsync(int orderId, CancellationToken ct = default)
     {
         var (order, matched) = await SetCourseStatusAsync(orderId,
-            i => IsCourse(i, CourseType.Main) && i.Status == OrderItemStatus.Ready,
+            i => i.Status == OrderItemStatus.Ready && (IsCourse(i, CourseType.Main) || IsCourse(i, CourseType.Starter)),
             OrderItemStatus.Delivered, null, ct);
         if (matched.Count == 0) return;
 
+        if (matched.Any(i => IsCourse(i, CourseType.Starter)))
+            await _notifier.FirstCoursesServedAsync(order.Id);
         await _notifier.SecondCoursesServedAsync(order.Id);
         if (order.Status == OrderStatus.Ready)
             await _notifier.OrderReadyAsync(order.Id);
