@@ -183,10 +183,12 @@
    left of the gear — its own position (top-right corner, via .toolbar--tables) stays put whether
    the dropdown is open or closed. Shifted right by exactly its own padding (right: -padding
    instead of 0) so the icon buttons inside — inset from the menu's edge by that padding — end
-   up flush with the gear button's right edge above them, instead of sitting visibly left of it. */
+   up flush with the gear button's right edge above them, instead of sitting visibly left of it.
+   top:100% (not 100% + gap) so it sits flush against the toolbar bar above instead of leaving a
+   sliver of map visible between the two panels. */
 .floor-tools-menu {
     position: absolute;
-    top: calc(100% + .4rem);
+    top: 100%;
     right: -.3rem;
     z-index: 5;
     display: flex;
