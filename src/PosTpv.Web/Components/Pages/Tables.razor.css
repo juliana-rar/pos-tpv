@@ -186,6 +186,9 @@
    up flush with the gear button's right edge above them, instead of sitting visibly left of it.
    top:100% (not 100% + gap) so it sits flush against the toolbar bar above instead of leaving a
    sliver of map visible between the two panels. */
+/* Square top corners and no top border, so this panel reads as a continuation of the toolbar
+   bar sitting flush above it (which keeps its own full radius and border) instead of two
+   independently-rounded cards whose corners and doubled-up borders clash right at the seam. */
 .floor-tools-menu {
     position: absolute;
     top: 100%;
@@ -197,7 +200,8 @@
     padding: .3rem;
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
     box-shadow: var(--shadow-lg);
     animation: pop var(--transition);
 }
