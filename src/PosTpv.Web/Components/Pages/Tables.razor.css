@@ -178,11 +178,13 @@
 /* The gear's own dropdown: gallery/palette/plant/furniture/zone toggles stack vertically below
    it instead of widening the toolbar row, so opening Filters never changes how many icons sit
    left of the gear — its own position (top-right corner, via .toolbar--tables) stays put whether
-   the dropdown is open or closed. */
+   the dropdown is open or closed. Shifted right by exactly its own padding (right: -padding
+   instead of 0) so the icon buttons inside — inset from the menu's edge by that padding — end
+   up flush with the gear button's right edge above them, instead of sitting visibly left of it. */
 .floor-tools-menu {
     position: absolute;
     top: calc(100% + .4rem);
-    right: 0;
+    right: -.3rem;
     z-index: 5;
     display: flex;
     flex-direction: column;
