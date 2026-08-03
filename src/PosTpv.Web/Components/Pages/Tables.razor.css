@@ -153,8 +153,10 @@
 /* Rendered unconditionally, unlike the rest of .toolbar--tables' content which swaps between
    the Edit/Select/Reassign/default rows — absolutely positioned (relative to .toolbar--tables,
    itself position:absolute) so it always sits flush in the map's top-right corner no matter
-   which of those rows is showing or how wide it is. */
-.floor-settings {
+   which of those rows is showing or how wide it is. Compound selector (not just .floor-settings)
+   so it reliably beats .floor-tex-widget's own "position: relative" below on specificity instead
+   of losing that tie-break to whichever rule happens to come later in the file. */
+.floor-tex-widget.floor-settings {
     position: absolute;
     top: .3rem;
     right: .4rem;
