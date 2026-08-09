@@ -79,7 +79,12 @@
    in every mode instead of disappearing whenever Filters/Edit/Select/Reassign replaces this row. */
 .toolbar-actions { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; max-width: 21rem; }
 .toolbar-actions .btn--icon,
-.floor-tex-widget .btn--icon { width: 32px; height: 32px; padding: 0; }
+.floor-tex-widget .btn--icon,
+/* Expand/collapse map button: a lone icon button sitting as a direct child of the toolbar
+   (not wrapped in .toolbar-actions or .floor-tex-widget like its siblings), so without this
+   it fell back to app.css's default .btn--icon sizing (38px, .5rem padding) — visibly bigger/
+   more padded than the gear and zoom-group buttons right next to it. */
+.toolbar--tables > .btn--icon { width: 32px; height: 32px; padding: 0; }
 
 .zoom-group {
     display: inline-flex;
@@ -105,6 +110,14 @@
     cursor: pointer;
 }
 .zoom-group__level:hover { color: var(--text); }
+
+/* Smaller variant used in .floor-zoom-dock (floating above the zone-filter pill) — the
+   toolbar's own .zoom-group stays full-size, this one trims padding/gap and shrinks the
+   buttons/level text a notch further so the stacked pill reads as a compact companion to
+   the zone tabs right below it, not a second full-size toolbar. */
+.zoom-group--sm { padding: 1px; gap: 0; }
+.zoom-group--sm .btn--icon { width: 18px; height: 18px; }
+.zoom-group--sm .zoom-group__level { width: 2.1rem; font-size: .62rem; }
 .legend__item { display: inline-flex; align-items: center; gap: .3rem; font-size: .74rem; line-height: 1; color: var(--text-soft); font-weight: 600; }
 .dot { width: .55rem; height: .55rem; border-radius: 50%; display: inline-block; }
 .dot--available { background: var(--success); }
@@ -140,8 +153,10 @@
     margin: 0;
     padding: .3rem .5rem;
     /* Reserves room for .floor-settings (always absolutely positioned in this same corner, see
-       below) so the Edit/Select/Reassign/default row content never renders underneath it. */
-    padding-right: 2.7rem;
+       below) so the Edit/Select/Reassign/default row content never renders underneath it.
+       2rem for the widget itself, plus its own right offset, plus .3rem of clearance so
+       flow content doesn't butt directly against it. */
+    padding-right: 2.8rem;
     /* Solid, same as .floor-tools-menu's background below — was color-mix(...90%, transparent),
        which let the map's wood texture bleed through faintly and read as a seam/gap where this
        bar met the opaque dropdown hanging off the gear. */
@@ -151,6 +166,13 @@
     box-shadow: var(--shadow-sm);
     width: fit-content;
 }
+/* While the gear's dropdown is open, its own curved bottom-right corner sits just past this
+   bar's real (rounded) bottom edge — since the two shapes don't share a radius, that leaves a
+   sliver of map visible between them right at the corner, reading as a stray gap even though
+   the menu itself sits flush underneath (see .floor-tools-menu's own top offset below).
+   Squaring this corner removes that second curve so the bar and the dropdown read as one
+   continuous shape instead of two separately-rounded cards touching at a point. */
+.floor-wrap > .toolbar--tables.toolbar--tables-menu-open { border-bottom-right-radius: 0; }
 .floor-wrap > .toolbar--tables .spacer { display: none; }
 
 /* Rendered unconditionally, unlike the rest of .toolbar--tables' content which swaps between
@@ -162,7 +184,12 @@
 .floor-tex-widget.floor-settings {
     position: absolute;
     top: .3rem;
-    right: .4rem;
+    /* .floor-tools-menu below is centered on this widget but is itself wider than it (icon
+       width + its own left/right padding), so it overhangs both of the widget's edges by
+       roughly (menu width − 32px) / 2 — about 6-7px. This offset has to clear that overhang
+       plus a little margin, or the menu's square top corner pokes out past the toolbar's own
+       right edge into the map, breaking the illusion that it hangs from the toolbar. */
+    right: .5rem;
 }
 
 /* Each toggle's own small widget — position:relative so its popover menu (.floor-tex-menu)
@@ -181,9 +208,11 @@
 /* The gear's own dropdown: gallery/palette/plant/furniture/zone toggles stack vertically below
    it instead of widening the toolbar row, so opening Filters never changes how many icons sit
    left of the gear — its own position (top-right corner, via .toolbar--tables) stays put whether
-   the dropdown is open or closed. Shifted right by exactly its own padding (right: -padding
-   instead of 0) so the icon buttons inside — inset from the menu's edge by that padding — end
-   up flush with the gear button's right edge above them, instead of sitting visibly left of it.
+   the dropdown is open or closed. right:0 with no horizontal padding (only top/bottom) so the
+   32px-wide icon buttons butt straight up against the menu's own edges instead of being inset
+   by padding on one axis and offset by a matching negative margin on the other — that cancel-out
+   trick left a stray gap whenever the two didn't match to the sub-pixel. align-items:flex-end
+   is the same guarantee belt-and-braces, in case the menu is ever wider than its content.
    top:100% (not 100% + gap) so it sits flush against the toolbar bar above instead of leaving a
    sliver of map visible between the two panels. */
 /* Square top corners and no top border, so this panel reads as a continuation of the toolbar
@@ -191,28 +220,51 @@
    independently-rounded cards whose corners and doubled-up borders clash right at the seam. */
 .floor-tools-menu {
     position: absolute;
-    top: 100%;
-    right: -.3rem;
+    /* Not just 100%: this menu is positioned relative to the 32px gear widget, not the taller
+       toolbar bar around it (the widget sits top:.3rem inside the bar and doesn't reach its
+       full height), so top:100% alone left the menu's top short of the bar's real bottom edge —
+       the gallery icon's own top padding then rendered inside the toolbar's body, overlapping
+       whatever icon row is showing there instead of starting clear below it. .36rem closes that
+       gap exactly (measured against the rendered toolbar), so the menu sits flush against the
+       bar's true bottom instead of leaving a sliver of map visible between the two panels. */
+    top: calc(100% + .36rem);
+    /* Centered on the gear button itself (left:50% of the widget + translateX(-50%) of the
+       menu's own width) instead of pinned by its right edge — that way it stays centered under
+       the gear no matter how much left/right padding the menu has, without needing to recompute
+       an offset by hand every time that padding changes. */
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 5;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: .3rem;
-    padding: .3rem;
+    /* Symmetric top/bottom padding — top separates the gallery icon from the gear button above
+       (which sits flush, top:100%, with no gap of its own); bottom gives the last icon (Draw
+       zone) the same breathing room against the panel's own edge, so the whole stack reads as
+       a deliberately-framed menu instead of content padded on one side only. */
+    padding: .4rem .35rem;
     background: var(--card);
     border: 1px solid var(--border);
     border-top: none;
     border-radius: 0 0 var(--radius-sm) var(--radius-sm);
     box-shadow: var(--shadow-lg);
-    animation: pop var(--transition);
+    /* No entrance animation — matches .toolbar-actions (the horizontal icon row), which just
+       renders in place with no motion. The pop animation's own translateY, stacked on top of
+       this panel already being offset below the gear (top:100%), read as an extra jump/slide
+       rather than a clean appearance. */
 }
 
-/* Popover itself opens below the toggle button (.floor-tex-widget is its positioned
-   ancestor here) — same shape as the reservation status menu (.resv-status__menu) and the
-   Kitchen filter dropdowns (.dd__menu). */
+/* Popover opens to the left of its toggle button (.floor-tex-widget is its positioned
+   ancestor here), vertically centered on it, and unfolds out of it via plant-unfold (see
+   .plant-pick below) — same flyout direction/animation as the plants and paint-colour
+   pickers, so every icon in the gear's dropdown opens the same way. */
 .floor-tex-menu {
     position: absolute;
-    top: calc(100% + .4rem);
-    right: 0;
+    top: 50%;
+    right: calc(100% + .35rem);
+    transform: translateY(-50%);
+    transform-origin: right center;
     z-index: 5;
     display: flex;
     flex-direction: column;
@@ -222,16 +274,210 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     box-shadow: var(--shadow-lg);
-    animation: pop var(--transition);
+    animation: plant-unfold var(--transition);
 }
 /* The paint-colour popover reuses the swatch-row layout from the table edit form's colour
    picker (.color-pick) instead of the vertical option list above — flex-direction must be
    re-declared since .floor-tex-menu's own column direction otherwise wins (same property,
-   both single-class selectors). */
+   both single-class selectors). Positioned and animated the same way as .plant-pick below
+   (flyout to the left of its trigger, unfolding out of it) instead of the vertical menus'
+   below-and-right-aligned default, since it's the same fixed-count single-row swatch strip. */
 .floor-tex-menu.color-pick {
+    top: 50%;
+    right: calc(100% + .35rem);
+    transform: translateY(-50%);
     flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    height: 2rem;
     width: max-content;
-    max-width: 220px;
+    padding: 0 .35rem;
+    border-right: none;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    transform-origin: right center;
+    animation: plant-unfold var(--transition);
+}
+/* Plants picker: every option in a single horizontal row, no taller than the leaf button that
+   opens it, instead of the vertical text-list every other .floor-tex-menu uses — reads as a
+   compact swatch strip rather than a dropdown menu. Height pinned to the trigger button's own
+   32px (2rem) so the row never grows past it; labels move to the button's title tooltip instead
+   of inline text, since there's no vertical room left to show them. */
+/* Opens to the left of the leaf button instead of below it (right:100%+gap, vertically
+   centered on the button via top:50%/translateY(-50%)) — a single-row strip reads naturally
+   as a flyout beside its trigger rather than a dropdown underneath it.
+   The .4rem+.35rem offset isn't an arbitrary gap: the leaf button's widget sits .35rem
+   (this panel's own left padding) inside .floor-tools-menu's left border, so the extra .35rem
+   here cancels that inset and lands this flyout's right edge exactly on the panel's own border
+   — flush, not floating a further .35rem off to the side of it.
+   Its right corners are squared (only the left ones keep the radius) and its right border is
+   dropped, so that shared edge reads as one seam between the two panels instead of a rounded
+   gap with a doubled border line. */
+.floor-tex-menu.plant-pick {
+    top: 50%;
+    right: calc(100% + .35rem);
+    transform: translateY(-50%);
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    height: 2rem;
+    gap: .3rem;
+    width: max-content;
+    padding: 0 .35rem;
+    border-right: none;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    /* Overrides .floor-tex-menu's own vertical "pop" — this panel is a horizontal flyout that
+       opens to the left of its leaf button, not a dropdown underneath it, so its entrance should
+       read as unfolding out of the button (transform-origin: right, the edge touching the button)
+       rather than sliding up from below. */
+    transform-origin: right center;
+    animation: plant-unfold var(--transition);
+}
+@keyframes plant-unfold {
+    from { opacity: 0; transform: translateY(-50%) scaleX(.35); }
+    to   { opacity: 1; transform: translateY(-50%) scaleX(1); }
+}
+/* Exit mirrors the entrance: instead of just reversing the unfold in place, it also slides
+   right as it shrinks (translateX, on top of the scaleX collapse) so the panel visibly retracts
+   into its trigger button rather than just fading down to nothing — kept in the DOM for this
+   animation's own 200ms by each menu's own "closing" flag (see ToggleZoneMenu/ToggleFloorMenu/
+   TogglePaintMenu/TogglePlantMenu/ToggleDesignMenu in Tables.razor) since Blazor would otherwise
+   remove it the instant the menu closes, before it could ever play. Generic across every picker
+   in the gear's dropdown (not just Plants) so the whole row closes the same way. */
+.floor-tex-menu--closing {
+    animation: tex-menu-fold 200ms cubic-bezier(.4, 0, 1, 1) forwards !important;
+    pointer-events: none;
+}
+@keyframes tex-menu-fold {
+    from { opacity: 1; transform: translateY(-50%) translateX(0) scaleX(1); }
+    to   { opacity: 0; transform: translateY(-50%) translateX(14px) scaleX(.3); }
+}
+.plant-pick .floor-tex-opt {
+    padding: 0;
+    border-radius: 8px;
+}
+.plant-pick .floor-tex-opt:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.plant-pick .decor-swatch {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 6px;
+}
+.plant-pick .floor-tex-opt__label { display: none; }
+/* Floor-texture picker: same compact single-row swatch-strip layout as .plant-pick (edge
+   flush against the gear panel, squared right corners) instead of the vertical text list the
+   base .floor-tex-menu still renders for it — so it matches the palette picker right above it,
+   the visual disposition the "Floor style" button now shares with "Paint table colours". */
+.floor-tex-menu.tex-pick {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    height: 2rem;
+    gap: .3rem;
+    width: max-content;
+    padding: 0 .35rem;
+    border-right: none;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.tex-pick .floor-tex-opt {
+    padding: 0;
+    border-radius: 8px;
+}
+.tex-pick .floor-tex-opt:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.tex-pick .floor-tex-opt__label { display: none; }
+/* Design-elements picker: same treatment as .tex-pick right above — single-row swatch strip
+   flush against the gear panel instead of the vertical text list, so it matches the other two
+   pickers in this same dropdown. */
+.floor-tex-menu.design-pick {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    height: 2rem;
+    gap: .3rem;
+    width: max-content;
+    padding: 0 .35rem;
+    border-right: none;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.design-pick .floor-tex-opt {
+    padding: 0;
+    border-radius: 8px;
+}
+.design-pick .floor-tex-opt:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.design-pick .floor-tex-opt__label { display: none; }
+.design-pick .decor-swatch {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 6px;
+}
+/* Zones flyout: one named chip per existing zone plus "+" to add another, all in a single
+   horizontal row that opens to the left of the Zones icon — same swatch-strip shell (edge flush
+   against the panel, unfold animation) as its siblings above, so the toolbar's whole icon row
+   still reads as one consistent family of pickers. Each chip's own name sits directly on its
+   colour fill (see .zone-chip below) instead of a bare swatch with the name only on hover, so
+   opening the menu reads off every zone at a glance. Horizontal scroll kicks in past a handful
+   of zones instead of the row growing to push past the map's edge. */
+.floor-tex-menu.zone-pick {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    height: 2rem;
+    gap: .3rem;
+    max-width: 18rem;
+    overflow-x: auto;
+    padding: 0 .35rem;
+    border-right: none;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.zone-pick .floor-tex-opt {
+    padding: 0;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+.zone-pick .floor-tex-opt:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.zone-pick .floor-tex-opt__label { display: none; }
+/* Same colour-derivation trick as .floor-zone on the map itself (a tinted fill + a text colour
+   both mixed from --zc) instead of a solid fill with hardcoded white/black text — an arbitrary
+   zone colour can be light or dark, so deriving the text colour from it keeps every chip
+   readable without per-zone contrast checks. --zc falls back to --primary for zones with no
+   custom colour set (see the inline style in the markup, only written when z.Color is set). */
+.zone-chip {
+    --zc: var(--primary);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    height: 1.6rem;
+    padding: 0 .6rem;
+    border: 1px solid color-mix(in srgb, var(--zc) 45%, var(--border));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--zc) 16%, var(--card-2));
+    color: color-mix(in srgb, var(--zc) 70%, var(--text));
+    font: inherit;
+    font-size: .72rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+}
+.zone-chip:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+    background: color-mix(in srgb, var(--zc) 24%, var(--card-2));
+}
+.zone-swatch {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+.floor-tex-opt__label {
+    font-size: .68rem;
+    line-height: 1.15;
+    text-align: center;
+    color: var(--text-soft);
 }
 .floor-tex-opt {
     display: flex;
@@ -246,7 +492,7 @@
     font-size: .82rem;
     text-align: left;
     cursor: pointer;
-    transition: background var(--transition);
+    transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
 }
 .floor-tex-opt:hover { background: var(--card-2); }
 .floor-tex-opt--on { box-shadow: inset 0 0 0 1px var(--border); font-weight: 700; }
@@ -288,47 +534,59 @@
         linear-gradient(90deg, rgba(0, 0, 0, .2) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, .2) 75%);
 }
 
-/* Zone filter as a floating segmented control, anchored to the map's bottom-left corner
-   instead of taking its own row, and always visible (not tucked behind the Filters toggle). */
-.floor-wrap > .zone-filter {
+/* Dock stacking the (small) zoom pill directly above the zone-filter pill, centred along the
+   map's bottom edge instead of each taking its own row. Positioned as one unit so the zoom
+   controls stay put whether or not the zone-filter pill underneath is currently rendered
+   (it's hidden during Edit/Select/Reassign — see Tables.razor). */
+.floor-wrap > .floor-zoom-dock {
     position: absolute;
-    left: .6rem;
-    bottom: .6rem;
+    left: 50%;
+    bottom: .7rem;
+    transform: translateX(-50%);
     z-index: 4;
-    margin: 0;
-    background: color-mix(in srgb, var(--card-2) 90%, transparent);
-    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
 }
-/* Same "realistic physical button" look as the toolbar's own buttons (gradient face, embossed
-   edge, press-down feedback) instead of the flat segmented-tab style used elsewhere, so these
-   read as real buttons rather than a plain pill toggle. */
+.floor-zoom-dock > .zoom-group {
+    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    background: color-mix(in srgb, var(--card) 78%, transparent);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    box-shadow: 0 10px 28px -10px rgba(0, 0, 0, .3), 0 1px 2px rgba(0, 0, 0, .08);
+}
+/* Zone filter as a floating segmented control (not tucked behind the Filters toggle). A
+   translucent frosted-glass pill (backdrop-filter blur over the map itself) reads as more
+   modern than a flat opaque bar sitting on top of the floor texture, and matches the
+   "floating over content" style already used for .floor-hint--floating above. */
+.floor-zoom-dock > .zone-filter {
+    margin: 0;
+    padding: 4px;
+    gap: .15rem;
+    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    background: color-mix(in srgb, var(--card) 78%, transparent);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    box-shadow: 0 10px 28px -10px rgba(0, 0, 0, .3), 0 1px 2px rgba(0, 0, 0, .08);
+}
+/* Flat pill options — same family as the base .tabs__opt (app.css) rather than the toolbar
+   buttons' skeuomorphic gradient/emboss treatment, so this reads as a clean modern segmented
+   control instead of a row of physical buttons. */
 .zone-filter .tabs__opt {
-    background: linear-gradient(to bottom, color-mix(in srgb, var(--card) 98%, white 2%), var(--card-2));
-    border: 1px solid var(--border);
+    border-radius: 999px;
     color: var(--text-soft);
-    border-radius: var(--radius-sm);
-    box-shadow:
-        0 1px 0 rgba(255, 255, 255, .55) inset,
-        0 -4px 6px -4px color-mix(in srgb, var(--text) 20%, transparent) inset,
-        0 1px 3px rgba(0, 0, 0, .1);
-    transition: transform 110ms ease, background 110ms ease, box-shadow 110ms ease, color 110ms ease;
+    transition: background 130ms ease, color 130ms ease, transform 110ms ease;
 }
 .zone-filter .tabs__opt:hover {
     color: var(--text);
-    background: linear-gradient(to bottom, var(--card), color-mix(in srgb, var(--card-2) 90%, black 6%));
+    background: color-mix(in srgb, var(--text) 8%, transparent);
 }
-.zone-filter .tabs__opt:active {
-    transform: translateY(1px);
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, .25);
-    transition-duration: 40ms;
-}
+.zone-filter .tabs__opt:active { transform: scale(.96); }
 .zone-filter .tabs__opt--on {
-    background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+    background: var(--primary);
     color: var(--on-primary);
-    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
-    box-shadow:
-        0 1px 0 rgba(255, 255, 255, .35) inset,
-        0 2px 6px color-mix(in srgb, var(--primary) 40%, transparent);
+    box-shadow: 0 2px 8px -1px color-mix(in srgb, var(--primary) 55%, transparent);
 }
 
 /* Floating hint bar shown while picking the table to reassign, before a source table is
@@ -431,10 +689,9 @@
     border: 2px dashed color-mix(in srgb, var(--zc) 55%, var(--border));
     border-radius: 10px;
     background: color-mix(in srgb, var(--zc) 6%, transparent);
-    cursor: pointer;
+    cursor: default;
     transition: background var(--transition), border-color var(--transition);
 }
-.floor-zone:hover { background: color-mix(in srgb, var(--zc) 11%, transparent); }
 .floor-zone--on {
     border-style: solid;
     border-color: var(--zc);
@@ -579,6 +836,10 @@
        scroll/zoom attempt instead of delivering a clean pointerdown→pointerup sequence, breaking
        the big-map "hold to edit the table's name" gesture. */
     touch-action: manipulation;
+    /* Without this, tapping a table in the expanded (big) map flashes the browser/OS's own
+       default tap-highlight — a solid blue rectangle covering the whole element — the instant
+       before OrderEditor opens, since .tbl has no tabindex/focus styling of its own to override. */
+    -webkit-tap-highlight-color: transparent;
     box-shadow:
         inset 0 0 0 3px color-mix(in srgb, black 7%, var(--card-2)),
         inset 0 2px 2px rgba(255, 255, 255, .4),
@@ -777,22 +1038,20 @@
    of the .tbl elements, not nested inside one, so it reads as "where they join" instead of
    belonging to whichever table happens to be first, and carries the group's name now that no
    single member shows it. pointer-events:none so it never steals the drag from the table below. */
+/* Plain text badge — no fill/border/shadow of its own, so a joined group's name and seat
+   count read the same as any regular table's .tbl__name/.tbl__seats instead of standing out
+   as a coloured pill. */
 .tbl__group {
     position: absolute;
     transform-origin: center;
     transform: translate(-50%, -50%) scale(var(--text-boost, 1));
     z-index: 3;
     display: flex; flex-direction: column; align-items: center; gap: .05rem;
-    padding: .2rem .5rem;
-    border-radius: var(--radius-sm);
-    color: #fff;
-    background: var(--grp, var(--primary));
-    box-shadow: var(--shadow-sm);
     white-space: nowrap;
     pointer-events: none;
 }
-.tbl__group-name { font-size: .7rem; font-weight: 800; }
-.tbl__group-seats { display: inline-flex; align-items: center; gap: .15rem; font-size: .6rem; font-weight: 700; opacity: .9; }
+.tbl__group-name { font-size: .76rem; font-weight: 800; color: var(--tfg, var(--text)); }
+.tbl__group-seats { display: inline-flex; align-items: center; gap: .15rem; font-size: .6rem; font-weight: 700; color: var(--tfg, var(--text-soft)); }
 .join-info {
     display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
     margin-top: .5rem; padding: .6rem .8rem;
@@ -873,10 +1132,16 @@
     flex: 0 0 380px;
     display: flex;
     flex-direction: column;
-    gap: .6rem;
+    gap: 0;
     height: calc(100vh - 160px);
     min-height: 420px;
 }
+/* Squares the touching edges between the date bar and the reservations panel below it (no gap
+   now — see .resv-col) so the two cards read as one continuous shape instead of two separately-
+   rounded boxes stacked with a sliver of background between them. Same corner-squaring trick as
+   the map toolbar/gear-dropdown pairing above. */
+.resv-col > .tables-datebar { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.resv-col > .resv { border-top-left-radius: 0; border-top-right-radius: 0; border-top: none; }
 .resv {
     flex: 1 1 auto;
     min-height: 0;
@@ -905,16 +1170,6 @@
 
 /* Day nav (.resv__day-nav / .resv__head-date) and the small icon actions under it
    (.resv__stats-btn) now live in app.css — shared with the reservations dashboard. */
-.resv__assigning {
-    display: flex; align-items: center; gap: .5rem; justify-content: space-between;
-    margin: 0 1rem .6rem;
-    padding: .5rem .7rem;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
-    background: var(--card-2);
-    color: var(--text);
-    font-weight: 600; font-size: .82rem;
-}
 
 .resv__list { flex: 1 1 auto; overflow: auto; padding: .6rem 1rem 1rem; display: flex; flex-direction: column; gap: .4rem; }
 
@@ -1264,6 +1519,17 @@
 }
 .tbl-chip:hover { transform: translateY(-1px); }
 .tbl-chip--sm { padding: .12rem .5rem; font-size: .72rem; font-weight: 700; background: var(--card); border-color: var(--border); }
+/* "Unassigned" as an actionable chip (dashed border, muted text) instead of plain static text —
+   reads as a prompt to tap and pick a table rather than a real assigned-table pill. */
+.tbl-chip--unassigned {
+    border-style: dashed;
+    color: var(--text-soft);
+    background: transparent;
+}
+.tbl-chip--unassigned:hover { color: var(--text); border-color: var(--text-soft); }
+/* Confirms the in-progress table pick right where the just-picked chip(s) are, instead of only
+   via the floating "Done" hint above the map. */
+.resv-card__confirm-assign { width: 22px; height: 22px; padding: 0; }
 
 .field-hint { display: flex; align-items: center; gap: .4rem; margin: -.5rem 0 .9rem; font-size: .8rem; }
 

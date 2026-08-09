@@ -49,8 +49,15 @@
                                     <span class="spacer"></span>
                                     @if (it.Status == OrderItemStatus.Preparing)
                                     {
-                                        <button class="btn btn--icon btn--success" title="@Loc.T("Ready")"
-                                                @onclick="() => OnSetItem.InvokeAsync((Order.Id, it.Id, OrderItemStatus.Ready))"><LucideIcon Name="arrow-right" Size="14" /></button>
+                                        <button class="btn btn--icon btn--ghost kitem__ready" title="@Loc.T("Ready")"
+                                                @onclick="() => OnSetItem.InvokeAsync((Order.Id, it.Id, OrderItemStatus.Ready))"><LucideIcon Name="arrow-right" Size="11" /></button>
+                                    }
+                                    else if (it.Status == OrderItemStatus.Ready)
+                                    {
+                                        @* Clicking an already-Ready item undoes it back to Preparing, same "tap again to
+                                           undo" pattern as the course/drink Serve buttons on /orders. *@
+                                        <button class="btn btn--icon btn--ghost kitem__ready" title="@Loc.T("Click to undo")"
+                                                @onclick="() => OnSetItem.InvokeAsync((Order.Id, it.Id, OrderItemStatus.Preparing))"><LucideIcon Name="check" Size="13" /></button>
                                     }
                                     else
                                     {

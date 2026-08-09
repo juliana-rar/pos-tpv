@@ -95,19 +95,21 @@
 .kitem__name { font-weight: 600; }
 .kitem__extras { margin-top: .05rem; font-size: .7rem; font-weight: 600; }
 .kitem__comment { margin-top: .05rem; font-size: .7rem; font-weight: 700; }
-/* Same keycap depth as the other buttons on this page, but keeps its green success fill —
-   only the Serve/Fire buttons in OrderCard went fully gray, this one stays a colored CTA. */
-.kitem .btn--icon {
-    width: 20px; height: 20px; padding: 0;
+/* Same neutral gray "keycap" as every other button on this page (Serve/Fire in OrderCard,
+   the toolbar buttons) — previously a green success fill of its own, singled out as a colored
+   CTA; now matches the rest of the app's button language instead of standing out. Smaller than
+   the other icon buttons too (16px vs 20px) since it repeats on every single food line. */
+.kitem .btn--icon.kitem__ready {
+    width: 16px; height: 16px; padding: 0;
     box-shadow: 0 1px 0 rgba(255, 255, 255, .3) inset, 0 2px 4px rgba(0, 0, 0, .15);
     transform: translateY(0);
     transition: transform 110ms ease, box-shadow 110ms ease;
 }
-.kitem .btn--icon:active {
+.kitem .btn--icon.kitem__ready:active {
     transform: translateY(1px);
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, .3);
 }
-.kitem .btn--icon svg { width: 14px; height: 14px; }
+.kitem .btn--icon.kitem__ready svg { width: 11px; height: 11px; }
 
 /* Course section headers within the item list — same icons/labels as the waiter's OrderCard. */
 .ticket__group {

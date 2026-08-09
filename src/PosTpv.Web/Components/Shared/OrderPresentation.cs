@@ -100,6 +100,51 @@ public static class OrderPresentation
         return groups;
     }
 
+    /// <summary>
+    /// Collapses same-product lines within one time group into a single "Nx Product" line — e.g.
+    /// two separate Coca-Cola taps at 11:06 read as one "2x Coca-Cola" line instead of two
+    /// separate "1x Coca-Cola" lines. Each tap is still its own OrderItem underneath (so it can
+    /// carry its own comment/extras and be edited/removed individually in the order editor) —
+    /// this only collapses the read-only board/kitchen display. Lines with different extras or a
+    /// different comment stay on their own line even at the same moment, since they aren't really
+    /// "the same order" any more; the same product ordered in a different time group already gets
+    /// its own line via GroupByOrderTime, untouched by this.
+    /// </summary>
+    public static List<OrderItemDto> MergeSameProduct(List<OrderItemDto> items)
+    {
+        var merged = new List<OrderItemDto>();
+        var indexByKey = new Dictionary<(string Product, string Comment, bool Invited, string Extras), int>();
+        foreach (var it in items)
+        {
+            var key = (it.ProductName, it.Comment ?? "", it.IsInvited,
+                string.Join(",", it.Extras.Select(e => e.Name).OrderBy(n => n, StringComparer.Ordinal)));
+            if (indexByKey.TryGetValue(key, out var i))
+                merged[i] = merged[i] with { Quantity = merged[i].Quantity + it.Quantity, LineTotal = merged[i].LineTotal + it.LineTotal };
+            else
+            {
+                indexByKey[key] = merged.Count;
+                merged.Add(it);
+            }
+        }
+        return merged;
+    }
+
+    /// <summary>
+    /// Splits a "Label · HH:mm" combined string (as returned by DrinksLabel/CourseLabel/etc.)
+    /// into its label and trailing time, so a button can lay the time out flush against its own
+    /// right edge instead of running it straight on from the label text. Returns a null Time for
+    /// labels with no trailing time (e.g. "Serve drinks", still pending).
+    /// </summary>
+    public static (string Label, string? Time) SplitTrailingTime(string combined)
+    {
+        var idx = combined.LastIndexOf(" · ", StringComparison.Ordinal);
+        if (idx < 0) return (combined, null);
+        var tail = combined[(idx + 3)..];
+        var looksLikeTime = tail.Length == 5 && tail[2] == ':'
+            && char.IsDigit(tail[0]) && char.IsDigit(tail[1]) && char.IsDigit(tail[3]) && char.IsDigit(tail[4]);
+        return looksLikeTime ? (combined[..idx], tail) : (combined, null);
+    }
+
     public static string DrinksLabel(bool hasPendingDrinks, DateTime? drinksServedAt) => hasPendingDrinks
         ? Loc.T("Serve drinks")
         : drinksServedAt is null

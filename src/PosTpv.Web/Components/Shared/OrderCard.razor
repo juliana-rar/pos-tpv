@@ -24,10 +24,16 @@
         <div class="order-card__actions">
             @if (_drinks.Count > 0)
             {
+                var (drinksText, drinksTime) = OrderPresentation.SplitTrailingTime(DrinksLabel());
                 <button class="btn btn--sm @(_hasPendingDrinks ? "btn--primary" : "btn--ghost")"
                         title="@(_hasPendingDrinks ? null : Loc.T("Click to undo"))"
                         @onclick="OnToggleDrinksClick">
-                    <LucideIcon Name="cup-soda" Size="14" />@DrinksLabel()
+                    <LucideIcon Name="cup-soda" Size="14" />@drinksText
+                    @if (drinksTime is not null)
+                    {
+                        <span class="spacer"></span>
+                        <span>@drinksTime</span>
+                    }
                 </button>
             }
             @if (_showServeFirsts)
@@ -42,18 +48,30 @@
                instead of stacking a separate "Serve seconds" button next to "Fire seconds". *@
             @if (_showServeSeconds)
             {
+                var (secondsServeText, secondsServeTime) = OrderPresentation.SplitTrailingTime(SecondsServeLabel());
                 <button class="btn btn--sm @(_secondsPendingToServe ? "btn--primary" : "btn--ghost")"
                         title="@(_secondsPendingToServe ? null : Loc.T("Click to undo"))"
                         @onclick="OnToggleServeSecondsClick">
-                    <LucideIcon Name="utensils" Size="14" />@SecondsServeLabel()
+                    <LucideIcon Name="utensils" Size="14" />@secondsServeText
+                    @if (secondsServeTime is not null)
+                    {
+                        <span class="spacer"></span>
+                        <span>@secondsServeTime</span>
+                    }
                 </button>
             }
             else if (_hasSeconds)
             {
+                var (secondsText, secondsTime) = OrderPresentation.SplitTrailingTime(CourseLabel("Fire seconds", "Seconds fired", Order.SecondsFiredAt));
                 <button class="btn btn--sm @(Order.SecondsFiredAt is null ? "btn--primary" : "btn--ghost")"
                         title="@(Order.SecondsFiredAt is null ? Loc.T("Tell the kitchen to start the second courses") : Loc.T("Click to undo"))"
                         @onclick="OnToggleSecondsClick">
-                    <LucideIcon Name="bell" Size="14" />@CourseLabel("Fire seconds", "Seconds fired", Order.SecondsFiredAt)
+                    <LucideIcon Name="bell" Size="14" />@secondsText
+                    @if (secondsTime is not null)
+                    {
+                        <span class="spacer"></span>
+                        <span>@secondsTime</span>
+                    }
                 </button>
             }
             @if (_showServeDesserts)
@@ -81,7 +99,7 @@
                         <div class="order-card__time-group">
                             <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
                             <div class="order-card__time-group-items">
-                                @foreach (var it in timeGroup.Items)
+                                @foreach (var it in OrderPresentation.MergeSameProduct(timeGroup.Items))
                                 {
                                     <div class="order-card__line"><span>@it.Quantity× @it.ProductName</span></div>
                                 }
@@ -112,11 +130,10 @@
                         <div class="order-card__time-group">
                             <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
                             <div class="order-card__time-group-items">
-                                @foreach (var it in timeGroup.Items)
+                                @foreach (var it in OrderPresentation.MergeSameProduct(timeGroup.Items))
                                 {
                                     <div class="order-card__line">
                                         <span>@it.Quantity× @it.ProductName</span>
-                                        <span>@it.LineTotal.ToString("N2")</span>
                                     </div>
                                 }
                             </div>
@@ -146,11 +163,10 @@
                         <div class="order-card__time-group">
                             <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
                             <div class="order-card__time-group-items">
-                                @foreach (var it in timeGroup.Items)
+                                @foreach (var it in OrderPresentation.MergeSameProduct(timeGroup.Items))
                                 {
                                     <div class="order-card__line">
                                         <span>@it.Quantity× @it.ProductName</span>
-                                        <span>@it.LineTotal.ToString("N2")</span>
                                     </div>
                                 }
                             </div>
@@ -180,11 +196,10 @@
                         <div class="order-card__time-group">
                             <span class="order-card__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
                             <div class="order-card__time-group-items">
-                                @foreach (var it in timeGroup.Items)
+                                @foreach (var it in OrderPresentation.MergeSameProduct(timeGroup.Items))
                                 {
                                     <div class="order-card__line">
                                         <span>@it.Quantity× @it.ProductName</span>
-                                        <span>@it.LineTotal.ToString("N2")</span>
                                     </div>
                                 }
                             </div>

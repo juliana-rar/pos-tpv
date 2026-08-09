@@ -1,5 +1,7 @@
-.order-card { height: 640px; padding: 1rem; display: flex; flex-direction: column; gap: .5rem; }
-.order-card__head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: -.6rem; }
+.order-card { height: 640px; padding: .35rem 1rem; display: flex; flex-direction: column; gap: .35rem; }
+/* Pulled closer to the card's top edge — same tight fit as .ticket__head in KitchenTicket.razor.css
+   (a near-bare .12rem gap there, since .ticket itself carries no padding of its own). */
+.order-card__head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: -.25rem; }
 .order-card__title { display: flex; align-items: center; gap: .35rem; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .order-card__title svg { flex: none; color: var(--text-soft); }
 .order-card__head-right { flex: none; display: flex; align-items: center; gap: .4rem; }
@@ -11,14 +13,17 @@
     display: flex; align-items: center; gap: .4rem;
     font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
     color: var(--primary);
-    margin-top: 1rem; padding-top: .7rem;
+    margin-top: .15rem; padding-top: .15rem;
     border-top: 1px solid var(--border);
 }
 .order-card__body > .order-card__group:first-child { margin-top: 0; padding-top: 0; border-top: none; }
-.order-card__lines { display: flex; flex-direction: column; gap: .3rem; padding-top: .15rem; padding-bottom: .1rem; }
-/* Past 7 drinks the list scrolls on its own instead of pushing the food sections further down. */
-.order-card__lines--scroll { max-height: 13rem; overflow-y: auto; padding-right: .3rem; }
-.order-card__line { min-height: 1.6rem; display: flex; justify-content: space-between; font-size: .78rem; }
+.order-card__lines { display: flex; flex-direction: column; gap: .1rem; padding-top: .1rem; padding-bottom: .05rem; }
+/* Past 7 drinks the list scrolls on its own instead of pushing the food sections further down.
+   Full-bleed scrollbar: cancels .order-card's own 1rem right padding (margin-right) then adds it
+   straight back as this element's own padding, so the scrollbar track renders flush against the
+   card's real right edge instead of sitting 1rem further left, inset inside that padding. */
+.order-card__lines--scroll { max-height: 13rem; overflow-y: auto; margin-right: -1rem; padding-right: 1rem; }
+.order-card__line { min-height: 1.3rem; display: flex; justify-content: space-between; font-size: .78rem; }
 /* .order-card__drink-batch and .order-card__time-group* (served-batch frame / ordered-together
    bracket) live in app.css — shared with OrderEditor.razor, which renders the same patterns. */
 .badge--btn { border: none; cursor: pointer; transition: filter .15s; }
@@ -103,5 +108,5 @@
     transition-duration: 40ms;
 }
 
-.order-card__foot { display: flex; align-items: center; gap: .4rem; border-top: 1px solid var(--border); padding-top: .5rem; margin-top: .2rem; }
+.order-card__foot { display: flex; align-items: center; gap: .4rem; border-top: 1px solid var(--border); padding-top: .3rem; margin-top: .1rem; }
 .order-card__foot .btn { padding: .4rem .7rem; }

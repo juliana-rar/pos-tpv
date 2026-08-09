@@ -25,29 +25,15 @@
         {
             <p class="floor-notice">@_notice</p>
         }
-        @if (_editing)
-        {
-            <p class="floor-hint muted">@Loc.T("Drag to move · corner handle to resize · top handle to rotate · ◻ to change shape · 🔒 to lock. Changes are saved when you press") <strong>@Loc.T("Save layout")</strong>.</p>
-        }
-        else if (_selecting)
+        @if (_selecting)
         {
             <p class="floor-hint muted">@Loc.T("Tap two or more free tables to join them into one group that shares a single bill.")</p>
-        }
-        else if (_assignReservationId is not null)
-        {
-            <p class="floor-hint floor-hint--assign">@Loc.T("Click one or more tables on the plan to assign them to the reservation of") <strong>@_assignName</strong>.
-                <button class="btn btn--primary btn--sm" @onclick="CancelAssign">@Loc.T("Done")</button></p>
-        }
-        else if (_paintMode)
-        {
-            <p class="floor-hint floor-hint--assign">@Loc.T("Tap a table on the plan to apply the selected colour.")
-                <button class="btn btn--primary btn--sm" @onclick="StopPaintMode">@Loc.T("Done")</button></p>
         }
 
     <div class="floor-wrap">
     @* Floats over the map's top-right corner instead of taking its own row, so the map
        fills the whole panel height. *@
-    <div class="toolbar toolbar--tables">
+    <div class="toolbar toolbar--tables @(_showFilters ? "toolbar--tables-menu-open" : "")">
         <span class="spacer"></span>
         @* Rendered unconditionally (outside the Edit/Select/Reassign/default branches below) and
            absolutely positioned (.floor-settings) so it always sits in the map's top-right corner —
@@ -59,15 +45,31 @@
             {
                 <div class="floor-tools-menu">
                     <div class="floor-tex-widget">
-                        <button class="btn btn--icon @(_floorMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Floor style")" @onclick="ToggleFloorMenu"><LucideIcon Name="image" Size="16" /></button>
-                        @if (_floorMenuOpen)
+                        <button class="btn btn--icon @(_zoneMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Zones")" @onclick="ToggleZoneMenu"><LucideIcon Name="square-dashed" Size="16" /></button>
+                        @if (_zoneMenuOpen || _zoneMenuClosing)
                         {
-                            <div class="floor-tex-menu">
+                            <div class="floor-tex-menu zone-pick @(_zoneMenuClosing ? "floor-tex-menu--closing" : "")">
+                                @foreach (var z in _zones)
+                                {
+                                    <button type="button" class="zone-chip" style="@(z.Color is not null ? $"--zc:{z.Color}" : "")" @onclick="() => { OnZoneClick(z); _zoneMenuOpen = false; }">@z.Name</button>
+                                }
+                                <button type="button" class="floor-tex-opt" title="@Loc.T("Add zone")" @onclick="AddZone">
+                                    <span class="zone-swatch"><LucideIcon Name="plus" Size="14" /></span>
+                                    <span class="floor-tex-opt__label">@Loc.T("Add zone")</span>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                    <div class="floor-tex-widget">
+                        <button class="btn btn--icon @(_floorMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Floor style")" @onclick="ToggleFloorMenu"><LucideIcon Name="image" Size="16" /></button>
+                        @if (_floorMenuOpen || _floorMenuClosing)
+                        {
+                            <div class="floor-tex-menu tex-pick @(_floorMenuClosing ? "floor-tex-menu--closing" : "")">
                                 @foreach (var tex in FloorTextures)
                                 {
-                                    <button type="button" class="floor-tex-opt @(Branding.Current.FloorTexture == tex ? "floor-tex-opt--on" : "")" @onclick="() => ChooseFloorTexture(tex)">
+                                    <button type="button" class="floor-tex-opt @(Branding.Current.FloorTexture == tex ? "floor-tex-opt--on" : "")" title="@Loc.T(TextureLabel(tex))" @onclick="() => ChooseFloorTexture(tex)">
                                         <span class="floor-tex-swatch floor-tex-swatch--@tex"></span>
-                                        @Loc.T(TextureLabel(tex))
+                                        <span class="floor-tex-opt__label">@Loc.T(TextureLabel(tex))</span>
                                     </button>
                                 }
                             </div>
@@ -75,9 +77,9 @@
                     </div>
                     <div class="floor-tex-widget">
                         <button class="btn btn--icon @(_paintMode || _paintMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Paint table colours")" @onclick="TogglePaintMenu"><LucideIcon Name="palette" Size="16" /></button>
-                        @if (_paintMenuOpen)
+                        @if (_paintMenuOpen || _paintMenuClosing)
                         {
-                            <div class="floor-tex-menu color-pick">
+                            <div class="floor-tex-menu color-pick @(_paintMenuClosing ? "floor-tex-menu--closing" : "")">
                                 <button type="button" class="color-swatch @(_paintColor is null ? "color-swatch--on" : "")" style="--sw:var(--card-2)" title="@Loc.T("None")" @onclick="() => ChoosePaintColor(null)">
                                     <LucideIcon Name="x" Size="12" />
                                 </button>
@@ -92,14 +94,14 @@
                     </div>
                     <div class="floor-tex-widget">
                         <button class="btn btn--icon @(_plantMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Plants")" @onclick="TogglePlantMenu"><LucideIcon Name="leaf" Size="16" /></button>
-                        @if (_plantMenuOpen)
+                        @if (_plantMenuOpen || _plantMenuClosing)
                         {
-                            <div class="floor-tex-menu">
+                            <div class="floor-tex-menu plant-pick @(_plantMenuClosing ? "floor-tex-menu--closing" : "")">
                                 @foreach (var type in PlantTypes)
                                 {
-                                    <button type="button" class="floor-tex-opt" @onclick="() => AddDecor(type)">
+                                    <button type="button" class="floor-tex-opt" title="@Loc.T(DecorLabel(type))" @onclick="() => AddDecor(type)">
                                         <span class="decor-swatch decor-swatch--@DecorSlug(type)"></span>
-                                        @Loc.T(DecorLabel(type))
+                                        <span class="floor-tex-opt__label">@Loc.T(DecorLabel(type))</span>
                                     </button>
                                 }
                             </div>
@@ -107,29 +109,26 @@
                     </div>
                     <div class="floor-tex-widget">
                         <button class="btn btn--icon @(_designMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Design elements")" @onclick="ToggleDesignMenu"><LucideIcon Name="layout-template" Size="16" /></button>
-                        @if (_designMenuOpen)
+                        @if (_designMenuOpen || _designMenuClosing)
                         {
-                            <div class="floor-tex-menu">
+                            <div class="floor-tex-menu design-pick @(_designMenuClosing ? "floor-tex-menu--closing" : "")">
                                 @foreach (var type in InteriorTypes)
                                 {
-                                    <button type="button" class="floor-tex-opt" @onclick="() => AddDecor(type)">
+                                    <button type="button" class="floor-tex-opt" title="@Loc.T(DecorLabel(type))" @onclick="() => AddDecor(type)">
                                         <span class="decor-swatch decor-swatch--@DecorSlug(type)"></span>
-                                        @Loc.T(DecorLabel(type))
+                                        <span class="floor-tex-opt__label">@Loc.T(DecorLabel(type))</span>
                                     </button>
                                 }
                             </div>
                         }
-                    </div>
-                    <div class="floor-tex-widget">
-                        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Draw zone")" @onclick="AddZone"><LucideIcon Name="square-dashed" Size="16" /></button>
                     </div>
                 </div>
             }
         </div>
         @if (_editing)
         {
-            <button class="btn btn--ghost btn--sm" @onclick="CancelEdit">@Loc.T("Cancel")</button>
-            <button class="btn btn--primary btn--sm" @onclick="SaveLayout"><LucideIcon Name="save" Size="14" />@Loc.T("Save layout")</button>
+            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Cancel")" @onclick="CancelEdit"><LucideIcon Name="x" Size="16" /></button>
+            <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Save layout")" @onclick="SaveLayout"><LucideIcon Name="save" Size="14" /></button>
         }
         else if (_selecting)
         {
@@ -148,6 +147,15 @@
         {
             <button class="btn btn--ghost btn--sm" @onclick="CancelReassign">@Loc.T("Cancel")</button>
         }
+        else if (_paintMode)
+        {
+            @* Each tap on a table already applies (and persists) the selected colour immediately —
+               there's no staged change to discard — but the icon-only Cancel/Done pair still mirrors
+               the Edit-layout toolbar (see _editing above) so every "mode" in this toolbar exits the
+               same way instead of paint mode alone keeping the old floating text hint + button. *@
+            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Cancel")" @onclick="StopPaintMode"><LucideIcon Name="x" Size="16" /></button>
+            <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Done")" @onclick="StopPaintMode"><LucideIcon Name="save" Size="14" /></button>
+        }
         else if (_showFilters)
         {
             <div class="toolbar-actions">
@@ -157,29 +165,34 @@
                 <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Edit layout")" @onclick="StartEdit"><LucideIcon Name="move" Size="16" /></button>
             </div>
         }
-        @* Zoom and expand/collapse always render, regardless of Edit/Select/Reassign/Filters mode,
-           so the map stays navigable while any of those tools is active instead of only from the
-           bare default toolbar. *@
-        <span class="zoom-group">
-            <button class="btn btn--icon btn--ghost btn--sm" type="button" disabled="@(_zoom <= ZoomMin)" title="@Loc.T("Zoom out")" @onclick="ZoomOut"><LucideIcon Name="zoom-out" Size="16" /></button>
-            <button class="zoom-group__level" type="button" title="@Loc.T("Reset zoom")" @onclick="ZoomReset">@((_zoom * 100).ToString("0"))%</button>
-            <button class="btn btn--icon btn--ghost btn--sm" type="button" disabled="@(_zoom >= ZoomMax)" title="@Loc.T("Zoom in")" @onclick="ZoomIn"><LucideIcon Name="zoom-in" Size="16" /></button>
-        </span>
+        @* Expand/collapse always renders, regardless of Edit/Select/Reassign/Filters mode, so the
+           map stays navigable while any of those tools is active instead of only from the bare
+           default toolbar. Zoom moved out of this bar (see .floor-zoom-dock below) to sit right
+           above the zone-filter pill instead. *@
         <button class="btn btn--icon btn--ghost btn--sm" type="button"
                 title="@(_mapExpanded ? Loc.T("Minimise map") : Loc.T("Expand map"))" @onclick="() => _mapExpanded = !_mapExpanded">
             <LucideIcon Name="@(_mapExpanded ? "minimize-2" : "maximize-2")" Size="16" />
         </button>
     </div>
-    @if (!_editing && !_selecting && _assignReservationId is null && Zones.Count > 0)
-    {
-        <div class="tabs zone-filter">
-            <button class="tabs__opt @(_zoneFilter is null ? "tabs__opt--on" : "")" @onclick="() => _zoneFilter = null">@Loc.T("All zones")</button>
-            @foreach (var z in Zones)
-            {
-                <button class="tabs__opt @(_zoneFilter == z ? "tabs__opt--on" : "")" @onclick="() => _zoneFilter = z">@z</button>
-            }
-        </div>
-    }
+    @* Stacked bottom-center of the map: zoom always renders here (even in Edit/Select mode, when
+       the zone-filter pill below it is hidden), with the zone tabs docked directly under it. *@
+    <div class="floor-zoom-dock">
+        <span class="zoom-group zoom-group--sm">
+            <button class="btn btn--icon btn--ghost btn--sm" type="button" disabled="@(_zoom <= ZoomMin)" title="@Loc.T("Zoom out")" @onclick="ZoomOut"><LucideIcon Name="zoom-out" Size="12" /></button>
+            <button class="zoom-group__level" type="button" title="@Loc.T("Reset zoom")" @onclick="ZoomReset">@((_zoom * 100).ToString("0"))%</button>
+            <button class="btn btn--icon btn--ghost btn--sm" type="button" disabled="@(_zoom >= ZoomMax)" title="@Loc.T("Zoom in")" @onclick="ZoomIn"><LucideIcon Name="zoom-in" Size="12" /></button>
+        </span>
+        @if (!_editing && !_selecting && _assignReservationId is null && Zones.Count > 0)
+        {
+            <div class="tabs zone-filter">
+                <button class="tabs__opt @(_zoneFilter is null ? "tabs__opt--on" : "")" @onclick="() => _zoneFilter = null">@Loc.T("All zones")</button>
+                @foreach (var z in Zones)
+                {
+                    <button class="tabs__opt @(_zoneFilter == z ? "tabs__opt--on" : "")" @onclick="() => _zoneFilter = z">@z</button>
+                }
+            </div>
+        }
+    </div>
     @if (_reassigning && _reassignSource is null)
     {
         <div class="floor-hint floor-hint--assign floor-hint--floating">
@@ -212,7 +225,7 @@
             var resByTable = ResByTable;
         }
     <div class="floor-canvas" style="transform:scale(@N(_zoom)); transform-origin:0 0; --zoom:@N(_zoom);">
-        @foreach (var z in _zones)
+        @foreach (var z in VisibleZones)
         {
             <div class="floor-zone @(!_editing && _zoneFilter == z.Name ? "floor-zone--on" : "")"
                  data-id="@z.Id"
@@ -220,8 +233,7 @@
                  data-w="@N(z.Width)" data-h="@N(z.Height)" data-rot="0"
                  data-locked="false"
                  style="@ZoneStyle(z)"
-                 title="@z.Name"
-                 @onclick="() => OnZoneClick(z)">
+                 title="@z.Name">
                 <span class="floor-zone__name">@z.Name</span>
                 @if (_editing)
                 {
@@ -232,8 +244,11 @@
                        rename/delete move to the (rendering) non-editing view below instead. *@
                     <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
                 }
-                else
+                else if (_zoneMenuOpen)
                 {
+                    @* Only shown while the "Zones" toolbar button's own edit mode is on (see
+                       ToggleZoneMenu) — otherwise these sat on every zone box all the time, so
+                       modifying a zone only ever took clicking directly on it, never the button. *@
                     <button class="floor-zone__rename" type="button" title="@Loc.T("Rename")" @onclick="() => StartRenameZone(z)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="12" /></button>
                     <button class="floor-zone__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RemoveZone(z.Id)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
                 }
@@ -307,7 +322,7 @@
                 <span class="tbl__group-seats"><LucideIcon Name="link" Size="12" /> @GroupSeats(gid)<LucideIcon Name="user" Size="11" /></span>
             </span>
         }
-        @foreach (var d in _decor)
+        @foreach (var d in VisibleDecor)
         {
             <div class="decor decor--@DecorSlug(d.Type)"
                  data-id="@d.Id"
@@ -553,14 +568,6 @@
                 <button class="btn btn--primary btn--icon resv__new-btn" title="@Loc.T("New reservation")" @onclick="() => OpenResForm(null)"><LucideIcon Name="plus" Size="15" /></button>
             </div>
 
-            @if (_assignReservationId is not null)
-            {
-                <div class="resv__assigning">
-                    <LucideIcon Name="armchair" Size="14" /> @Loc.T("Pick one or more tables on the plan…")
-                    <button class="btn btn--primary btn--sm" @onclick="CancelAssign">@Loc.T("Done")</button>
-                </div>
-            }
-
             <div class="resv__list">
                 @foreach (var r in FilteredReservations)
                 {
@@ -604,13 +611,34 @@
                                 <span class="resv-card__tables">
                                     @foreach (var name in r.TableNames)
                                     {
-                                        <button type="button" class="tbl-chip tbl-chip--sm" title="@Loc.T("Table settings")" @onclick="() => ToggleResSettings(r.Id)"><LucideIcon Name="armchair" Size="12" /> @name</button>
+                                        @* Tapping an already-assigned table chip opens the same picking mode as
+                                           "Reassign" directly — tap a different table on the map to swap it, or
+                                           tap this same chip's table again to drop it. The change applies the
+                                           moment a table is tapped on the map, so tick and cross here both just
+                                           close the picker — shown together for the same affordance as the
+                                           unassigned case below, regardless of whether a table was already picked. *@
+                                        <button type="button" class="tbl-chip tbl-chip--sm" title="@Loc.T("Click to change table")" @onclick="() => ToggleAssign(r)"><LucideIcon Name="armchair" Size="12" /> @name</button>
+                                    }
+                                    @if (_assignReservationId == r.Id)
+                                    {
+                                        <button type="button" class="btn btn--icon btn--primary btn--sm resv-card__confirm-assign" title="@Loc.T("Done")" @onclick="CancelAssign"><LucideIcon Name="check" Size="13" /></button>
+                                        <button type="button" class="btn btn--icon btn--ghost btn--sm resv-card__confirm-assign" title="@Loc.T("Cancel")" @onclick="CancelAssign"><LucideIcon Name="x" Size="13" /></button>
                                     }
                                 </span>
                             }
                             else
                             {
-                                <span>· @Loc.T("Unassigned")</span>
+                                @* Direct shortcut into assign mode — same as the "Assign" button tucked behind
+                                   the gear icon below, but reachable in one tap instead of two. Tick + cross both
+                                   sit right next to it as soon as assign mode opens (not only once a table's
+                                   been picked), so there's always a visible way to finish/cancel right here
+                                   instead of the floating "Done" hints this replaces. *@
+                                <button type="button" class="tbl-chip tbl-chip--sm tbl-chip--unassigned" @onclick="() => ToggleAssign(r)">@Loc.T("Unassigned")</button>
+                                @if (_assignReservationId == r.Id)
+                                {
+                                    <button type="button" class="btn btn--icon btn--primary btn--sm resv-card__confirm-assign" title="@Loc.T("Done")" @onclick="CancelAssign"><LucideIcon Name="check" Size="13" /></button>
+                                    <button type="button" class="btn btn--icon btn--ghost btn--sm resv-card__confirm-assign" title="@Loc.T("Cancel")" @onclick="CancelAssign"><LucideIcon Name="x" Size="13" /></button>
+                                }
                             }
                             <span class="spacer"></span>
                             @if (r.Status is ReservationStatus.Pending or ReservationStatus.Confirmed)
@@ -776,7 +804,23 @@
     // ---- Floor style (background texture) ----
     private static readonly string[] FloorTextures = { "grid", "wood", "tile", "concrete", "marble", "terracotta" };
     private bool _floorMenuOpen;
-    private void ToggleFloorMenu() => _floorMenuOpen = !_floorMenuOpen;
+    private bool _floorMenuClosing;
+    private async Task ToggleFloorMenu()
+    {
+        if (_floorMenuOpen)
+        {
+            _floorMenuClosing = true;
+            StateHasChanged();
+            await Task.Delay(200);
+            _floorMenuOpen = false;
+            _floorMenuClosing = false;
+        }
+        else
+        {
+            _floorMenuOpen = true;
+            _paintMenuOpen = false; _plantMenuOpen = false; _designMenuOpen = false; _zoneMenuOpen = false;
+        }
+    }
     private static string TextureLabel(string tex) => tex switch
     {
         "wood" => "Wood",
@@ -798,14 +842,26 @@
     // ---- Paint mode: pick a colour once, then tap tables on the map to apply it directly,
     // instead of opening each table's full properties form just to change its accent colour. ----
     private bool _paintMenuOpen;
+    private bool _paintMenuClosing;
     private bool _paintMode;
     private string? _paintColor;
 
-    private void TogglePaintMenu()
+    private async Task TogglePaintMenu()
     {
-        _paintMenuOpen = !_paintMenuOpen;
-        if (_paintMenuOpen) _floorMenuOpen = false;
-        else _paintMode = false;
+        if (_paintMenuOpen)
+        {
+            _paintMenuClosing = true;
+            StateHasChanged();
+            await Task.Delay(200);
+            _paintMenuOpen = false;
+            _paintMenuClosing = false;
+            _paintMode = false;
+        }
+        else
+        {
+            _paintMenuOpen = true;
+            _floorMenuOpen = false; _plantMenuOpen = false; _designMenuOpen = false; _zoneMenuOpen = false;
+        }
     }
 
     private void ChoosePaintColor(string? color)
@@ -846,18 +902,72 @@
     private static readonly FloorDecorType[] InteriorTypes = { FloorDecorType.Wall, FloorDecorType.Door, FloorDecorType.BarCounter, FloorDecorType.Column, FloorDecorType.Window };
 
     private bool _plantMenuOpen;
+    private bool _plantMenuClosing;
     private bool _designMenuOpen;
 
-    private void TogglePlantMenu()
+    // Blazor removes a popover from the DOM the instant its "open" flag flips false, which gives
+    // it no chance to play an exit animation (unlike the CSS-only entrance). So closing via the
+    // toggle button itself goes through a short "closing" state first — the panel stays rendered
+    // with the floor-tex-menu--closing class (see Tables.razor.css) for the exit animation's own
+    // duration, then is actually removed once it's finished. Same pattern on every picker in this
+    // dropdown (see ToggleZoneMenu/ToggleFloorMenu/TogglePaintMenu/ToggleDesignMenu below).
+    private async Task TogglePlantMenu()
     {
-        _plantMenuOpen = !_plantMenuOpen;
-        if (_plantMenuOpen) { _floorMenuOpen = false; _paintMenuOpen = false; _designMenuOpen = false; }
+        if (_plantMenuOpen)
+        {
+            _plantMenuClosing = true;
+            StateHasChanged();
+            await Task.Delay(200);
+            _plantMenuOpen = false;
+            _plantMenuClosing = false;
+        }
+        else
+        {
+            _plantMenuOpen = true;
+            _floorMenuOpen = false; _paintMenuOpen = false; _designMenuOpen = false; _zoneMenuOpen = false;
+        }
     }
 
-    private void ToggleDesignMenu()
+    private bool _designMenuClosing;
+    private async Task ToggleDesignMenu()
     {
-        _designMenuOpen = !_designMenuOpen;
-        if (_designMenuOpen) { _floorMenuOpen = false; _paintMenuOpen = false; _plantMenuOpen = false; }
+        if (_designMenuOpen)
+        {
+            _designMenuClosing = true;
+            StateHasChanged();
+            await Task.Delay(200);
+            _designMenuOpen = false;
+            _designMenuClosing = false;
+        }
+        else
+        {
+            _designMenuOpen = true;
+            _floorMenuOpen = false; _paintMenuOpen = false; _plantMenuOpen = false; _zoneMenuOpen = false;
+        }
+    }
+
+    // ---- Zone edit mode: toggled from the "Zones" button, gating the rename/delete controls
+    // that render on each zone box (see the floor-zone markup above) — without this flag they
+    // used to always be visible, so any click near a zone's edge could modify it. The zone body
+    // on the map itself is inert (no onclick) — filtering only happens via the "Zones" dropdown
+    // chips or the zone-filter tabs below the map (both call OnZoneClick).
+    private bool _zoneMenuOpen;
+    private bool _zoneMenuClosing;
+    private async Task ToggleZoneMenu()
+    {
+        if (_zoneMenuOpen)
+        {
+            _zoneMenuClosing = true;
+            StateHasChanged();
+            await Task.Delay(200);
+            _zoneMenuOpen = false;
+            _zoneMenuClosing = false;
+        }
+        else
+        {
+            _zoneMenuOpen = true;
+            _floorMenuOpen = false; _paintMenuOpen = false; _plantMenuOpen = false; _designMenuOpen = false;
+        }
     }
 
     private static string DecorSlug(FloorDecorType type) => type.ToString().ToLowerInvariant();
@@ -921,6 +1031,7 @@
 
     private async Task AddZone()
     {
+        _zoneMenuOpen = false;
         var dto = await ZoneService.CreateAsync();
         _zones.Add(dto);
         StartEdit();
@@ -1080,6 +1191,33 @@
         (_editing || _selecting || _assignReservationId is not null || _zoneFilter is null)
             ? _tables
             : _tables.Where(t => t.Zone == _zoneFilter).ToList();
+
+    // When a zone filter is active, the map should read as "just this zone" — so besides
+    // VisibleTables (already scoped to t.Zone above), the zone box itself and any decor sitting
+    // inside its footprint are the only other things left on screen; every other zone box and
+    // any decor outside it disappears instead of just losing its highlight.
+    private List<FloorZoneDto> VisibleZones =>
+        (_editing || _selecting || _assignReservationId is not null || _zoneFilter is null)
+            ? _zones
+            : _zones.Where(z => z.Name == _zoneFilter).ToList();
+
+    private static bool DecorInsideZone(FloorDecorDto d, FloorZoneDto z)
+    {
+        var cx = d.PositionX + d.Width / 2;
+        var cy = d.PositionY + d.Height / 2;
+        return cx >= z.PositionX && cx <= z.PositionX + z.Width
+            && cy >= z.PositionY && cy <= z.PositionY + z.Height;
+    }
+
+    private List<FloorDecorDto> VisibleDecor
+    {
+        get
+        {
+            if (_editing || _selecting || _assignReservationId is not null || _zoneFilter is null) return _decor;
+            var zone = _zones.FirstOrDefault(z => z.Name == _zoneFilter);
+            return zone is null ? _decor : _decor.Where(d => DecorInsideZone(d, zone)).ToList();
+        }
+    }
 
     private string TableClass(TableDto t, ReservationDto? rv)
     {

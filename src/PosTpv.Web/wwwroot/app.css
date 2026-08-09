@@ -430,14 +430,20 @@ a { color: var(--primary); text-decoration: none; }
    grouping lines ordered in the same minute under one shared timestamp. Kept here instead of
    duplicated (with drifting values) in each component's isolated .razor.css, since both need
    to look identical. */
-.order-card__drink-batch { display: flex; flex-direction: column; gap: .2rem; }
+.order-card__drink-batch { display: flex; flex-direction: column; gap: .08rem; }
 .order-card__drink-batch[data-served="true"] {
     background: color-mix(in srgb, var(--success) 8%, transparent);
     border: 1px solid color-mix(in srgb, var(--success) 22%, transparent);
     border-radius: .5rem;
     padding: .3rem .5rem;
 }
-.order-card__drink-batch[data-served="true"] .badge { align-self: flex-start; margin-top: .2rem; }
+.order-card__drink-batch[data-served="true"] .badge {
+    align-self: flex-start;
+    margin-top: .2rem;
+    font-size: .6rem;
+    gap: .2rem;
+    padding: .1rem .35rem .1rem .3rem;
+}
 
 .order-card__time-group, .order__time-group { display: flex; gap: .4rem; }
 .order-card__time-group-time, .order__time-group-time {
@@ -448,4 +454,4 @@ a { color: var(--primary); text-decoration: none; }
     border-right: 2px solid var(--border);
     padding-right: .4rem;
 }
-.order-card__time-group-items, .order__time-group-items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .15rem; }
+.order-card__time-group-items, .order__time-group-items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .02rem; }

@@ -7,6 +7,10 @@
     justify-content: space-between;
     flex-wrap: nowrap;
     gap: 1rem;
+    /* Cancels .shell__content's own 1.4rem top padding (see MainLayout.razor.css) so this bar
+       sits flush against the page's top edge instead of floating below a visible gap — same
+       trick as .orders-quicknav in Orders.razor.css. */
+    margin-top: -1.35rem;
     margin-bottom: .4rem;
     padding: .35rem .6rem;
     background: var(--card);
