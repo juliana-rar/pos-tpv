@@ -77,7 +77,18 @@
 /* Holds the Filters-gated New table/Join/Assign/Edit layout buttons — Zoom and Expand render
    as their own always-on siblings in .toolbar--tables (see Tables.razor) so they stay available
    in every mode instead of disappearing whenever Filters/Edit/Select/Reassign replaces this row. */
-.toolbar-actions { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; max-width: 21rem; }
+/* Unfolds outward from the gear (right edge, where it's anchored) instead of just appearing —
+   scaleX rather than a slide, so it reads as the row deploying open like the gear's own dropdown
+   (.floor-tools-menu below) instead of two unrelated entrance styles side by side. */
+.toolbar-actions {
+    display: flex; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; max-width: 21rem;
+    transform-origin: right center;
+    animation: toolbar-actions-unfold 380ms cubic-bezier(.16, 1, .3, 1);
+}
+@keyframes toolbar-actions-unfold {
+    from { opacity: 0; transform: scaleX(.6); }
+    to   { opacity: 1; transform: scaleX(1); }
+}
 .toolbar-actions .btn--icon,
 .floor-tex-widget .btn--icon,
 /* Expand/collapse map button: a lone icon button sitting as a direct child of the toolbar
@@ -152,6 +163,12 @@
     z-index: 4;
     margin: 0;
     padding: .3rem .5rem;
+    /* Overrides the base .toolbar's own .75rem flex gap (app.css) — with that gap, the space
+       between .toolbar-actions (New table/Join/Assign/Edit layout, its own .5rem internal gap)
+       and the expand/collapse button next to it read visibly wider than the gap between any two
+       buttons inside .toolbar-actions itself. .5rem here matches that internal gap exactly, so
+       every icon in the row — including Edit layout to Expand — sits the same distance apart. */
+    gap: .5rem;
     /* Reserves room for .floor-settings (always absolutely positioned in this same corner, see
        below) so the Edit/Select/Reassign/default row content never renders underneath it.
        2rem for the widget itself, plus its own right offset, plus .3rem of clearance so
@@ -188,8 +205,14 @@
        width + its own left/right padding), so it overhangs both of the widget's edges by
        roughly (menu width − 32px) / 2 — about 6-7px. This offset has to clear that overhang
        plus a little margin, or the menu's square top corner pokes out past the toolbar's own
-       right edge into the map, breaking the illusion that it hangs from the toolbar. */
-    right: .5rem;
+       right edge into the map, breaking the illusion that it hangs from the toolbar.
+       .3rem (not the bare minimum .2rem) puts exactly .5rem of daylight between this widget's
+       left edge and .toolbar-actions' own right edge (its content box ends at
+       .toolbar--tables' padding-right, 2.8rem, fixed — so 2.8rem − 2rem widget − .3rem here =
+       .5rem) — the same .5rem .toolbar-actions itself uses as the gap between New table/Join/
+       Assign/Edit layout, so every icon in this row (including the gear) reads as one evenly-
+       spaced set instead of the gear sitting off by its own margin. */
+    right: .3rem;
 }
 
 /* Each toggle's own small widget — position:relative so its popover menu (.floor-tex-menu)
@@ -231,9 +254,10 @@
     /* Centered on the gear button itself (left:50% of the widget + translateX(-50%) of the
        menu's own width) instead of pinned by its right edge — that way it stays centered under
        the gear no matter how much left/right padding the menu has, without needing to recompute
-       an offset by hand every time that padding changes. */
+       an offset by hand every time that padding changes. The extra "- .2rem" shifts the whole
+       panel just slightly left of dead-center; "+ 2px" nudges it back right by that hair. */
     left: 50%;
-    transform: translateX(-50%);
+    transform: translateX(calc(-50% - .2rem + 2px));
     z-index: 5;
     display: flex;
     flex-direction: column;
@@ -249,10 +273,30 @@
     border-top: none;
     border-radius: 0 0 var(--radius-sm) var(--radius-sm);
     box-shadow: var(--shadow-lg);
-    /* No entrance animation — matches .toolbar-actions (the horizontal icon row), which just
-       renders in place with no motion. The pop animation's own translateY, stacked on top of
-       this panel already being offset below the gear (top:100%), read as an extra jump/slide
-       rather than a clean appearance. */
+    /* box-shadow has no "sides" concept — var(--shadow-lg)'s blur still bled a few px back up
+       past this panel's own top edge (no border there, by design, to read as flush against the
+       toolbar bar above) and showed as a faint dark seam right along that shared edge. Clipped
+       exactly at the top (0) but left generously open on the other three sides so the shadow
+       keeps rendering everywhere except back over the seam it isn't supposed to touch.
+       The left side needs far more room than the shadow's own blur radius (-2rem is plenty for
+       that alone): each vertical icon here (Zones/Floor style/Paint/Plants/Design) opens its own
+       .floor-tex-menu flyout further left, and the widest of those (.zone-pick, max-width 18rem)
+       was getting cut down to a sliver — only whatever fell within 2rem of this panel's edge
+       painted, the rest of the flyout existed in layout but never rendered. -24rem clears every
+       flyout's full width with room to spare. */
+    clip-path: inset(0 -2rem -2rem -24rem);
+    transform-origin: top center;
+    /* Unfolds downward out of the gear button instead of just appearing — scaleY, not the shared
+       "pop" animation's translateY, since stacking a slide on top of this panel already being
+       offset below the gear (top:100%) read as a jump rather than a clean deploy. The keyframes
+       re-declare the static transform above alongside scaleY(...) because an animation's own
+       transform fully overrides it while running, not just adds to it — dropping it here would
+       let the panel drift to one side mid-animation. */
+    animation: floor-tools-unfold 380ms cubic-bezier(.16, 1, .3, 1);
+}
+@keyframes floor-tools-unfold {
+    from { opacity: 0; transform: translateX(calc(-50% - .2rem + 2px)) scaleY(.5); }
+    to   { opacity: 1; transform: translateX(calc(-50% - .2rem + 2px)) scaleY(1); }
 }
 
 /* Popover opens to the left of its toggle button (.floor-tex-widget is its positioned
@@ -274,28 +318,11 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     box-shadow: var(--shadow-lg);
-    animation: plant-unfold var(--transition);
-}
-/* The paint-colour popover reuses the swatch-row layout from the table edit form's colour
-   picker (.color-pick) instead of the vertical option list above — flex-direction must be
-   re-declared since .floor-tex-menu's own column direction otherwise wins (same property,
-   both single-class selectors). Positioned and animated the same way as .plant-pick below
-   (flyout to the left of its trigger, unfolding out of it) instead of the vertical menus'
-   below-and-right-aligned default, since it's the same fixed-count single-row swatch strip. */
-.floor-tex-menu.color-pick {
-    top: 50%;
-    right: calc(100% + .35rem);
-    transform: translateY(-50%);
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    height: 2rem;
-    width: max-content;
-    padding: 0 .35rem;
-    border-right: none;
-    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-    transform-origin: right center;
-    animation: plant-unfold var(--transition);
+    /* Slower than the shared --transition (160ms, used everywhere else for hovers/toggles) on
+       purpose — at that speed this unfold read as an abrupt snap rather than an actual motion,
+       so it gets its own longer duration instead of changing --transition itself and speeding
+       up every other hover/transition in the app along with it. */
+    animation: plant-unfold 340ms cubic-bezier(.4, 0, .2, 1);
 }
 /* Plants picker: every option in a single horizontal row, no taller than the leaf button that
    opens it, instead of the vertical text-list every other .floor-tex-menu uses — reads as a
@@ -330,7 +357,11 @@
        read as unfolding out of the button (transform-origin: right, the edge touching the button)
        rather than sliding up from below. */
     transform-origin: right center;
-    animation: plant-unfold var(--transition);
+    /* Slower than the shared --transition (160ms, used everywhere else for hovers/toggles) on
+       purpose — at that speed this unfold read as an abrupt snap rather than an actual motion,
+       so it gets its own longer duration instead of changing --transition itself and speeding
+       up every other hover/transition in the app along with it. */
+    animation: plant-unfold 340ms cubic-bezier(.4, 0, .2, 1);
 }
 @keyframes plant-unfold {
     from { opacity: 0; transform: translateY(-50%) scaleX(.35); }
@@ -709,6 +740,18 @@
     color: color-mix(in srgb, var(--zc) 70%, var(--text));
     pointer-events: none;
 }
+/* Uploaded-image zone accent (--zimg, set in ZoneStyle only when the colour value isn't a hex
+   code) — replaces the tinted-fill/dashed-border look with the image itself under a dark scrim,
+   same treatment as .tbl--colored-img, so the zone's own name stays readable over any photo. */
+.floor-zone--img {
+    border-style: solid;
+    border-color: rgba(0, 0, 0, .35);
+    background: linear-gradient(rgba(0, 0, 0, .1), rgba(0, 0, 0, .3)), var(--zimg) center / cover no-repeat;
+}
+.floor-zone--img .floor-zone__name {
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, .7);
+}
 .floor--edit .floor-zone { cursor: move; touch-action: none; }
 
 .floor-zone__rename, .floor-zone__delete {
@@ -727,7 +770,19 @@
     box-shadow: var(--shadow-sm);
 }
 .floor-zone:hover .floor-zone__rename, .floor-zone:hover .floor-zone__delete { opacity: 1; }
-.floor-zone__rename:hover, .floor-zone__delete:hover { color: var(--text); border-color: var(--text); }
+/* .floor-zone--on is the single zone left after a chip has filtered the map down to it — hover
+   alone would hide these again on touch/tablet, where there's no hover state to keep them shown. */
+.floor-zone--on .floor-zone__rename, .floor-zone--on .floor-zone__delete { opacity: 1; }
+/* .floor-zone--btns-visible marks every zone box for the whole layout-edit session started from
+   a zone's chip (see _zoneEditActive) — hover would otherwise hide these again the instant the
+   pointer leaves the zone to actually drag it, which is the one moment they're most needed. */
+.floor-zone--btns-visible .floor-zone__rename, .floor-zone--btns-visible .floor-zone__delete { opacity: 1; }
+/* The delete "x" itself renders on every zone for the whole layout-edit session (not gated
+   behind _zoneEditActive like rename — see Tables.razor), so it needs to be visible outright
+   the moment edit mode starts rather than waiting on hover/--btns-visible like rename still does. */
+.floor--edit .floor-zone__delete { opacity: 1; }
+.floor-zone__rename:hover { color: var(--text); border-color: var(--text); }
+.floor-zone__delete:hover { color: var(--danger); border-color: var(--danger); }
 .floor-zone__rename { right: 22px; }
 .floor-zone__delete { right: -10px; }
 
@@ -886,7 +941,8 @@
 .floor--edit .tbl--locked { cursor: not-allowed; }
 .tbl--active { box-shadow: var(--shadow-lg); z-index: 5; }
 
-/* Lock toggle (top-left corner) */
+/* Lock toggle (top-left corner) — decor only; tables show the edit button there instead
+   (see .tbl__rename below). */
 .tbl__lock {
     position: absolute;
     top: -10px; left: -10px;
@@ -916,6 +972,42 @@
     box-shadow: var(--shadow-sm);
 }
 .tbl__shape:hover { border-color: var(--text); color: var(--text); }
+
+/* Edit table (top-left corner) — the one edit-mode control every table gets, grouped members
+   included, since it edits just that table's own Name/Seats. Takes the spot the lock toggle
+   used to sit in; tables don't offer a lock/unlock control any more (decor still does, see
+   .tbl__lock above). */
+.tbl__rename {
+    position: absolute;
+    top: -10px; left: -10px;
+    width: 24px; height: 24px;
+    padding: 0;
+    display: grid; place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--card);
+    color: var(--text-soft);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+}
+.tbl__rename:hover { border-color: var(--text); color: var(--text); }
+
+/* Delete (top-right corner), shown for every table — including joined members — while
+   layout-edit mode is on (see the .tbl markup in Tables.razor). */
+.tbl__delete {
+    position: absolute;
+    top: -10px; right: -10px;
+    width: 24px; height: 24px;
+    padding: 0;
+    display: grid; place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--card);
+    color: var(--text-soft);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+}
+.tbl__delete:hover { color: var(--danger); border-color: var(--danger); }
 
 /* Resize handle (bottom-right corner) */
 .tbl__handle--resize {
@@ -989,6 +1081,22 @@
         0 1px 2px rgba(0, 0, 0, .12),
         0 10px 14px -8px rgba(0, 0, 0, .35);
 }
+/* Same slot as .tbl--colored above but for an uploaded-image accent (--timg, set in TableStyle
+   only when the colour value isn't a hex code) — the tabletop becomes the image itself, cover-
+   fitted, with a dark scrim layered underneath it (not just a filter on the image, which would
+   also dim any transparent areas' backing) so the name/seats label — always forced white via
+   --tfg in that same branch — stays legible over an arbitrarily light photo. */
+.tbl--colored-img {
+    border-color: rgba(0, 0, 0, .45);
+    background:
+        linear-gradient(rgba(0, 0, 0, .2), rgba(0, 0, 0, .38)),
+        var(--timg) center / cover no-repeat;
+    box-shadow:
+        inset 0 0 0 3px rgba(0, 0, 0, .3),
+        inset 0 2px 2px rgba(255, 255, 255, .12),
+        0 1px 2px rgba(0, 0, 0, .12),
+        0 10px 14px -8px rgba(0, 0, 0, .35);
+}
 /* One per seat, ringed around the table's own edge (see ChairStyles in Tables.razor) so a
    table with 6 seats visibly reads as bigger/busier than one with 2 — closer to a real floor
    plan than a plain box with a seat-count number. A real top-down chair drawing (seat + cushion
@@ -1045,13 +1153,24 @@
     position: absolute;
     transform-origin: center;
     transform: translate(-50%, -50%) scale(var(--text-boost, 1));
-    z-index: 3;
+    /* Above .tbl--active's z-index:5 — the badge sits centred ON the table (see GroupCenterStyle),
+       so while a member is actively being dragged its own elevated stacking would otherwise paint
+       right over the label instead of just its shadow. */
+    z-index: 6;
     display: flex; flex-direction: column; align-items: center; gap: .05rem;
     white-space: nowrap;
     pointer-events: none;
 }
 .tbl__group-name { font-size: .76rem; font-weight: 800; color: var(--tfg, var(--text)); }
-.tbl__group-seats { display: inline-flex; align-items: center; gap: .15rem; font-size: .6rem; font-weight: 700; color: var(--tfg, var(--text-soft)); }
+.tbl__group-seats { display: inline-flex; align-items: center; gap: .2rem; font-size: .6rem; font-weight: 700; color: var(--tfg, var(--text-soft)); }
+/* The link (joined) and headcount icons read as the two facts that matter most about a joined
+   group at a glance — sized up and coloured with the accent primary (falling back to --tfg on a
+   custom-coloured table, same as the text beside them) instead of inheriting the muted label
+   colour, so they stand out from the plain seat-count digits between them. */
+.tbl__group-seats svg {
+    color: var(--tfg, var(--primary));
+    stroke-width: 2.6;
+}
 .join-info {
     display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
     margin-top: .5rem; padding: .6rem .8rem;
@@ -1533,18 +1652,6 @@
 
 .field-hint { display: flex; align-items: center; gap: .4rem; margin: -.5rem 0 .9rem; font-size: .8rem; }
 
-/* ---- Colour presets --------------------------------------------------------- */
-.color-pick { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
-.color-swatch {
-    width: 26px; height: 26px; padding: 0; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    border: 2px solid var(--border); background: var(--sw, transparent);
-    color: var(--text-soft);
-    cursor: pointer; transition: transform var(--transition), border-color var(--transition);
-}
-.color-swatch:hover { transform: scale(1.08); }
-.color-swatch--on { border-color: var(--text); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--sw); }
-.color-swatch--custom { background: none; border-style: dashed; }
 
 /* ---- Floor decor: plants + interior-design elements (walls, doors, bar counter, columns,
    windows) placed alongside tables so the floor plan reads like a real architectural layout
@@ -1571,11 +1678,9 @@
     background: var(--card);
     color: var(--text-soft);
     cursor: pointer;
-    opacity: 0;
-    transition: opacity var(--transition);
     box-shadow: var(--shadow-sm);
 }
-.decor:hover .decor__delete { opacity: 1; }
+.decor__delete:hover { color: var(--danger); border-color: var(--danger); }
 
 /* Plants — drawn as real plan-view foliage symbols (the same convention actual architectural/
    interior-design floor plans use for a potted plant: a ring of pointed leaves fanning out from

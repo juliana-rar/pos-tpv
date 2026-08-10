@@ -51,7 +51,7 @@
                             <div class="floor-tex-menu zone-pick @(_zoneMenuClosing ? "floor-tex-menu--closing" : "")">
                                 @foreach (var z in _zones)
                                 {
-                                    <button type="button" class="zone-chip" style="@(z.Color is not null ? $"--zc:{z.Color}" : "")" @onclick="() => { OnZoneClick(z); _zoneMenuOpen = false; }">@z.Name</button>
+                                    <button type="button" class="zone-chip" style="@(z.Color is not null && !IsImageColor(z.Color) ? $"--zc:{z.Color}" : "")" @onclick="() => { OnZoneClick(z); _zoneMenuOpen = false; _zoneEditActive = true; StartEdit(); }">@z.Name</button>
                                 }
                                 <button type="button" class="floor-tex-opt" title="@Loc.T("Add zone")" @onclick="AddZone">
                                     <span class="zone-swatch"><LucideIcon Name="plus" Size="14" /></span>
@@ -77,20 +77,6 @@
                     </div>
                     <div class="floor-tex-widget">
                         <button class="btn btn--icon @(_paintMode || _paintMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Paint table colours")" @onclick="TogglePaintMenu"><LucideIcon Name="palette" Size="16" /></button>
-                        @if (_paintMenuOpen || _paintMenuClosing)
-                        {
-                            <div class="floor-tex-menu color-pick @(_paintMenuClosing ? "floor-tex-menu--closing" : "")">
-                                <button type="button" class="color-swatch @(_paintColor is null ? "color-swatch--on" : "")" style="--sw:var(--card-2)" title="@Loc.T("None")" @onclick="() => ChoosePaintColor(null)">
-                                    <LucideIcon Name="x" Size="12" />
-                                </button>
-                                @foreach (var c in GroupColors)
-                                {
-                                    <button type="button" class="color-swatch @(_paintColor == c ? "color-swatch--on" : "")"
-                                            style="--sw:@c" title="@c" @onclick="() => ChoosePaintColor(c)"></button>
-                                }
-                                <input type="color" class="color-swatch color-swatch--custom" title="@Loc.T("Custom colour")" @bind="_paintColor" @bind:after="ChoosePaintColorCustom" />
-                            </div>
-                        }
                     </div>
                     <div class="floor-tex-widget">
                         <button class="btn btn--icon @(_plantMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Plants")" @onclick="TogglePlantMenu"><LucideIcon Name="leaf" Size="16" /></button>
@@ -227,7 +213,7 @@
     <div class="floor-canvas" style="transform:scale(@N(_zoom)); transform-origin:0 0; --zoom:@N(_zoom);">
         @foreach (var z in VisibleZones)
         {
-            <div class="floor-zone @(!_editing && _zoneFilter == z.Name ? "floor-zone--on" : "")"
+            <div class="floor-zone @(!_editing && _zoneFilter == z.Name ? "floor-zone--on" : "") @(_editing && _zoneEditActive ? "floor-zone--btns-visible" : "") @(z.Color is not null && IsImageColor(z.Color) ? "floor-zone--img" : "")"
                  data-id="@z.Id"
                  data-x="@N(z.PositionX)" data-y="@N(z.PositionY)"
                  data-w="@N(z.Width)" data-h="@N(z.Height)" data-rot="0"
@@ -237,18 +223,30 @@
                 <span class="floor-zone__name">@z.Name</span>
                 @if (_editing)
                 {
-                    @* Rename/delete need a Blazor-rendered Modal (rename) or live list update
-                       (delete) — neither works here since _editing suppresses rendering entirely
-                       so JS can own the DOM (see ShouldRender/_suppressRender). Only the drag/
-                       resize handle, which JS drives directly with no render needed, lives here;
-                       rename/delete move to the (rendering) non-editing view below instead. *@
+                    @if (_zoneEditActive)
+                    {
+                        @* Rename/delete need a Blazor-rendered Modal (rename) or a live list
+                           update (delete) to actually show up — impossible while _editing has
+                           frozen rendering for JS to own the DOM (see ShouldRender/_suppressRender)
+                           — so both handlers below step out of edit mode first (Save for rename,
+                           so a drag already in progress isn't silently thrown away; Cancel for
+                           delete, since the zone about to be removed has nothing worth keeping)
+                           before doing anything Blazor needs to re-render for. floorplan.js's
+                           onDown also has to ignore pointerdown on these two, or it arms a drag
+                           on the zone underneath before the click ever reaches these handlers. *@
+                        <button class="floor-zone__rename" type="button" title="@Loc.T("Rename")" @onclick="() => EditZoneDuringLayoutEdit(z)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="12" /></button>
+                    }
+                    <button class="floor-zone__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RequestDeleteZone(z)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
                     <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
                 }
-                else if (_zoneMenuOpen)
+                else if (_zoneMenuOpen || _zoneFilter == z.Name)
                 {
-                    @* Only shown while the "Zones" toolbar button's own edit mode is on (see
+                    @* Shown while the "Zones" toolbar button's own edit mode is on (see
                        ToggleZoneMenu) — otherwise these sat on every zone box all the time, so
-                       modifying a zone only ever took clicking directly on it, never the button. *@
+                       modifying a zone only ever took clicking directly on it, never the button —
+                       or, once a chip has narrowed the map down to that one zone (_zoneFilter),
+                       on that single remaining zone box even after the dropdown itself has
+                       closed, since it's now the only thing left to act on. *@
                     <button class="floor-zone__rename" type="button" title="@Loc.T("Rename")" @onclick="() => StartRenameZone(z)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="12" /></button>
                     <button class="floor-zone__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RemoveZone(z.Id)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
                 }
@@ -266,12 +264,11 @@
                  data-group="@(t.GroupId?.ToString() ?? "")"
                  style="@TableStyle(t)"
                  @onclick="() => OnTableClick(t)"
-                 @onpointerdown="() => OnTablePointerDown(t)" @onpointerup="OnTablePointerUp" @onpointerleave="OnTablePointerUp" @onpointercancel="OnTablePointerUp"
                  @oncontextmenu:preventDefault="true"
                  title="@(t.GroupId is not null ? (t.GroupName ?? t.Name) : t.Name)">
                 @if (!_editing)
                 {
-                    @foreach (var chairStyle in ChairStyles(t, visible))
+                    @foreach (var chairStyle in ChairStyles(t, _tables))
                     {
                         <svg class="tbl__chair @(EffectiveTableStatus(t, rv) == TableStatus.Occupied ? "tbl__chair--seated" : "")"
                              style="@chairStyle" viewBox="0 0 14 19.6" width="14" height="19.6">
@@ -305,8 +302,27 @@
                 }
                 @if (_editing)
                 {
-                    <button class="tbl__lock" type="button" title="@Loc.T("Lock / unlock")"><LucideIcon Name="@(t.IsLocked ? "lock" : "lock-open")" Size="14" /></button>
-                    <button class="tbl__shape" type="button" title="@Loc.T("Change shape")">@ShapeIcon(t.Shape)</button>
+                    @if (t.GroupId is null)
+                    {
+                        @* Grouped members skip shape: JoinTablesAsync already forces every member
+                           to share one Rotation/IsLocked/Height, so editing it individually while
+                           joined doesn't fit the "reads as one table" model — and, concretely,
+                           .tbl__shape sits bottom-left on its own table while .tbl__handle--resize
+                           sits bottom-right on the one before it, so for two tables snapped
+                           edge-to-edge those two controls land almost exactly on top of each other
+                           at the shared seam. Grabbing one member's resize handle there could land
+                           on its neighbour's shape button instead, silently cycling that neighbour
+                           from square to round. *@
+                        <button class="tbl__shape" type="button" title="@Loc.T("Change shape")">@ShapeIcon(t.Shape)</button>
+                    }
+                    @* One edit button per group (on its anchor member), not one per table — a
+                       joined block reads and is edited as a single unit, so its pencil opens the
+                       shared group name below instead of each member's own name in turn. *@
+                    @if (t.GroupId is null || IsGroupAnchor(t))
+                    {
+                        <button class="tbl__rename" type="button" title="@Loc.T("Edit table")" @onclick="() => EditTableDuringLayoutEdit(t)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="14" /></button>
+                    }
+                    <button class="tbl__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RequestDeleteTable(t)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="14" /></button>
                     <span class="tbl__handle tbl__handle--rotate" title="@Loc.T("Rotate")"></span>
                     <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
                 }
@@ -319,7 +335,7 @@
         {
             <span class="tbl__group" data-group="@gid" style="@GroupCenterStyle(gid, visible) --grp:@GroupColor(gid)">
                 <span class="tbl__group-name">@GroupDisplayName(gid)</span>
-                <span class="tbl__group-seats"><LucideIcon Name="link" Size="12" /> @GroupSeats(gid)<LucideIcon Name="user" Size="11" /></span>
+                <span class="tbl__group-seats"><LucideIcon Name="link" Size="15" /> @GroupSeats(gid)<LucideIcon Name="user" Size="14" /></span>
             </span>
         }
         @foreach (var d in VisibleDecor)
@@ -334,12 +350,9 @@
                 @if (_editing)
                 {
                     <button class="tbl__lock" type="button" title="@Loc.T("Lock / unlock")"><LucideIcon Name="@(d.IsLocked ? "lock" : "lock-open")" Size="14" /></button>
+                    <button class="decor__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RequestDeleteDecor(d)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
                     <span class="tbl__handle tbl__handle--rotate" title="@Loc.T("Rotate")"></span>
                     <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
-                }
-                else
-                {
-                    <button class="decor__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RemoveDecor(d.Id)"><LucideIcon Name="x" Size="12" /></button>
                 }
             </div>
         }
@@ -700,17 +713,7 @@
             </div>
             <div class="field">
                 <label>@Loc.T("Accent colour")</label>
-                <div class="color-pick">
-                    <button type="button" class="color-swatch @(_form.Color is null ? "color-swatch--on" : "")" style="--sw:var(--card-2)" title="@Loc.T("None")" @onclick="() => _form.Color = null">
-                        <LucideIcon Name="x" Size="12" />
-                    </button>
-                    @foreach (var c in GroupColors)
-                    {
-                        <button type="button" class="color-swatch @(_form.Color == c ? "color-swatch--on" : "")"
-                                style="--sw:@c" title="@c" @onclick="() => _form.Color = c"></button>
-                    }
-                    <input type="color" class="color-swatch color-swatch--custom" title="@Loc.T("Custom colour")" @bind="_form.Color" />
-                </div>
+                <ColorPickerPanel Current="@_form.Color" OnPick="c => _form.Color = c" ImageFolder="tables" />
             </div>
             @if (_groupMembers.Count > 0)
             {
@@ -738,6 +741,12 @@
     </Footer>
 </Modal>
 
+<Modal Visible="_paintMenuOpen" Title="@Loc.T("Paint table colours")" OnClose="TogglePaintMenu" Narrow="true">
+    <ChildContent>
+        <ColorPickerPanel Current="@_paintColor" OnPick="ChoosePaintColor" ImageFolder="tables" />
+    </ChildContent>
+</Modal>
+
 <Modal Visible="_showJoinNamePrompt" Title="@Loc.T("Name this table")" OnClose="CancelJoinNamePrompt">
     <ChildContent>
         <div class="field"><label>@Loc.T("Group name")</label><input class="input" @bind="_joinNameInput" /></div>
@@ -748,22 +757,47 @@
     </Footer>
 </Modal>
 
-<Modal Visible="_renamingZoneId is not null" Title="@Loc.T("Name this zone")" OnClose="CancelRenameZone">
+<Modal Visible="_renamingTableId is not null" Title="@(RenamingTable?.GroupId is not null ? Loc.T("Group name") : Loc.T("Edit table"))" OnClose="CancelRenameTable" Narrow="true">
+    <ChildContent>
+        @if (RenamingTable?.GroupId is not null)
+        {
+            <div class="field"><label>@Loc.T("Group name")</label><input class="input" placeholder="@GroupDisplayName(RenamingTable.GroupId.Value)" @bind="_groupNameQuickInput" /></div>
+        }
+        else
+        {
+            <div class="field"><label>@Loc.T("Name")</label><input class="input" @bind="_tableNameInput" /></div>
+        }
+        @* Seats/shape/colour belong to this specific table, not the group as a whole — still
+           editable here even when joined (same as the full "Edit table" modal already allows),
+           on top of the shared group name above. *@
+        <div class="row-2">
+            <div class="field"><label>@Loc.T("Seats")</label><input type="number" min="1" class="input" @bind="_tableSeatsInput" /></div>
+            <div class="field"><label>@Loc.T("Shape")</label>
+                <select class="select" @bind="_tableShapeInput">
+                    @foreach (var s in Enum.GetValues<TableShape>())
+                    {
+                        <option value="@s">@Loc.T(s.ToString())</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="field">
+            <label>@Loc.T("Accent colour")</label>
+            <ColorPickerPanel Current="@_tableColorInput" OnPick="c => _tableColorInput = c" ImageFolder="tables" />
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="CancelRenameTable">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="ConfirmRenameTable">@Loc.T("Save")</button>
+    </Footer>
+</Modal>
+
+<Modal Visible="_renamingZoneId is not null" Title="@Loc.T("Name this zone")" OnClose="CancelRenameZone" Narrow="true">
     <ChildContent>
         <div class="field"><label>@Loc.T("Zone name")</label><input class="input" @bind="_zoneNameInput" /></div>
         <div class="field">
             <label>@Loc.T("Accent colour")</label>
-            <div class="color-pick">
-                <button type="button" class="color-swatch @(_zoneColorInput is null ? "color-swatch--on" : "")" style="--sw:var(--card-2)" title="@Loc.T("None")" @onclick="() => _zoneColorInput = null">
-                    <LucideIcon Name="x" Size="12" />
-                </button>
-                @foreach (var c in GroupColors)
-                {
-                    <button type="button" class="color-swatch @(_zoneColorInput == c ? "color-swatch--on" : "")"
-                            style="--sw:@c" title="@c" @onclick="() => _zoneColorInput = c"></button>
-                }
-                <input type="color" class="color-swatch color-swatch--custom" title="@Loc.T("Custom colour")" @bind="_zoneColorInput" />
-            </div>
+            <ColorPickerPanel Current="@_zoneColorInput" OnPick="c => _zoneColorInput = c" ImageFolder="zones" />
         </div>
     </ChildContent>
     <Footer>
@@ -772,9 +806,20 @@
     </Footer>
 </Modal>
 
-@* Big-map mode only (see OnTableClick): a single tap on a table opens its comanda straight
-   away instead of the table-properties form, so the expanded map works as a fast waiter
-   screen — press-and-hold (OnTablePointerDown/Up) is what reaches the properties form there. *@
+<Modal Visible="_confirmDelete is not null" Title="@Loc.T("Confirm deletion")" OnClose="CancelConfirmDelete" Narrow="true">
+    <ChildContent>
+        <p>@Loc.T("Delete") "@_confirmDelete?.Name"? @Loc.T("This can't be undone.")</p>
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="CancelConfirmDelete">@Loc.T("Cancel")</button>
+        <button class="btn btn--danger" @onclick="ConfirmDelete">@Loc.T("Delete")</button>
+    </Footer>
+</Modal>
+
+@* Big-map mode and small screens (see OnTableClick): a single tap on a table opens its comanda
+   straight away instead of the table-properties form, so the expanded map (and mobile) works as
+   a fast waiter screen — there's no press-and-hold fallback to the properties form here, tapping
+   a table only ever opens its comanda; use "Edit layout" for table properties instead. *@
 <OrderEditor OrderId="_editorOrderId" OnClose="CloseOrderEditor" OnChanged="OnOrderEditorChanged" FullScreen="true" />
 
 @code {
@@ -839,22 +884,18 @@
         await Settings.UpdateAsync(form);
     }
 
-    // ---- Paint mode: pick a colour once, then tap tables on the map to apply it directly,
-    // instead of opening each table's full properties form just to change its accent colour. ----
+    // ---- Paint mode: pick a colour once (via the ColorPickerPanel modal below), then tap tables
+    // on the map to apply it directly, instead of opening each table's full properties form just
+    // to change its accent colour. ----
     private bool _paintMenuOpen;
-    private bool _paintMenuClosing;
     private bool _paintMode;
     private string? _paintColor;
 
-    private async Task TogglePaintMenu()
+    private Task TogglePaintMenu()
     {
         if (_paintMenuOpen)
         {
-            _paintMenuClosing = true;
-            StateHasChanged();
-            await Task.Delay(200);
             _paintMenuOpen = false;
-            _paintMenuClosing = false;
             _paintMode = false;
         }
         else
@@ -862,17 +903,12 @@
             _paintMenuOpen = true;
             _floorMenuOpen = false; _plantMenuOpen = false; _designMenuOpen = false; _zoneMenuOpen = false;
         }
+        return Task.CompletedTask;
     }
 
     private void ChoosePaintColor(string? color)
     {
         _paintColor = color;
-        _paintMode = true;
-        _paintMenuOpen = false;
-    }
-
-    private void ChoosePaintColorCustom()
-    {
         _paintMode = true;
         _paintMenuOpen = false;
     }
@@ -1019,7 +1055,11 @@
     private static string ZoneStyle(FloorZoneDto z)
     {
         var s = $"left:{N(z.PositionX)}px; top:{N(z.PositionY)}px; width:{N(z.Width)}px; height:{N(z.Height)}px;";
-        if (z.Color is not null) s += $" --zcolor:{z.Color};";
+        if (z.Color is not null)
+        {
+            if (IsImageColor(z.Color)) s += $" --zimg:url('{z.Color}');";
+            else s += $" --zcolor:{z.Color};";
+        }
         return s;
     }
 
@@ -1050,6 +1090,60 @@
         _zoneColorInput = z.Color;
     }
 
+    // Rename/delete from inside layout-edit mode (see the zone markup above) — both leave edit
+    // mode first since the rename Modal and the delete's list update only take effect once
+    // Blazor is rendering again (see SaveLayout/CancelEdit clearing _suppressRender).
+    private async Task EditZoneDuringLayoutEdit(FloorZoneDto z)
+    {
+        await SaveLayout();
+        StartRenameZone(z);
+    }
+
+    // ---- Delete confirmation: shared by zones, decor and tables' own "x" button, shown while
+    // layout-edit mode is on (see the markup above). All three save the in-progress layout first
+    // (like EditZoneDuringLayoutEdit does for rename) rather than discarding it, since the item
+    // about to be deleted having no layout worth keeping doesn't mean anything ELSE dragged
+    // earlier in the same edit session should be thrown away too — then leave edit mode so the
+    // confirm Modal below can actually render (Blazor is frozen mid-edit, see ShouldRender).
+    private enum DeleteKind { Zone, Decor, Table }
+    private (DeleteKind Kind, int Id, string Name)? _confirmDelete;
+
+    private async Task RequestDeleteZone(FloorZoneDto z)
+    {
+        await SaveLayout();
+        _confirmDelete = (DeleteKind.Zone, z.Id, z.Name);
+    }
+
+    private async Task RequestDeleteDecor(FloorDecorDto d)
+    {
+        await SaveLayout();
+        _confirmDelete = (DeleteKind.Decor, d.Id, Loc.T(DecorLabel(d.Type)));
+    }
+
+    private async Task RequestDeleteTable(TableDto t)
+    {
+        await SaveLayout();
+        _confirmDelete = (DeleteKind.Table, t.Id, t.Name);
+    }
+
+    private void CancelConfirmDelete() => _confirmDelete = null;
+
+    private async Task ConfirmDelete()
+    {
+        if (_confirmDelete is null) return;
+        var (kind, id, _) = _confirmDelete.Value;
+        switch (kind)
+        {
+            case DeleteKind.Zone: await RemoveZone(id); break;
+            case DeleteKind.Decor: await RemoveDecor(id); break;
+            case DeleteKind.Table:
+                try { await Service.DeleteAsync(id); await Load(); }
+                catch (InvalidOperationException ex) { _notice = ex.Message; }
+                break;
+        }
+        _confirmDelete = null;
+    }
+
     private void CancelRenameZone() => _renamingZoneId = null;
 
     private async Task ConfirmRenameZone()
@@ -1059,6 +1153,61 @@
         var i = _zones.FindIndex(z => z.Id == _renamingZoneId.Value);
         if (i >= 0) _zones[i] = _zones[i] with { Name = _zoneNameInput.Trim(), Color = _zoneColorInput };
         _renamingZoneId = null;
+    }
+
+    // ---- Quick-edit for a table from its own "pencil" button in layout-edit mode (see the .tbl
+    // markup above) — same save-then-modal pattern as EditZoneDuringLayoutEdit, since a Modal
+    // needs Blazor rendering back (see ShouldRender/_suppressRender) to actually show up.
+    // For a joined table (only the group's anchor member shows this button — see the markup)
+    // this edits the shared group name instead of that one member's own name/seats, since a
+    // joined block reads and renames as a single unit, not table-by-table.
+    private int? _renamingTableId;
+    private string _tableNameInput = "";
+    private int _tableSeatsInput = 1;
+    private TableShape _tableShapeInput = TableShape.Square;
+    private string? _tableColorInput;
+    private string _groupNameQuickInput = "";
+
+    private TableDto? RenamingTable => _tables.FirstOrDefault(x => x.Id == _renamingTableId);
+
+    private async Task EditTableDuringLayoutEdit(TableDto t)
+    {
+        await SaveLayout();
+        _renamingTableId = t.Id;
+        _tableNameInput = t.Name;
+        _tableSeatsInput = t.Seats;
+        _tableShapeInput = t.Shape;
+        _tableColorInput = t.Color;
+        _groupNameQuickInput = t.GroupName ?? "";
+    }
+
+    private void CancelRenameTable() => _renamingTableId = null;
+
+    private async Task ConfirmRenameTable()
+    {
+        var t = RenamingTable;
+        if (t is null) { _renamingTableId = null; return; }
+        if (_tableSeatsInput < 1) return;
+
+        if (t.GroupId is not null)
+        {
+            if (string.IsNullOrWhiteSpace(_groupNameQuickInput)) return;
+            await Service.RenameGroupAsync(t.GroupId.Value, _groupNameQuickInput);
+            await Service.UpdateInfoAsync(new TableFormDto
+            {
+                Id = t.Id, Name = t.Name, Seats = _tableSeatsInput, Shape = _tableShapeInput, Zone = t.Zone, Color = _tableColorInput
+            });
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(_tableNameInput)) return;
+            await Service.UpdateInfoAsync(new TableFormDto
+            {
+                Id = t.Id, Name = _tableNameInput.Trim(), Seats = _tableSeatsInput, Shape = _tableShapeInput, Zone = t.Zone, Color = _tableColorInput
+            });
+        }
+        _renamingTableId = null;
+        await Load();
     }
 
     // ---- Zoom: scales just the .floor-canvas wrapper (tables/decor/badges), not the outer
@@ -1164,10 +1313,11 @@
         return namedGroup ?? string.Join(" + ", members.Select(t => t.Name));
     }
 
-    // Horizontal centre of every member table, but anchored to the group's own TOP edge rather
-    // than the vertical middle — the badge then floats just above the tables (like a header)
-    // instead of sitting across their middle. It keeps tracking that point as the group is
-    // dragged (JS moves every member by the same delta, so this recomputes to the same spot).
+    // True centre of the group's bounding box, both axes — kept centred on the table itself
+    // (like any ungrouped table's own name) rather than floating above it, so it reads the same
+    // whether the group is freshly rendered or mid-drag. floorplan.js's own live badge position
+    // during a drag (see onMove) uses this exact same formula, so the label doesn't visibly jump
+    // the instant the drag ends and Blazor's render takes back over.
     private string GroupCenterStyle(int gid, List<TableDto> visible)
     {
         var members = visible.Where(t => t.GroupId == gid).ToList();
@@ -1180,6 +1330,16 @@
     }
 
     private string? _zoneFilter;
+
+    // True once any zone's chip has been clicked to enter layout-edit mode (see the zone-pick
+    // menu) — while true, every zone box gets its own Edit/Delete buttons (not just the one whose
+    // chip was clicked), so any zone can be renamed or removed once that session has started.
+    // Kept separate from _zoneFilter because that field *toggles* (clicking the same chip twice
+    // clears it back to null, for the plain view-only "show just this zone" filter), so relying
+    // on it here meant a second click on the same chip silently dropped the buttons even though
+    // editing had just (re)started.
+    private bool _zoneEditActive;
+
     private List<string> Zones => _tables
         .Select(t => t.Zone)
         .Where(z => !string.IsNullOrWhiteSpace(z))
@@ -1223,7 +1383,7 @@
     {
         var status = EffectiveTableStatus(t, rv);
         var c = $"tbl tbl--{t.Shape.ToString().ToLower()} tbl--{status.ToString().ToLower()}";
-        if (t.Color is not null) c += " tbl--colored";
+        if (t.Color is not null) c += IsImageColor(t.Color) ? " tbl--colored-img" : " tbl--colored";
         if (t.IsLocked) c += " tbl--locked";
         if (t.GroupId is not null) c += " tbl--grouped";
         if (_selecting && _selection.Contains(t.Id)) c += " tbl--selected";
@@ -1250,11 +1410,20 @@
         if (t.GroupId is not null) s += $"; --grp:{GroupColor(t.GroupId.Value)}";
         if (t.Color is not null)
         {
-            s += $"; --tcolor:{t.Color}";
-            if (IsDarkColor(t.Color)) s += "; --tfg:#fff";
+            if (IsImageColor(t.Color)) { s += $"; --timg:url('{t.Color}'); --tfg:#fff"; }
+            else
+            {
+                s += $"; --tcolor:{t.Color}";
+                if (IsDarkColor(t.Color)) s += "; --tfg:#fff";
+            }
         }
         return s;
     }
+
+    // Colour values picked via ColorPickerPanel are either a "#rrggbb" hex or an "/uploads/..."
+    // image path (see ColorPickerPanel's own Value/IsImage) — this is the same '#'-prefix check
+    // used there, kept in sync so a value round-trips as the same kind on both ends.
+    private static bool IsImageColor(string color) => !color.StartsWith('#');
 
     // Quick perceived-luminance check so a custom/dark accent colour (picked freely via the
     // native colour input, unlike the fixed GroupColors palette) automatically gets white
@@ -1292,7 +1461,7 @@
             hideRight = idx >= 0 && idx < members.Count - 1;
         }
 
-        const double outset = 16; // clearance off the table's own edge, scaled to the smaller chair size (see .tbl__chair)
+        const double outset = 18; // clearance off the table's own edge, scaled to the smaller chair size (see .tbl__chair)
         // Left/right offsets are a % of the table's own Width, so a wide 6+ seat table (see
         // RestaurantTable.DefaultWidthForSeats) pushed its side chairs much farther out in
         // absolute px than the top/bottom ones get from the same %. Pin the side offset to the
@@ -1302,7 +1471,13 @@
         var n = t.Seats;
         if (n <= 0 || n > 16) yield break;
 
-        if (t.Shape is TableShape.Round or TableShape.Oval)
+        // A joined member always has its corners squared regardless of its own Shape (see
+        // .tbl--grouped's border-radius:0 — the row has to read as one continuous rectangular
+        // surface, not a chain of circles), so a round/oval seat ring — chairs at 30°/60° angles
+        // meant to trace a circle's curve — would float at odd diagonal positions that don't line
+        // up with that rectangle's straight edges or corners at all. Grouped members fall through
+        // to the same rectangular one-per-side layout every square/rect table already uses.
+        if (t.GroupId is null && t.Shape is TableShape.Round or TableShape.Oval)
         {
             for (var i = 0; i < n; i++)
             {
@@ -1360,7 +1535,11 @@
     {
         if (_editing && _module is null && RendererInfo.IsInteractive)
         {
-            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/floorplan.js");
+            // Cache-busted with a fixed build marker (bump the number whenever this file changes)
+            // — a plain "./js/floorplan.js" URL lets browsers keep serving a stale cached copy
+            // across dev-server restarts/deploys, silently running old drag/resize logic even
+            // after the server-side fix is live.
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/floorplan.js?v=2");
             await _module.InvokeVoidAsync("init", _floorEl, _zoom);
             _suppressRender = true;
         }
@@ -1385,6 +1564,13 @@
             _module = null;
         }
         _editing = false;
+        // Entering edit from a zone chip (see the zone-pick menu) also sets this as a side effect
+        // of OnZoneClick, but a FloorZone's Name rarely matches any table's free-text Zone tag —
+        // so leaving it set here hid every table once editing ended, looking like tables had
+        // vanished. Edit mode always shows the full map anyway (see VisibleTables/VisibleZones),
+        // so there's nothing still "focused" to preserve once it's done.
+        _zoneFilter = null;
+        _zoneEditActive = false;
         await Load();
     }
 
@@ -1398,6 +1584,8 @@
             _module = null;
         }
         _editing = false;
+        _zoneFilter = null;
+        _zoneEditActive = false;
         await Load();
     }
 
@@ -1784,7 +1972,6 @@
     // ---- Table click routing ----
     private async Task OnTableClick(TableDto t)
     {
-        if (_longPressFired) { _longPressFired = false; return; }   // press-and-hold already handled this press
         if (_paintMode) { await PaintTable(t); return; }
         if (_editing) return;   // in edit mode a click is a drag (JS owns it)
         if (_selecting)
@@ -1801,16 +1988,11 @@
             return;
         }
 
-        // Big-map mode: a single tap jumps straight into the table's comanda (opening one if it
-        // doesn't have one yet, same as tapping a table in /pos) instead of the properties form —
-        // press-and-hold (OnTablePointerDown below) is what reaches the properties form there.
-        if (_mapExpanded)
-        {
-            await OpenOrderEditorFor(t);
-            return;
-        }
-
-        OpenForm(t.Id);
+        // A single tap always jumps straight into the table's comanda (opening one if it doesn't
+        // have one yet, same as tapping a table in /pos) instead of the properties form — same
+        // behaviour whether the map is expanded or not. Tables stay reachable for editing
+        // (shape/colour/etc.) only via "Edit layout"'s per-table pencil button instead.
+        await OpenOrderEditorFor(t);
     }
 
     private async Task OpenOrderEditorFor(TableDto t)
@@ -1824,36 +2006,6 @@
     private int? _editorOrderId;
     private void CloseOrderEditor() => _editorOrderId = null;
     private async Task OnOrderEditorChanged() => await Load();
-
-    // ---- Press-and-hold (big-map mode only): holding a table down for half a second opens its
-    // properties form, while a plain tap (OnTableClick above) opens the comanda instead. ----
-    private CancellationTokenSource? _pressCts;
-    private bool _longPressFired;
-
-    private void OnTablePointerDown(TableDto t)
-    {
-        if (!_mapExpanded || _editing || _selecting || _assignReservationId is not null || _reassigning) return;
-        _pressCts?.Cancel();
-        _pressCts = new CancellationTokenSource();
-        _ = WatchForLongPress(t, _pressCts.Token);
-    }
-
-    private void OnTablePointerUp() => _pressCts?.Cancel();
-
-    private async Task WatchForLongPress(TableDto t, CancellationToken ct)
-    {
-        try
-        {
-            await Task.Delay(500, ct);
-            await InvokeAsync(() =>
-            {
-                _longPressFired = true;
-                OpenForm(t.Id);
-                StateHasChanged();
-            });
-        }
-        catch (TaskCanceledException) { /* released before the hold threshold — a normal click follows */ }
-    }
 
     private void OpenForm(int? id)
     {

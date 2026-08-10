@@ -124,7 +124,8 @@ public class TableService : ITableService
     // history intact.
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
-        var entity = await _uow.Repository<RestaurantTable>().GetByIdAsync(id, ct);
+        var repo = _uow.Repository<RestaurantTable>();
+        var entity = await repo.GetByIdAsync(id, ct);
         if (entity is null) return;
 
         var hasActive = await _uow.Repository<Order>().Query()
@@ -132,11 +133,28 @@ public class TableService : ITableService
         if (hasActive)
             throw new InvalidOperationException("Cannot delete a table with an open order.");
 
+        var oldGroupId = entity.GroupId;
+
         entity.IsArchived = true;
         entity.GroupId = null;
         entity.GroupName = null;
-        _uow.Repository<RestaurantTable>().Update(entity);
+        repo.Update(entity);
         await _uow.SaveChangesAsync(ct);
+
+        // Deleting one side of a joined pair leaves the other table still carrying the
+        // group's shared label (e.g. "Mesa 1 + Mesa 2") even though it's alone now — undo
+        // the join for the lone survivor so the map goes back to showing its own name.
+        if (oldGroupId is not null)
+        {
+            var siblings = await repo.Query()
+                .Where(t => t.GroupId == oldGroupId && !t.IsArchived).ToListAsync(ct);
+            if (siblings.Count == 1)
+            {
+                UngroupTable(siblings[0]);
+                repo.Update(siblings[0]);
+                await _uow.SaveChangesAsync(ct);
+            }
+        }
     }
 
     public async Task SaveLayoutAsync(IEnumerable<TableLayoutDto> layout, CancellationToken ct = default)
@@ -256,25 +274,32 @@ public class TableService : ITableService
 
         foreach (var t in members)
         {
-            // Restore the disposition captured when the table was joined, then clear the snapshot.
-            if (t.PreJoinPositionX is not null)
-            {
-                t.PositionX = t.PreJoinPositionX.Value;
-                t.PositionY = t.PreJoinPositionY!.Value;
-                t.Height = t.PreJoinHeight!.Value;
-                t.Rotation = t.PreJoinRotation!.Value;
-                t.IsLocked = t.PreJoinIsLocked ?? false;
-            }
-
-            t.PreJoinPositionX = null;
-            t.PreJoinPositionY = null;
-            t.PreJoinHeight = null;
-            t.PreJoinRotation = null;
-            t.PreJoinIsLocked = null;
-            t.GroupId = null;
-            t.GroupName = null;
+            UngroupTable(t);
             repo.Update(t);
         }
         await _uow.SaveChangesAsync(ct);
+    }
+
+    // Restores the disposition captured when the table was joined, then clears the join
+    // snapshot and group fields. Shared by SeparateGroupAsync (explicit separate) and
+    // DeleteAsync (implicit separate of the lone survivor left behind by a delete).
+    private static void UngroupTable(RestaurantTable t)
+    {
+        if (t.PreJoinPositionX is not null)
+        {
+            t.PositionX = t.PreJoinPositionX.Value;
+            t.PositionY = t.PreJoinPositionY!.Value;
+            t.Height = t.PreJoinHeight!.Value;
+            t.Rotation = t.PreJoinRotation!.Value;
+            t.IsLocked = t.PreJoinIsLocked ?? false;
+        }
+
+        t.PreJoinPositionX = null;
+        t.PreJoinPositionY = null;
+        t.PreJoinHeight = null;
+        t.PreJoinRotation = null;
+        t.PreJoinIsLocked = null;
+        t.GroupId = null;
+        t.GroupName = null;
     }
 }

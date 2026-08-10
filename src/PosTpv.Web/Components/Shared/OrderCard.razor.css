@@ -8,7 +8,13 @@
 .order-card__head-right .btn--icon { width: 30px; height: 30px; padding: .3rem; }
 .order-card__head-right .badge { font-size: .6rem; padding: .1rem .4rem; }
 .order-card__number { font-size: .68rem; }
-.order-card__body { flex: 1; min-height: 0; overflow-y: auto; }
+/* Bled out to the card's real edges and re-padded by the same amount (same cancel-and-reapply
+   trick as .order-card__lines--scroll below), so this element's own overflow clip boundary —
+   not just its content position — sits flush with the card. Without this, a served drink-batch
+   trying to bleed past its normal bounds (see --batch-bleed in app.css) would have that bleed
+   clipped by this element's overflow-y:auto (which forces overflow-x to clip too), since the
+   card's 1rem padding lives one level up on .order-card, not here. */
+.order-card__body { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -1rem; padding: 0 1rem; --batch-bleed: 1rem; }
 .order-card__group {
     display: flex; align-items: center; gap: .4rem;
     font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;

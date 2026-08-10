@@ -1,0 +1,86 @@
+.colorpicker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .55rem;
+    min-width: 16rem;
+}
+
+.colorpicker__wheel {
+    position: relative;
+    width: 10.9rem;
+    height: 10.9rem;
+    flex: none;
+}
+
+.colorpicker__dot {
+    position: absolute;
+    width: .7rem;
+    height: .7rem;
+    padding: 0;
+    border: 1px solid rgba(0, 0, 0, .1);
+    border-radius: 50%;
+    background: var(--sw);
+    cursor: pointer;
+    transition: transform var(--transition), box-shadow var(--transition);
+}
+.colorpicker__dot:hover { transform: scale(1.6); box-shadow: var(--shadow-sm); z-index: 2; }
+.colorpicker__dot--on { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px var(--sw); z-index: 1; }
+
+/* Sits in the middle of the ring — doubles as the live preview of the current pick and, once
+   something is picked, the "clear" control, so the wheel doesn't need a dot just for None.
+   Shrunk again so the dots themselves (see RadiusMin in the .razor) can start even closer to the
+   true centre instead of leaving an empty hole around a big button. */
+.colorpicker__center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1.6rem;
+    height: 1.6rem;
+    transform: translate(-50%, -50%);
+    display: grid;
+    place-items: center;
+    border: 2px solid var(--card);
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--border), var(--shadow-sm);
+    background-size: cover;
+    background-position: center;
+    color: var(--text-soft);
+    cursor: pointer;
+}
+.colorpicker__center--none { background: var(--card-2); }
+
+.colorpicker__hex {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    width: 100%;
+}
+.colorpicker__hex-input {
+    flex: 1;
+    min-width: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    text-transform: lowercase;
+}
+.colorpicker__image {
+    width: 100%;
+    padding-top: .5rem;
+    border-top: 1px dashed var(--border);
+}
+.colorpicker__image-toggle {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    color: var(--text-soft);
+    cursor: pointer;
+    transition: color var(--transition);
+}
+.colorpicker__image-toggle:hover { color: var(--primary); }

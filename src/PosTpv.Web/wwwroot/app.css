@@ -237,6 +237,7 @@ a { color: var(--primary); text-decoration: none; }
     animation: pop var(--transition);
 }
 .modal--wide { width: min(680px, 100%); }
+.modal--narrow { width: min(360px, 100%); }
 .modal__head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
 .modal__head-actions { display: flex; align-items: center; gap: .4rem; }
 .modal__body { padding: 1.25rem; }
@@ -431,11 +432,20 @@ a { color: var(--primary); text-decoration: none; }
    duplicated (with drifting values) in each component's isolated .razor.css, since both need
    to look identical. */
 .order-card__drink-batch { display: flex; flex-direction: column; gap: .08rem; }
+/* Bleeds all the way out to the scroll container's real edge (--batch-bleed, set by
+   .order-card__body / .order__items to match whatever padding they cancelled — see those
+   rules) once a batch is served, so the green frame reads as a wide highlighted band across
+   the row instead of a narrow inset chip. Padding grows by the same amount as the bleed so the
+   time/items land at the same x position as an unserved row (which has no padding of its own).
+   The bleed target must be a non-clipping ancestor's cancelled padding, not the batch's direct
+   scrolling parent — that parent's own overflow-y:auto forces overflow-x to clip too, so a
+   bleed past ITS bounds gets sliced off instead of rendering. */
 .order-card__drink-batch[data-served="true"] {
     background: color-mix(in srgb, var(--success) 8%, transparent);
     border: 1px solid color-mix(in srgb, var(--success) 22%, transparent);
-    border-radius: .5rem;
-    padding: .3rem .5rem;
+    border-radius: 0;
+    padding: .3rem var(--batch-bleed, .5rem);
+    margin: 0 calc(-1 * var(--batch-bleed, .5rem));
 }
 .order-card__drink-batch[data-served="true"] .badge {
     align-self: flex-start;
@@ -448,10 +458,11 @@ a { color: var(--primary); text-decoration: none; }
 .order-card__time-group, .order__time-group { display: flex; gap: .4rem; }
 .order-card__time-group-time, .order__time-group-time {
     flex: none;
-    display: flex; align-items: center; justify-content: center;
-    min-width: 1.7rem;
-    font-size: .68rem; font-weight: 700; color: var(--text-soft);
+    display: flex; align-items: center; justify-content: flex-start;
+    min-width: 1.6rem;
+    margin-left: -.3rem;
+    font-size: .58rem; font-weight: 700; color: var(--text-soft);
     border-right: 2px solid var(--border);
-    padding-right: .4rem;
+    padding-right: .3rem;
 }
 .order-card__time-group-items, .order__time-group-items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .02rem; }

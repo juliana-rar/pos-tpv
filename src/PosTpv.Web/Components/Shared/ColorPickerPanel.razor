@@ -1,0 +1,162 @@
+@* Modern colour picker: a circular "wheel" filled edge-to-edge with small dots — hue sweeps
+   around the ring (a full rainbow) while lightness fades from pale near the centre to deep near
+   the rim, so every hue also shows several tones of itself, not just one swatch each — plus a
+   hex/native input and an optional image used as a background texture. Value round-trips through
+   the caller's existing Color column as either "#rrggbb" or an "/uploads/..." path —
+   StartsWith('#') is what tells the two apart, so no consumer needs a second field just to
+   remember which kind of value it's holding. *@
+
+<div class="colorpicker">
+    <div class="colorpicker__wheel">
+        @foreach (var dot in Wheel)
+        {
+            <button type="button" class="colorpicker__dot @(Current == dot.Hex ? "colorpicker__dot--on" : "")"
+                    style="@DotStyle(dot)" title="@dot.Hex" @onclick="() => Pick(dot.Hex)"></button>
+        }
+        @* Centre doubles as the live preview and, when a colour/image is already picked, the
+           "clear" control — keeps the wheel from needing a 25th ring dot just for "None". *@
+        <button type="button" class="colorpicker__center @(Current is null ? "colorpicker__center--none" : "")"
+                style="@(Current is null ? "" : PreviewStyle)" title="@(Current is null ? Loc.T("None") : Current)"
+                @onclick="OnCenterClick">
+            @if (Current is null) { <LucideIcon Name="x" Size="12" /> }
+        </button>
+    </div>
+
+    <div class="colorpicker__hex">
+        <input class="input colorpicker__hex-input" placeholder="#RRGGBB" maxlength="7" value="@(IsImage ? null : Current)" @onchange="OnHexChanged" />
+    </div>
+
+    @if (_error is not null) { <span class="field-error">@_error</span> }
+
+    @* Collapsed by default (auto-opens only once an image is already the current value) — the
+       full ImageUpload widget (thumbnail + buttons) is the tallest chunk of this panel, and most
+       edits never touch it, so hiding it behind a toggle keeps this picker short enough that its
+       host modal doesn't need to scroll. *@
+    @if (_imageOpen || IsImage)
+    {
+        <div class="colorpicker__image">
+            <ImageUpload Value="@(IsImage ? Current : null)" ValueChanged="OnImagePicked" Folder="@ImageFolder" />
+        </div>
+    }
+    else
+    {
+        <button type="button" class="colorpicker__image-toggle" @onclick="() => _imageOpen = true">
+            <LucideIcon Name="image" Size="13" />@Loc.T("Or use an image as background")
+        </button>
+    }
+</div>
+
+@code {
+    /// <summary>Currently selected value: null, "#rrggbb", or an image path. One-way — this
+    /// panel never mutates it itself, it only reports picks via <see cref="OnPick"/> and leaves
+    /// the caller to feed the resulting value back in, same pattern as the previous inline swatch
+    /// rows it replaces (ChoosePaintColor et al. already took a plain string? in).</summary>
+    [Parameter] public string? Current { get; set; }
+    [Parameter] public EventCallback<string?> OnPick { get; set; }
+    [Parameter] public bool AllowNone { get; set; } = true;
+
+    /// <summary>Subfolder under wwwroot/uploads for this picker's background images (e.g. "tables").</summary>
+    [Parameter, EditorRequired] public string ImageFolder { get; set; } = "colors";
+
+    private string? _error;
+    private bool _imageOpen;
+
+    private const int DotCount = 130;
+    private const double DotSizeRem = .7;
+    // Leaves a clear ring for .colorpicker__center (.8rem radius) plus a hair of breathing room,
+    // so the innermost dots never sit underneath it — kept as small as that button allows, since
+    // any bigger and it reopens the white gap the exponent below is fixing.
+    private const double RadiusMin = 1.2;
+    private const double RadiusMax = 5.0;
+    private const double GoldenAngle = 2.39996323; // radians, ≈137.5° — the sunflower-seed angle
+
+    // Phyllotaxis (sunflower-seed) layout: radius from t^0.65, not the area-uniform t^0.5 —
+    // raising the exponent above .5 (not below; a fraction raised to a *higher* power shrinks
+    // faster, e.g. 0.05^0.65 ≈ .12 vs 0.05^0.5 ≈ .22) is what actually pulls dots in toward the
+    // centre. An earlier pass here used an exponent *below* .5, which does the opposite — it
+    // pushes the first dots out faster and was the actual cause of the visible ring of blank
+    // space around the centre button. A constant angular step alongside it packs every dot with
+    // no manual per-ring count/spacing math. Hue comes straight from each dot's own angle (a full
+    // 360° sweep = the rainbow), lightness from its radius (pale near the centre, deep near the
+    // rim), so the same hue reappears in several tones across the disc instead of one swatch each.
+    private static readonly (string Hex, double X, double Y)[] Wheel = GenerateWheel();
+
+    private static (string Hex, double X, double Y)[] GenerateWheel()
+    {
+        var dots = new (string Hex, double X, double Y)[DotCount];
+        for (var i = 0; i < DotCount; i++)
+        {
+            var t = (i + 0.5) / DotCount;
+            var r = RadiusMin + (RadiusMax - RadiusMin) * Math.Pow(t, 0.65);
+            var theta = i * GoldenAngle;
+            var hue = NormalizeDegrees(theta * 180 / Math.PI);
+            var lightness = 76 - 42 * ((r - RadiusMin) / (RadiusMax - RadiusMin));
+            dots[i] = (HslToHex(hue, 62, lightness), r * Math.Cos(theta), r * Math.Sin(theta));
+        }
+        return dots;
+    }
+
+    private static double NormalizeDegrees(double deg)
+    {
+        deg %= 360;
+        return deg < 0 ? deg + 360 : deg;
+    }
+
+    private static string HslToHex(double h, double s, double l)
+    {
+        s /= 100; l /= 100;
+        var c = (1 - Math.Abs(2 * l - 1)) * s;
+        var x = c * (1 - Math.Abs(h / 60 % 2 - 1));
+        var m = l - c / 2;
+        double r, g, b;
+        if (h < 60) { r = c; g = x; b = 0.0; }
+        else if (h < 120) { r = x; g = c; b = 0.0; }
+        else if (h < 180) { r = 0.0; g = c; b = x; }
+        else if (h < 240) { r = 0.0; g = x; b = c; }
+        else if (h < 300) { r = x; g = 0.0; b = c; }
+        else { r = c; g = 0.0; b = x; }
+        return $"#{(int)Math.Round((r + m) * 255):x2}{(int)Math.Round((g + m) * 255):x2}{(int)Math.Round((b + m) * 255):x2}";
+    }
+
+    // Baked into a plain left/top (not a centring transform) so the dot's own hover transform
+    // (scale) stays free instead of having to compose with one.
+    private static string DotStyle((string Hex, double X, double Y) d) =>
+        $"left:calc(50% + {Fmt(d.X)}rem - {Fmt(DotSizeRem / 2)}rem); top:calc(50% + {Fmt(d.Y)}rem - {Fmt(DotSizeRem / 2)}rem); --sw:{d.Hex}";
+
+    private static string Fmt(double v) => v.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
+    private bool IsImage => Current is not null && !Current.StartsWith('#');
+
+    private string PreviewStyle => IsImage
+        ? $"background-image:url('{Current}')"
+        : $"background-color:{Current ?? "transparent"}";
+
+    private Task Pick(string? value)
+    {
+        _error = null;
+        return OnPick.InvokeAsync(value);
+    }
+
+    private Task OnCenterClick() => AllowNone ? Pick(null) : Task.CompletedTask;
+
+    private static readonly System.Text.RegularExpressions.Regex HexPattern =
+        new(@"^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$");
+
+    private Task OnHexChanged(ChangeEventArgs e)
+    {
+        var raw = (e.Value as string ?? "").Trim();
+        if (raw.Length == 0) return Pick(null);
+
+        var match = HexPattern.Match(raw);
+        if (!match.Success)
+        {
+            _error = Loc.T("Enter a valid hex colour, e.g. #2f4a68.");
+            return Task.CompletedTask;
+        }
+        var hex = match.Groups[1].Value;
+        if (hex.Length == 3) hex = string.Concat(hex.Select(ch => new string(ch, 2)));
+        return Pick("#" + hex.ToLowerInvariant());
+    }
+
+    private Task OnImagePicked(string? url) => Pick(url);
+}

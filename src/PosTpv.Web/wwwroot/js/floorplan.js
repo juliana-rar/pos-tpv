@@ -93,11 +93,10 @@ export function getZoneLayout() {
 }
 
 function onDown(e) {
-    // Decor's own delete button (only rendered outside edit mode, like a zone's rename/delete)
-    // is a plain Blazor round-trip — let the click reach it undisturbed instead of arming a
-    // drag/pointer-capture on it. (Zone rename/delete never coexist with this listener: it's
-    // only attached during _editing, and those buttons only render outside it.)
-    if (e.target.closest('.decor__delete')) return;
+    // Decor/table/zone delete buttons and a zone's own rename (all rendered during edit mode,
+    // see Tables.razor) need their click to reach Blazor undisturbed — arming a drag/pointer-
+    // capture on the element underneath first would eat the click before it ever gets there.
+    if (e.target.closest('.decor__delete') || e.target.closest('.tbl__delete') || e.target.closest('.tbl__rename') || e.target.closest('.floor-zone__rename') || e.target.closest('.floor-zone__delete')) return;
 
     const el = e.target.closest('.tbl, .decor, .floor-zone');
     if (!el || !container.contains(el)) return;
@@ -147,8 +146,25 @@ function onDown(e) {
     // leaving it stranded until the next server render (which only happens on Save layout).
     const badge = (mode === 'drag' && groupId) ? container.querySelector('.tbl__group[data-group="' + groupId + '"]') : null;
 
+    // Resizing one member of a joined row also has to keep the row looking like one table:
+    // JoinTablesAsync gives every member the same height and snaps them edge-to-edge, and
+    // neither holds once a member's own resize handle changes only its own box — the row would
+    // grow ragged (mismatched heights) and whichever members sit to the right of the one being
+    // resized would either gap away from it or overlap it, since their X never moves to follow.
+    // heightSyncEls keeps every other member's height in lockstep; widthFollowers is whichever
+    // members sit further right, shifted live by the same delta this one's width just gained.
+    let heightSyncEls = [];
+    let widthFollowers = [];
+    if (mode === 'resize' && groupId) {
+        const members = Array.from(container.querySelectorAll('.tbl[data-group="' + groupId + '"]'));
+        heightSyncEls = members.filter(g => g !== el);
+        widthFollowers = members
+            .filter(g => g !== el && num(g.dataset.x) > x)
+            .map(g => ({ el: g, x: num(g.dataset.x) }));
+    }
+
     action = {
-        el, mode, groupEls, badge,
+        el, mode, groupEls, badge, heightSyncEls, widthFollowers,
         startX: e.clientX, startY: e.clientY,
         x, y, w, h, rot: num(el.dataset.rot),
         // Table centre in viewport space (for rotation) — canvas-space x/y/w/h need scaling by
@@ -179,12 +195,16 @@ function onMove(e) {
             g.el.style.top = ny + 'px';
         });
         if (badge) {
-            // Matches GroupCenterStyle in Tables.razor: horizontal centre of the group, anchored
-            // to its top edge (the CSS transform then floats the badge just above that point).
-            const cx = groupEls.reduce((s, g) => s + num(g.el.dataset.x) + num(g.el.dataset.w) / 2, 0) / groupEls.length;
-            const topY = Math.min(...groupEls.map(g => num(g.el.dataset.y)));
-            badge.style.left = cx + 'px';
-            badge.style.top = topY + 'px';
+            // Matches GroupCenterStyle in Tables.razor exactly: the true centre of the group's
+            // bounding box, both axes — using anything else here (e.g. just the top edge) has the
+            // badge sit somewhere else live than where Blazor's own render puts it once the drag
+            // ends, so the label visibly jumps the instant the layout is saved/reloaded.
+            const left = Math.min(...groupEls.map(g => num(g.el.dataset.x)));
+            const right = Math.max(...groupEls.map(g => num(g.el.dataset.x) + num(g.el.dataset.w)));
+            const top = Math.min(...groupEls.map(g => num(g.el.dataset.y)));
+            const bottom = Math.max(...groupEls.map(g => num(g.el.dataset.y) + num(g.el.dataset.h)));
+            badge.style.left = ((left + right) / 2) + 'px';
+            badge.style.top = ((top + bottom) / 2) + 'px';
         }
     } else if (mode === 'resize') {
         const nw = Math.max(MIN, snap(action.w + dx));
@@ -192,6 +212,16 @@ function onMove(e) {
         el.dataset.w = nw; el.dataset.h = nh;
         el.style.width = nw + 'px';
         el.style.height = nh + 'px';
+        action.heightSyncEls.forEach(g => {
+            g.dataset.h = nh;
+            g.style.height = nh + 'px';
+        });
+        const widthDelta = nw - action.w;
+        action.widthFollowers.forEach(f => {
+            const nx = f.x + widthDelta;
+            f.el.dataset.x = nx;
+            f.el.style.left = nx + 'px';
+        });
     } else if (mode === 'rotate') {
         let ang = Math.atan2(e.clientY - action.cy, e.clientX - action.cx) * 180 / Math.PI + 90;
         ang = Math.round(ang / 5) * 5;

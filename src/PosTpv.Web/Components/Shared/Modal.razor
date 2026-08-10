@@ -2,7 +2,7 @@
 @if (Visible)
 {
     <div class="modal-backdrop @(FullScreen ? "modal-backdrop--full" : "")" @onclick="OnBackdrop">
-        <div class="modal @(Wide ? "modal--wide" : "") @(FullScreen ? "modal--full" : "")" @onclick:stopPropagation="true">
+        <div class="modal @(Wide ? "modal--wide" : "") @(Narrow ? "modal--narrow" : "") @(FullScreen ? "modal--full" : "")" @onclick:stopPropagation="true">
             <div class="modal__head">
                 <h2>@Title</h2>
                 <div class="modal__head-actions">
@@ -30,6 +30,7 @@
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public bool CloseOnBackdrop { get; set; } = true;
     [Parameter] public bool Wide { get; set; }
+    [Parameter] public bool Narrow { get; set; }
     [Parameter] public bool FullScreen { get; set; }
 
     private Task Close() => OnClose.InvokeAsync();
