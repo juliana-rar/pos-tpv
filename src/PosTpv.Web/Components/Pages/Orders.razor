@@ -23,27 +23,57 @@
     <div class="toolbar">
         @if (_showFilters)
         {
-            <select class="select" style="max-width:170px" @bind="_statusFilter">
-                <option value="">@Loc.T("All statuses")</option>
-                @foreach (var s in new[] { OrderStatus.Open, OrderStatus.Sent, OrderStatus.InPreparation, OrderStatus.Ready, OrderStatus.Delivered })
+            <div class="orders-dd">
+                <button type="button" class="orders-dd__trigger" @onclick='() => ToggleDropdown("status")'>
+                    <span>@(_statusFilterValue is null ? Loc.T("All statuses") : Loc.T(_statusFilterValue.ToString()!))</span>
+                    <LucideIcon Name="chevron-down" Size="13" />
+                </button>
+                @if (_openDropdown == "status")
                 {
-                    <option value="@s">@Loc.T(s.ToString())</option>
+                    <div class="orders-dd__backdrop" @onclick="CloseDropdown"></div>
+                    <div class="orders-dd__menu">
+                        <button type="button" class="orders-dd__opt @(_statusFilterValue is null ? "orders-dd__opt--on" : "")" @onclick='() => SelectStatus("")'>@Loc.T("All statuses")</button>
+                        @foreach (var s in new[] { OrderStatus.Open, OrderStatus.Sent, OrderStatus.InPreparation, OrderStatus.Ready, OrderStatus.Delivered })
+                        {
+                            <button type="button" class="orders-dd__opt @(_statusFilterValue == s ? "orders-dd__opt--on" : "")" @onclick="() => SelectStatus(s.ToString())">@Loc.T(s.ToString())</button>
+                        }
+                    </div>
                 }
-            </select>
-            <select class="select" style="max-width:170px" @bind="_sortOrder">
-                <option value="oldest">@Loc.T("Oldest first")</option>
-                <option value="newest">@Loc.T("Newest first")</option>
-                <option value="number">@Loc.T("Order number")</option>
-            </select>
+            </div>
+            <div class="orders-dd">
+                <button type="button" class="orders-dd__trigger" @onclick='() => ToggleDropdown("sort")'>
+                    <span>@SortLabel()</span>
+                    <LucideIcon Name="chevron-down" Size="13" />
+                </button>
+                @if (_openDropdown == "sort")
+                {
+                    <div class="orders-dd__backdrop" @onclick="CloseDropdown"></div>
+                    <div class="orders-dd__menu">
+                        <button type="button" class="orders-dd__opt @(_sortOrder == "oldest" ? "orders-dd__opt--on" : "")" @onclick='() => SelectSort("oldest")'>@Loc.T("Oldest first")</button>
+                        <button type="button" class="orders-dd__opt @(_sortOrder == "newest" ? "orders-dd__opt--on" : "")" @onclick='() => SelectSort("newest")'>@Loc.T("Newest first")</button>
+                        <button type="button" class="orders-dd__opt @(_sortOrder == "number" ? "orders-dd__opt--on" : "")" @onclick='() => SelectSort("number")'>@Loc.T("Order number")</button>
+                    </div>
+                }
+            </div>
             @if (Zones.Count > 0)
             {
-                <select class="select" style="max-width:170px" @bind="_zoneFilter">
-                    <option value="">@Loc.T("All zones")</option>
-                    @foreach (var z in Zones)
+                <div class="orders-dd">
+                    <button type="button" class="orders-dd__trigger" @onclick='() => ToggleDropdown("zone")'>
+                        <span>@(string.IsNullOrEmpty(_zoneFilter) ? Loc.T("All zones") : _zoneFilter)</span>
+                        <LucideIcon Name="chevron-down" Size="13" />
+                    </button>
+                    @if (_openDropdown == "zone")
                     {
-                        <option value="@z">@z</option>
+                        <div class="orders-dd__backdrop" @onclick="CloseDropdown"></div>
+                        <div class="orders-dd__menu">
+                            <button type="button" class="orders-dd__opt @(string.IsNullOrEmpty(_zoneFilter) ? "orders-dd__opt--on" : "")" @onclick='() => SelectZone("")'>@Loc.T("All zones")</button>
+                            @foreach (var z in Zones)
+                            {
+                                <button type="button" class="orders-dd__opt @(_zoneFilter == z ? "orders-dd__opt--on" : "")" @onclick="() => SelectZone(z)">@z</button>
+                            }
+                        </div>
                     }
-                </select>
+                </div>
             }
             <input class="input" style="max-width:170px" placeholder="@Loc.T("Search table…")" @bind="_tableSearch" @bind:event="oninput" />
         }
@@ -84,7 +114,7 @@
     @if (Filtered.Count == 0) { <p class="empty">@Loc.T("No open orders.")</p> }
 </div>
 
-<OrderEditor OrderId="_editorOrderId" OnClose="CloseEditor" OnChanged="EditorChanged" />
+<OrderEditor OrderId="_editorOrderId" OnClose="CloseEditor" OnChanged="EditorChanged" OnNavigate="NavigateOrder" />
 
 <PaymentDialog Order="_payingOrder" Visible="_payingOrder is not null" OnClose="ClosePayment" OnConfirm="ConfirmPayment" />
 
@@ -98,12 +128,6 @@
     private bool _showFilters;
     private bool _chipsExpanded;
 
-    private string _statusFilter
-    {
-        get => _statusFilterValue?.ToString() ?? "";
-        set => _statusFilterValue = Enum.TryParse<OrderStatus>(value, out var s) ? s : null;
-    }
-
     private string _sortOrder = "newest"; // "newest" | "oldest" | "number"
 
     private string _tableSearch = "";
@@ -114,6 +138,27 @@
         .Distinct()
         .OrderBy(z => z)
         .ToList()!;
+
+    // Custom dropdowns (status/sort/zone) instead of native <select> — only one open at a time,
+    // and picking an option closes it, same pattern as .resv-status__menu in Tables.razor.
+    private string? _openDropdown;
+    private void ToggleDropdown(string key) => _openDropdown = _openDropdown == key ? null : key;
+    private void CloseDropdown() => _openDropdown = null;
+
+    private void SelectStatus(string value)
+    {
+        _statusFilterValue = Enum.TryParse<OrderStatus>(value, out var s) ? s : null;
+        _openDropdown = null;
+    }
+    private void SelectSort(string value) { _sortOrder = value; _openDropdown = null; }
+    private void SelectZone(string value) { _zoneFilter = value; _openDropdown = null; }
+
+    private string SortLabel() => _sortOrder switch
+    {
+        "oldest" => Loc.T("Oldest first"),
+        "number" => Loc.T("Order number"),
+        _ => Loc.T("Newest first")
+    };
 
     private List<OrderDto> Filtered
     {
@@ -183,6 +228,20 @@
     private void OpenEditor(int orderId) => _editorOrderId = orderId;
     private void CloseEditor() => _editorOrderId = null;
     private Task EditorChanged() => _editorOrderId is int id ? RefreshOrder(id) : Task.CompletedTask;
+
+    // Left/Right in the editor's toolbar (OrderEditor.OnNavigate): step to the previous/next
+    // order within the same Filtered list the board itself shows, so it matches whatever
+    // filter/sort is currently active. No-ops at either end instead of wrapping around.
+    private void NavigateOrder(int delta)
+    {
+        if (_editorOrderId is not int currentId) return;
+        var list = Filtered;
+        var idx = list.FindIndex(o => o.Id == currentId);
+        if (idx < 0) return;
+        var newIdx = idx + delta;
+        if (newIdx < 0 || newIdx >= list.Count) return;
+        _editorOrderId = list[newIdx].Id;
+    }
 
     // ---- Payment (single button → dialog with cash / card / split) ----
     private void OpenPayment(int orderId) => _payingOrder = _orders.FirstOrDefault(o => o.Id == orderId);

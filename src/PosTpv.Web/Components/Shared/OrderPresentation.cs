@@ -21,11 +21,15 @@ public static class OrderPresentation
     /// Below 5 lines an order is short enough to scan as a flat list. From 5 lines on, it's
     /// grouped under the same Drinks/First/Second/Desserts headers as the kitchen and /orders
     /// screens, so a long ticket reads at a glance instead of as one undifferentiated column.
-    /// Used by both /pos and the order editor so a long ticket reads the same way in either.
+    /// Used by both /pos and the order editor so a long ticket reads the same way in either —
+    /// the editor opts into <paramref name="alwaysLabel"/> so its course headers (Drinks, etc.)
+    /// stay visible even on a 1-line order, since the served-batch highlight and per-course
+    /// serve actions there read better with the label always in place; /pos keeps the flat
+    /// short-order view by leaving it false.
     /// </summary>
-    public static List<OrderSection> Sections(IReadOnlyList<OrderItemDto> items)
+    public static List<OrderSection> Sections(IReadOnlyList<OrderItemDto> items, bool alwaysLabel = false)
     {
-        if (items.Count < 5)
+        if (!alwaysLabel && items.Count < 5)
             return new() { new OrderSection(null, null, items.ToList()) };
 
         var sections = new List<OrderSection>();
@@ -42,8 +46,8 @@ public static class OrderPresentation
         return sections;
     }
 
-    public static string GroupLinesClass(OrderSection section) =>
-        section.Items.Count > 6 ? "order__group-lines order__group-lines--scroll" : "order__group-lines";
+    public static string GroupLinesClass(OrderSection section, bool expanded = false) =>
+        section.Items.Count > 6 && !expanded ? "order__group-lines order__group-lines--scroll" : "order__group-lines";
 
     /// <summary>Buckets an order's lines into Drinks / First / Second / Desserts, the grouping every serve action row is driven by.</summary>
     public static PartitionedItems Partition(IEnumerable<OrderItemDto> items)

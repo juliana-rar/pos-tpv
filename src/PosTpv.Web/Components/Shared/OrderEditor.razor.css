@@ -185,30 +185,29 @@
    no longer a floating card but a panel flush against the screen edges. */
 .pos__order {
     display: flex; flex-direction: column; min-height: 0;
-    padding: .15rem .6rem 0;
+    padding: .05rem .6rem 0;
     margin: 0 -1rem -1rem 0;
     border-radius: 0;
 }
-/* Thin rule under the title/tick row, spanning its full width, separating it from the order
-   lines below instead of the two blending together. */
-.order__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .25rem; padding-bottom: .4rem; border-bottom: 1px solid var(--border); }
-.order__head .badge { font-size: .54rem; padding: .08rem .35rem; }
-/* Table title reads as the panel's heading, so it's a bit bigger than the status pill next to
-   it — but compact, not a full section title. */
-.order__head .badge--primary { font-size: .7rem; font-weight: 800; padding: .12rem .4rem; }
-/* Status sits right next to the table badge on the left, instead of drifting to the far side
-   of the panel with the tick/close cluster. Pinned to the top of the row (not vertically
-   centered against the taller 32px close/confirm buttons on the right) so the title and status
-   pill sit higher instead of looking sunk to the row's middle. */
-.order__head-left { display: flex; align-items: center; align-self: flex-start; gap: .35rem; }
-/* Confirm tick and close clustered together on the right, instead of sitting apart in the
-   page's outer header. */
-.order__head-right { display: flex; align-items: center; gap: .35rem; }
+/* Three-column grid with equal 1fr outer columns (not flex) — that's what puts the title in the
+   true center of the div, unlike flex's "center of whatever space is left", which drifts off
+   center as soon as the left (close button) and right (status+confirm) cells differ in width. */
+.order__head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .35rem; margin-bottom: 0; }
+.order__head > .btn--icon:first-child { justify-self: start; }
+.order__head .badge { flex: none; font-size: .5rem; padding: .05rem .3rem; }
+/* Smaller and shorter than a section title — just enough to read as a heading, not compete
+   with it. align-self:flex-start (overriding .order__head's row-wide center) so it hugs the
+   row's top edge instead of sitting vertically centered against the taller 32px close/confirm
+   buttons either side of it. */
+.order__head-title { align-self: flex-start; justify-self: center; text-align: center; font-size: .62rem; font-weight: 800; padding: .06rem .32rem; }
+/* Status pill + confirm tick grouped together, pinned to the column's right edge. */
+.order__head-right { justify-self: end; display: flex; align-items: center; gap: .35rem; }
 /* Close and confirm are both plain .btn--icon .btn--ghost now — same size, same gray "physical"
    keycap depth (matching .order-card__head-right .btn--icon in OrderCard.razor.css: a raised
    gradient chip with a glossy top edge and a pressed-in look on click) instead of the confirm
    tick standing out in green, so the two read as one consistent control pair. */
-.order__head-right .btn--icon {
+.order__head .btn--icon {
+    flex: none;
     width: 32px; height: 32px; padding: 0;
     background: linear-gradient(to bottom, color-mix(in srgb, var(--card) 98%, white 2%), var(--card-2));
     border: 1px solid var(--border);
@@ -219,7 +218,7 @@
     transform: translateY(0);
     transition: transform 110ms ease, background 110ms ease, box-shadow 110ms ease;
 }
-.order__head-right .btn--icon:active {
+.order__head .btn--icon:active {
     transform: translateY(1px);
     background: color-mix(in srgb, var(--text) 20%, var(--card-2));
     box-shadow: inset 0 2px 5px rgba(0, 0, 0, .3), inset 0 1px 2px rgba(0, 0, 0, .15);
@@ -229,7 +228,7 @@
 /* Same Serve/Fire action row as the board card (.order-card__actions in OrderCard.razor.css),
    including its "physical" keycap button treatment — no min-height reservation here since
    this is a single full-page panel, not a card in a grid that needs to stay aligned with others. */
-.order-card__actions { flex: none; display: flex; flex-direction: column; gap: .3rem; margin-bottom: .3rem; }
+.order-card__actions { flex: none; display: flex; flex-direction: column; gap: .3rem; margin-bottom: .15rem; }
 /* This copy lives inside the order panel and only shows up below the layout's stacking
    breakpoint — above it, .editor__topbar carries these buttons instead (see @media block below). */
 .order-card__actions--inline { display: none; }
@@ -320,22 +319,29 @@
 
 .order__group-lines { display: flex; flex-direction: column; gap: .22rem; }
 /* Capped to 6 lines tall so one long course scrolls on its own instead of pushing the other
-   course groups out of view (same pattern as .order__group-lines--scroll in Pos.razor.css). */
-.order__group-lines--scroll { max-height: 12.5rem; overflow-y: auto; padding-right: .2rem; }
+   course groups out of view (same pattern as .order__group-lines--scroll in Pos.razor.css).
+   Cancels-and-repads the same --batch-bleed amount on BOTH sides, not just the right — this
+   element's own overflow-y:auto makes it a new clipping ancestor for the served-batch bleed
+   below it, so without the left-side cancel too, a scrolling section's green frame (and the
+   order time label riding along its left edge) gets sliced off on the left instead of reaching
+   the true edge. */
+.order__group-lines--scroll { max-height: 12.5rem; overflow-y: auto; margin: 0 calc(-1 * var(--batch-bleed, .6rem)); padding: 0 var(--batch-bleed, .6rem); }
 
 /* .order-card__drink-batch (served-batch frame) and .order__time-group* (ordered-together
    bracket) live in app.css — shared with OrderCard.razor, which renders the same patterns. */
 
 /* Course headers (Drinks/First/Second/Desserts) shown once the order reaches 5 lines — same
-   convention as /pos and /orders. */
+   convention as /pos and /orders. Centered with a divider line either side instead of a plain
+   left-aligned label + top border, so each course reads as its own separated section. */
 .order__group {
-    display: flex; align-items: center; gap: .3rem;
+    display: flex; align-items: center; justify-content: center; gap: .4rem;
     font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
     color: var(--primary);
     margin-top: .3rem; padding-top: .3rem;
-    border-top: 1px solid var(--border);
+    cursor: pointer; user-select: none;
 }
-.order__items > .order__group:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.order__group::before, .order__group::after { content: ""; flex: 1 1 auto; height: 1px; background: var(--border); }
+.order__items > .order__group:first-child { margin-top: 0; padding-top: 0; }
 
 .orderLine { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 .45rem; background: var(--card-2); }
 .orderLine__main { display: flex; align-items: center; gap: .35rem; font-weight: 700; font-size: .66rem; }
@@ -345,18 +351,31 @@
 .orderLine__ctrl { flex: none; display: flex; align-items: center; gap: 0; }
 .orderLine__ctrl .btn--icon { width: 18px; height: 18px; padding: 0; margin-left: .2rem; }
 .orderLine__ctrl .btn--icon:first-child { margin-left: 0; }
-.orderLine__remove { width: 15px !important; height: 15px !important; }
-.orderLine__remove + .btn--icon { margin-left: 0; }
 .orderLine__qty { margin-left: .2rem; min-width: 1.1rem; text-align: center; font-weight: 700; font-size: .66rem; }
 .orderLine__comment { margin-top: .15rem; font-size: .7rem; font-style: italic; }
 .orderLine__extras { margin-top: .15rem; font-size: .68rem; font-weight: 600; }
 .order__totals { border-top: 1px solid var(--border); margin-top: auto; padding-top: .4rem; display: flex; flex-direction: column; gap: .5rem; }
 .order__grand { display: flex; justify-content: space-between; align-items: center; font-size: .74rem; font-weight: 800; }
 
-/* Eliminar/Invitación/Cobrar bleed past the panel's own side padding and sit flush against
-   the panel's bottom edge — no side gap, no border, reading as one bar spanning the full
-   width of the panel rather than a floating row of chips. */
-.order__grand-actions { display: flex; align-items: stretch; width: calc(100% + 1.2rem); margin: 0 -.6rem; }
+/* Up/down (left) will page through the line-selection mode still to come; ticket (right) will
+   preview the printable receipt — see the scaffolding comment in OrderEditor.razor. Bleeds full
+   width the same way as .order__grand-actions below it, so the two bars read as one stack.
+   Grid (not flex) with an explicit column template, shared with .order__grand-actions below, so
+   Izquierda/Derecha in that row line up in width and position with Subir/Bajar in this one. */
+.order__toolbar-actions { display: grid; grid-template-columns: 1.15fr 1fr 1fr 1.15fr; align-items: stretch; width: calc(100% + 1.2rem); margin: 0 -.6rem; }
+
+/* Left/Right (jump to the previous/next order — see OnNavigate in OrderEditor.razor) plus
+   Eliminar/Invitación/Cobrar all share this one row. Bleeds past the panel's own
+   side padding and sits flush against the panel's bottom edge — no side gap, no border, reading
+   as one bar spanning the full width of the panel rather than a floating row of chips. Pulled up
+   by .order__totals' own .5rem gap (negative margin-top) and given a hairline top border, so it
+   sits flush against .order__toolbar-actions above instead of floating as a separate block — the
+   two rows read as one joined control instead of two stacked bars. Same grid-template-columns as
+   .order__toolbar-actions above: Eliminar+Invitación together fill column 1 (matching
+   Seleccionar), Izquierda/Derecha fill columns 2/3 (matching Subir/Bajar), Cobrar fills column 4
+   (matching Ticket) — see .order__del-invite for how column 1 splits into its two buttons. */
+.order__grand-actions { display: grid; grid-template-columns: 1.15fr 1fr 1fr 1.15fr; align-items: stretch; width: calc(100% + 1.2rem); margin: -.5rem -.6rem 0; border-top: 1px solid var(--border); }
+.order__del-invite { display: flex; align-items: stretch; }
 
 .orderLine__invited {
     flex: none;
@@ -388,12 +407,64 @@
     color: color-mix(in srgb, var(--warning) 60%, var(--text) 40%);
 }
 
-/* Flat, modern, neutral-gray CTAs — no border/radius so the trio reads as one bar flush
-   against the panel's edges (see .order__grand-actions), each taking a third of its width. */
-.btn--delete, .btn--invite, .btn--pay {
-    flex: 1;
+/* Per-line checkbox shown while Select is armed — same plain-box treatment as
+   .orderLine__invite-box, but sits first (left of the name, not on the right with the qty
+   controls) and ticks in a neutral --text-soft gray (same tone as .btn--select-active) instead
+   of --warning or --primary, so it reads as a plain selection, not another accent color. */
+.orderLine__select-box {
+    flex: none;
+    display: grid; place-items: center;
+    width: 15px; height: 15px;
+    padding: 0;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: var(--card-2);
+    color: transparent;
+    cursor: pointer;
+}
+.orderLine__select-box--on {
+    background: color-mix(in srgb, var(--text-soft) 12%, transparent);
+    border-color: color-mix(in srgb, var(--text-soft) 45%, var(--border));
+    color: var(--text-soft);
+}
+
+/* Compact stepper next to a selected multi-unit line (Quantity > 1), letting the user dial down
+   from "all units selected" to a partial count. Same .qty-stepper idea used in PaymentDialog's
+   split-count and Pos.razor's table-split count, just sized to fit inside .orderLine — its own
+   controls (.orderLine__ctrl .btn--icon) are already 18px, not the 34px those two use. Same
+   neutral --text-soft tone as .orderLine__select-box--on, not a new accent color. */
+.orderLine__select-stepper {
+    flex: none;
+    display: flex; align-items: center; gap: .15rem;
+    font-size: .64rem; font-weight: 700;
+    color: var(--text-soft);
+}
+.orderLine__select-stepper button {
+    flex: none;
+    display: grid; place-items: center;
+    width: 15px; height: 15px;
+    padding: 0;
+    border-radius: 3px;
+    border: 1px solid color-mix(in srgb, var(--text-soft) 45%, var(--border));
+    background: color-mix(in srgb, var(--text-soft) 12%, transparent);
+    color: var(--text-soft);
+    font-weight: 800;
+    cursor: pointer;
+}
+.orderLine__select-stepper button:disabled { opacity: .5; cursor: default; }
+.orderLine__select-stepper span { min-width: 1rem; text-align: center; }
+
+/* Flat, modern, neutral-gray CTAs — no border/radius so each row reads as one bar flush against
+   the panel's edges (see .order__grand-actions / .order__toolbar-actions). Select/Up/Down/Ticket
+   and Left/Right/Charge are direct grid items of their row, sized by its grid-template-columns;
+   Delete/Invitation are flex children of .order__del-invite instead (see above), splitting that
+   grid column's width in half. Delete/Invitation/Charge share the exact same rule set as
+   Select/Up/Down/Ticket/Left/Right so all three stacked bars read as one consistent control. */
+.btn--delete, .btn--invite, .btn--pay,
+.btn--select, .btn--nav-up, .btn--nav-down, .btn--ticket,
+.btn--nav-left, .btn--nav-right {
     display: flex; align-items: center; justify-content: center; gap: .3rem;
-    padding: .55rem .6rem;
+    padding: .3rem .6rem;
     border: none;
     border-radius: 0;
     font-size: .7rem;
@@ -403,14 +474,27 @@
     cursor: pointer;
     transition: background 120ms ease, color 120ms ease, transform 80ms ease;
 }
-.btn--delete:disabled, .btn--invite:disabled, .btn--pay:disabled { opacity: .5; cursor: default; }
-/* Hairline separators between the three, drawn as an inset shadow rather than a border so
-   the bar's own outer edge stays borderless and flush with the panel. */
-.btn--delete, .btn--invite { box-shadow: inset -1px 0 0 var(--border); }
+.btn--delete:disabled, .btn--invite:disabled, .btn--pay:disabled,
+.btn--select:disabled, .btn--nav-up:disabled, .btn--nav-down:disabled, .btn--ticket:disabled,
+.btn--nav-left:disabled, .btn--nav-right:disabled { opacity: .5; cursor: default; }
+/* Up/Down and Delete (which shows the ticket/coupon icon instead while nothing is selected —
+   see the LucideIcon Name binding in OrderEditor.razor) stay at full strength even disabled, so
+   their background keeps matching the rest of this row instead of fading out on its own. */
+.btn--nav-up:disabled, .btn--nav-down:disabled, .btn--delete:disabled { opacity: 1; }
+/* Eliminar/Invitación are icon-only (no label) — each takes half of .order__del-invite's width. */
+.btn--delete, .btn--invite { flex: 1; padding: .3rem; }
+/* Hairline separators between each row's buttons, drawn as an inset shadow rather than a border
+   so the bar's own outer edge stays borderless and flush with the panel. Order in the bottom row
+   is Eliminar / Invitación / Left / Right / Cobrar, so Cobrar (last) gets no line of its own. */
+.btn--delete, .btn--invite, .btn--select, .btn--nav-up, .btn--nav-down, .btn--nav-left, .btn--nav-right { box-shadow: inset -1px 0 0 var(--border); }
 
-.btn--delete:hover:not(:disabled), .btn--invite:hover:not(:disabled), .btn--pay:hover:not(:disabled) { background: var(--border); }
-.btn--delete:active:not(:disabled), .btn--invite:active:not(:disabled), .btn--pay:active:not(:disabled) { transform: scale(.98); transition-duration: 40ms; }
-.btn--delete-active, .btn--invite-active { background: var(--text-soft); color: var(--card); }
+.btn--delete:hover:not(:disabled), .btn--invite:hover:not(:disabled), .btn--pay:hover:not(:disabled),
+.btn--select:hover:not(:disabled), .btn--nav-up:hover:not(:disabled), .btn--nav-down:hover:not(:disabled), .btn--ticket:hover:not(:disabled),
+.btn--nav-left:hover:not(:disabled), .btn--nav-right:hover:not(:disabled) { background: var(--border); }
+.btn--delete:active:not(:disabled), .btn--invite:active:not(:disabled), .btn--pay:active:not(:disabled),
+.btn--select:active:not(:disabled), .btn--nav-up:active:not(:disabled), .btn--nav-down:active:not(:disabled), .btn--ticket:active:not(:disabled),
+.btn--nav-left:active:not(:disabled), .btn--nav-right:active:not(:disabled) { transform: scale(.98); transition-duration: 40ms; }
+.btn--invite-active, .btn--select-active { background: var(--text-soft); color: var(--card); }
 
 @media (max-width: 1100px) {
     .editor__pos { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }

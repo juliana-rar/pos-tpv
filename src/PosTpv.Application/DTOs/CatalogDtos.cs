@@ -19,6 +19,14 @@ public class UserFormDto
 
 public record ExtraDto(int Id, string Name, decimal Price);
 
+public class ExtraFormDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public List<int> ProductIds { get; set; } = new();
+}
+
 public record AllergenDto(int Id, string Name, string? Description, string? ImageUrl);
 
 public class AllergenFormDto
@@ -40,6 +48,7 @@ public class CategoryFormDto
     public string? ImageUrl { get; set; }
     public int DisplayOrder { get; set; }
     public bool IsVisible { get; set; } = true;
+    public CategoryKind Kind { get; set; } = CategoryKind.Food;
     public CourseType Course { get; set; } = CourseType.Main;
 }
 
@@ -56,7 +65,7 @@ public record ProductDto(
     int Id, string Name, string? Description, decimal Price, decimal VatRate,
     string Color, string? ImageUrl, int DisplayOrder, bool IsVisible, bool IsAvailable,
     int PreparationMinutes, string? Ingredients, IReadOnlyList<AllergenDto> Allergens, int CategoryId, string CategoryName,
-    bool HasExtras);
+    IReadOnlyList<ExtraDto> Extras);
 
 public class ProductFormDto
 {
@@ -73,5 +82,6 @@ public class ProductFormDto
     public int PreparationMinutes { get; set; }
     public string? Ingredients { get; set; }
     public List<int> AllergenIds { get; set; } = new();
+    public List<int> ExtraIds { get; set; } = new();
     public int CategoryId { get; set; }
 }

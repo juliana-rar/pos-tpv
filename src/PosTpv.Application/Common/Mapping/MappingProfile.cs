@@ -42,11 +42,19 @@ public class MappingProfile : Profile
             .ForMember(d => d.CreatedAt, o => o.Ignore())
             .ForMember(d => d.UpdatedAt, o => o.Ignore());
 
+        CreateMap<Extra, ExtraDto>();
+        CreateMap<Extra, ExtraFormDto>()
+            .ForMember(d => d.ProductIds, o => o.MapFrom(s => s.Products.Select(p => p.Id)));
+        CreateMap<ExtraFormDto, Extra>()
+            .ForMember(d => d.Products, o => o.Ignore())
+            .ForMember(d => d.CreatedAt, o => o.Ignore())
+            .ForMember(d => d.UpdatedAt, o => o.Ignore());
+
         CreateMap<Product, ProductDto>()
-            .ForCtorParam(nameof(ProductDto.CategoryName), o => o.MapFrom(s => s.Category != null ? s.Category.Name : string.Empty))
-            .ForCtorParam(nameof(ProductDto.HasExtras), o => o.MapFrom(s => s.Extras != null && s.Extras.Count > 0));
+            .ForCtorParam(nameof(ProductDto.CategoryName), o => o.MapFrom(s => s.Category != null ? s.Category.Name : string.Empty));
         CreateMap<Product, ProductFormDto>()
-            .ForMember(d => d.AllergenIds, o => o.MapFrom(s => s.Allergens.Select(a => a.Id)));
+            .ForMember(d => d.AllergenIds, o => o.MapFrom(s => s.Allergens.Select(a => a.Id)))
+            .ForMember(d => d.ExtraIds, o => o.MapFrom(s => s.Extras.Select(e => e.Id)));
         CreateMap<ProductFormDto, Product>()
             .ForMember(d => d.Category, o => o.Ignore())
             .ForMember(d => d.Extras, o => o.Ignore())

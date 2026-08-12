@@ -5,9 +5,11 @@
 @inject IProductService Service
 @inject ICategoryService CategoryService
 @inject IAllergenService AllergenService
+@inject IExtraService ExtraService
 @inject IValidator<ProductFormDto> Validator
 @inject IValidator<CategoryFormDto> CategoryValidator
 @inject IValidator<AllergenFormDto> AllergenValidator
+@inject IValidator<ExtraFormDto> ExtraValidator
 @inject AppSettingsCache Branding
 
 <PageTitle>Products · @Branding.Current.Title</PageTitle>
@@ -35,6 +37,17 @@
                 <span class="catRow__meta">
                     <i class="catRow__dot"></i>
                     @_allergens.Count @Loc.T("defined")
+                </span>
+            </div>
+            <span class="catRow__nav"><LucideIcon Name="chevron-right" Size="16" /></span>
+        </div>
+        <div class="catRow catRow--extras" data-active="@(_viewingExtras ? "true" : null)" @onclick="SelectExtrasView">
+            <div class="catRow__thumb"><LucideIcon Name="tag" Size="18" /></div>
+            <div class="catRow__main">
+                <span class="catRow__name">@Loc.T("Extras")</span>
+                <span class="catRow__meta">
+                    <i class="catRow__dot"></i>
+                    @_extras.Count @Loc.T("defined")
                 </span>
             </div>
             <span class="catRow__nav"><LucideIcon Name="chevron-right" Size="16" /></span>
@@ -88,11 +101,15 @@
     @* ---- Right panel: products of the selected category ---------------------- *@
     <section class="catalog__products">
         <div class="toolbar">
-            <h1>@(_viewingAllergens ? Loc.T("Allergens") : (_selected?.Name ?? Loc.T("Products")))</h1>
+            <h1>@(_viewingAllergens ? Loc.T("Allergens") : _viewingExtras ? Loc.T("Extras") : (_selected?.Name ?? Loc.T("Products")))</h1>
             <span class="spacer"></span>
             @if (_viewingAllergens)
             {
                 <button class="btn btn--primary" @onclick="() => OpenAllergenForm(null)">+ @Loc.T("New allergen")</button>
+            }
+            else if (_viewingExtras)
+            {
+                <button class="btn btn--primary" @onclick="() => OpenExtraForm(null)">+ @Loc.T("New extra")</button>
             }
             else if (_selected is not null)
             {
@@ -131,6 +148,26 @@
                         </div>
                     }
                     @if (_allergens.Count == 0) { <p class="empty">@Loc.T("No allergens yet.")</p> }
+                </div>
+            </div>
+        }
+        else if (_viewingExtras)
+        {
+            <div class="extraManager">
+                <div class="extraManager__list">
+                    @foreach (var e in _extras)
+                    {
+                        <div class="extraRow">
+                            <div class="extraRow__thumb"><LucideIcon Name="tag" Size="18" /></div>
+                            <div class="extraRow__main">
+                                <span class="extraRow__name">@e.Name</span>
+                            </div>
+                            <span class="extraRow__price">+@e.Price.ToString("N2")</span>
+                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")" @onclick="() => OpenExtraForm(e.Id)"><LucideIcon Name="pencil" Size="16" /></button>
+                            <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")" @onclick="() => DeleteExtra(e.Id)"><LucideIcon Name="trash-2" Size="16" /></button>
+                        </div>
+                    }
+                    @if (_extras.Count == 0) { <p class="empty">@Loc.T("No extras yet.")</p> }
                 </div>
             </div>
         }
@@ -177,6 +214,15 @@
                                 </span>
                             }
                         </div>
+                        @if (p.Extras.Count > 0)
+                        {
+                            <div class="mgmt-card__extras">
+                                @foreach (var e in p.Extras)
+                                {
+                                    <span class="extra-tag" title="@e.Name">@e.Name <b>+@e.Price.ToString("N2")</b></span>
+                                }
+                            </div>
+                        }
                         <div class="mgmt-card__actions">
                             <label class="switch" title="@(p.IsAvailable ? Loc.T("Available") : Loc.T("Off"))">
                                 <input type="checkbox" checked="@p.IsAvailable" @onchange="e => ToggleAvailable(p, (bool)e.Value!)" />
@@ -259,6 +305,25 @@
                     <p class="muted">@Loc.T("No allergens defined yet.") <button type="button" class="btn btn--ghost btn--sm" @onclick="GoToAllergens">@Loc.T("Add one")</button></p>
                 }
             </div>
+            <div class="field">
+                <label>@Loc.T("Extras")</label>
+                @if (_extras.Count > 0)
+                {
+                    <div class="extra-pick">
+                        @foreach (var e in _extras)
+                        {
+                            <button type="button" class="extra-chip @(_product.ExtraIds.Contains(e.Id) ? "extra-chip--on" : "")"
+                                    @onclick="() => ToggleProductExtra(e.Id)">
+                                @e.Name <span class="extra-chip__price">+@e.Price.ToString("N2")</span>
+                            </button>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="muted">@Loc.T("No extras defined yet.") <button type="button" class="btn btn--ghost btn--sm" @onclick="GoToExtras">@Loc.T("Add one")</button></p>
+                }
+            </div>
             <div class="row-2">
                 <label class="switch"><input type="checkbox" @bind="_product.IsAvailable" /><span>@Loc.T("Available")</span></label>
                 <label class="switch"><input type="checkbox" @bind="_product.IsVisible" /><span>@Loc.T("Visible")</span></label>
@@ -287,14 +352,24 @@
                 <ImageUpload Value="_category.ImageUrl" ValueChanged="v => _category.ImageUrl = v" Folder="categories" />
             </div>
             <div class="field">
-                <label>@Loc.T("Course")</label>
-                <select class="input" @bind="_category.Course">
-                    @foreach (var course in Enum.GetValues<CourseType>())
-                    {
-                        <option value="@course">@Loc.T(CourseLabel(course))</option>
-                    }
+                <label>@Loc.T("Type")</label>
+                <select class="input" @bind="_category.Kind">
+                    <option value="@CategoryKind.Food">@Loc.T("Food")</option>
+                    <option value="@CategoryKind.Drink">@Loc.T("Drinks")</option>
                 </select>
             </div>
+            @if (_category.Kind == CategoryKind.Food)
+            {
+                <div class="field">
+                    <label>@Loc.T("Course")</label>
+                    <select class="input" @bind="_category.Course">
+                        @foreach (var course in Enum.GetValues<CourseType>())
+                        {
+                            <option value="@course">@Loc.T(CourseLabel(course))</option>
+                        }
+                    </select>
+                </div>
+            }
             <div class="row-2">
                 <div class="field"><label>@Loc.T("Display order")</label><input type="number" class="input" @bind="_category.DisplayOrder" /></div>
                 <label class="switch"><input type="checkbox" @bind="_category.IsVisible" /><span>@Loc.T("Visible")</span></label>
@@ -382,6 +457,53 @@
     </Footer>
 </Modal>
 
+@* ---- Extra create/edit form (nested over the inline Extras section) --------- *@
+<Modal Visible="_extra is not null" Title="@(_extra?.Id > 0 ? Loc.T("Edit extra") : Loc.T("New extra"))" OnClose="CloseExtraForm" Wide="true">
+    <ChildContent>
+        @if (_extra is not null)
+        {
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Name")</label><input class="input" @bind="_extra.Name" /></div>
+                <div class="field"><label>@Loc.T("Price")</label><input type="number" step="0.01" class="input" @bind="_extra.Price" /></div>
+            </div>
+            <div class="field">
+                <label>@Loc.T("Products")</label>
+                @if (_allProducts.Count > 0)
+                {
+                    <input class="input" placeholder="@Loc.T("Search…")" @bind="_extraProductSearch" @bind:event="oninput" />
+                    <div class="product-pick">
+                        @foreach (var grp in FilteredExtraProducts.GroupBy(p => p.CategoryName))
+                        {
+                            <div class="product-pick__group">
+                                <span class="product-pick__group-label">@grp.Key</span>
+                                <div class="product-pick__chips">
+                                    @foreach (var p in grp)
+                                    {
+                                        <button type="button" class="product-chip @(_extra.ProductIds.Contains(p.Id) ? "product-chip--on" : "")"
+                                                @onclick="() => ToggleExtraProduct(p.Id)">
+                                            @p.Name
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        @if (FilteredExtraProducts.Count == 0) { <p class="empty">@Loc.T("No products found.")</p> }
+                    </div>
+                }
+                else
+                {
+                    <p class="muted">@Loc.T("No products yet.")</p>
+                }
+            </div>
+            @if (_extraError is not null) { <div class="field-error">@_extraError</div> }
+        }
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="CloseExtraForm">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="SaveExtra">@Loc.T("Save")</button>
+    </Footer>
+</Modal>
+
 @code {
     private List<CategoryDto> _categories = new();
     private List<ProductDto> _products = new();
@@ -406,7 +528,18 @@
     private AllergenFormDto? _allergen;
     private string? _allergenError;
 
+    private List<ExtraDto> _extras = new();
+    private bool _viewingExtras;
+    private ExtraFormDto? _extra;
+    private string? _extraError;
+    private List<ProductDto> _allProducts = new();
+    private string _extraProductSearch = "";
+
     private CategoryDto? _selected => _categories.FirstOrDefault(c => c.Id == _selectedId);
+
+    private List<ProductDto> FilteredExtraProducts => string.IsNullOrWhiteSpace(_extraProductSearch)
+        ? _allProducts
+        : _allProducts.Where(p => p.Name.Contains(_extraProductSearch, StringComparison.OrdinalIgnoreCase)).ToList();
 
     private List<ProductDto> Filtered => string.IsNullOrWhiteSpace(_search)
         ? _products
@@ -418,10 +551,12 @@
         _selectedId = _categories.FirstOrDefault()?.Id;
         await LoadProducts();
         await LoadAllergens();
+        await LoadExtras();
     }
 
     private async Task LoadCategories() => _categories = await CategoryService.GetAllAsync();
     private async Task LoadAllergens() => _allergens = await AllergenService.GetAllAsync();
+    private async Task LoadExtras() => _extras = await ExtraService.GetAllAsync();
 
     private async Task LoadProducts() =>
         _products = _selectedId is int id
@@ -431,6 +566,7 @@
     private async Task Select(int id)
     {
         _viewingAllergens = false;
+        _viewingExtras = false;
         if (_selectedId == id) return;
         _selectedId = id;
         _search = "";
@@ -609,7 +745,7 @@
     }
 
     // ---- Allergens ----------------------------------------------------------
-    private void SelectAllergensView() { _viewingAllergens = true; _selectedId = null; }
+    private void SelectAllergensView() { _viewingAllergens = true; _viewingExtras = false; _selectedId = null; }
 
     /// <summary>Same as <see cref="SelectAllergensView"/>, but also closes the product form —
     /// for the "Add one" link inside it, which needs to leave that modal to reach the section.</summary>
@@ -655,6 +791,64 @@
     {
         await AllergenService.DeleteAsync(id);
         await LoadAllergens();
+        await LoadProducts();
+    }
+
+    // ---- Extras ---------------------------------------------------------------
+    private void SelectExtrasView() { _viewingExtras = true; _viewingAllergens = false; _selectedId = null; }
+
+    /// <summary>Same as <see cref="SelectExtrasView"/>, but also closes the product form —
+    /// for the "Add one" link inside it, which needs to leave that modal to reach the section.</summary>
+    private void GoToExtras()
+    {
+        _product = null;
+        SelectExtrasView();
+    }
+
+    private void ToggleProductExtra(int extraId)
+    {
+        if (_product is null) return;
+        if (!_product.ExtraIds.Remove(extraId)) _product.ExtraIds.Add(extraId);
+    }
+
+    private void ToggleExtraProduct(int productId)
+    {
+        if (_extra is null) return;
+        if (!_extra.ProductIds.Remove(productId)) _extra.ProductIds.Add(productId);
+    }
+
+    private void OpenExtraForm(int? id) => _ = OpenExtraFormAsync(id);
+
+    private async Task OpenExtraFormAsync(int? id)
+    {
+        _extraError = null;
+        _extraProductSearch = "";
+        _allProducts = await Service.GetAllAsync();
+        _extra = id is null
+            ? new ExtraFormDto()
+            : await ExtraService.GetForEditAsync(id.Value) ?? new ExtraFormDto();
+    }
+
+    private void CloseExtraForm() => _extra = null;
+
+    private async Task SaveExtra()
+    {
+        if (_extra is null) return;
+        var result = await ExtraValidator.ValidateAsync(_extra);
+        if (!result.IsValid) { _extraError = result.Errors[0].ErrorMessage; return; }
+
+        if (_extra.Id > 0) await ExtraService.UpdateAsync(_extra);
+        else await ExtraService.CreateAsync(_extra);
+
+        _extra = null;
+        await LoadExtras();
+        await LoadProducts(); // product cards show extra tags, keep them in sync
+    }
+
+    private async Task DeleteExtra(int id)
+    {
+        await ExtraService.DeleteAsync(id);
+        await LoadExtras();
         await LoadProducts();
     }
 }

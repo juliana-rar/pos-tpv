@@ -26,6 +26,15 @@ public interface IOrderService
     /// <summary>Marks an already-added line as invited (zero price, not charged) or reverts it back
     /// to the product's current catalog price.</summary>
     Task<OrderDto?> SetItemInvitedAsync(int orderItemId, bool invited, CancellationToken ct = default);
+
+    /// <summary>
+    /// Steps each line's effective course (Starter/Main/Dessert) up (delta -1) or down (delta +1)
+    /// by one — the order editor's Up/Down toolbar buttons while Select is armed, moving the
+    /// selected lines from e.g. first course to second course. Drink lines are left untouched
+    /// (they stay grouped under Drinks regardless of course). Clamped at either end: pushing a
+    /// dessert line further down, or a starter line further up, is a no-op rather than wrapping.
+    /// </summary>
+    Task<OrderDto> MoveItemsCourseAsync(int orderId, IReadOnlyList<int> orderItemIds, int delta, CancellationToken ct = default);
     Task SendToKitchenAsync(int orderId, CancellationToken ct = default);
     Task SetItemStatusAsync(int orderItemId, OrderItemStatus status, CancellationToken ct = default);
 
@@ -316,9 +325,7 @@ public class OrderService : IOrderService
         // delivered yet — same green "served" treatment as drinks/firsts, without a separate click.
         var pendingSeconds = product.Category?.Course == CourseType.Dessert && product.Category?.Kind != CategoryKind.Drink
             ? order.Items
-                .Where(i => i.Product?.Category?.Course == CourseType.Main
-                            && i.Product?.Category?.Kind != CategoryKind.Drink
-                            && i.Status != OrderItemStatus.Delivered)
+                .Where(i => IsCourse(i, CourseType.Main) && i.Status != OrderItemStatus.Delivered)
                 .ToList()
             : new List<OrderItem>();
         foreach (var item in pendingSeconds)
@@ -344,7 +351,13 @@ public class OrderService : IOrderService
         else
             _uow.Repository<OrderItem>().Update(item);
 
-        await _uow.SaveChangesAsync(ct);
+        // A quantity bump isn't a re-serve: skip the UpdatedAt auto-stamp so an already-served
+        // line doesn't fall out of its green "served together" batch (see GroupByServeBatch,
+        // keyed on UpdatedAt) just because someone tapped +.
+        _uow.SkipAuditStamp = true;
+        try { await _uow.SaveChangesAsync(ct); }
+        finally { _uow.SkipAuditStamp = false; }
+
         return await GetByIdOrThrowAsync(item.OrderId, ct);
     }
 
@@ -400,6 +413,51 @@ public class OrderService : IOrderService
         _uow.Repository<OrderItem>().Update(item);
         await _uow.SaveChangesAsync(ct);
         return await GetByIdAsync(item.OrderId, ct);
+    }
+
+    public async Task<OrderDto> MoveItemsCourseAsync(int orderId, IReadOnlyList<int> orderItemIds, int delta, CancellationToken ct = default)
+    {
+        if (orderItemIds.Count == 0) return await GetByIdOrThrowAsync(orderId, ct);
+
+        var items = await _uow.Repository<OrderItem>().Query()
+            .Include(i => i.Product).ThenInclude(p => p.Category)
+            .Where(i => orderItemIds.Contains(i.Id))
+            .ToListAsync(ct);
+
+        // One shared timestamp for the whole batch, so lines moved together land in the same time
+        // group at the bottom of their new section instead of scattering across separate ones.
+        var movedAt = DateTime.UtcNow;
+        foreach (var item in items)
+        {
+            // Unified 4-step ladder across every section: 0=Drinks, 1=Starter, 2=Main, 3=Dessert.
+            // Lets a line step past either end of the food courses into/out of Drinks — moving a
+            // dish there treats it as a real drink everywhere (see IsDrink/IsFood above), not just
+            // a display change, so only land here if that's genuinely intended.
+            var isDrink = IsDrink(item);
+            var course = item.CourseOverride ?? item.Product?.Category?.Course ?? CourseType.Main;
+            var index = isDrink ? 0 : 1 + (int)course;
+            var next = Math.Clamp(index + delta, 0, 3);
+            if (next == index) continue;   // already at that end — nothing actually moved
+
+            if (next == 0)
+            {
+                item.IsDrinkOverride = true;
+                item.CourseOverride = null;
+            }
+            else
+            {
+                item.IsDrinkOverride = false;
+                item.CourseOverride = (CourseType)(next - 1);
+            }
+            // Bumped so the line sorts last within its new section (see the ordering comment on
+            // Map()) instead of staying wherever its original order time placed it — otherwise a
+            // line moved to a section with later-ordered items would land above them, buried.
+            item.CreatedAt = movedAt;
+            _uow.Repository<OrderItem>().Update(item);
+        }
+
+        await _uow.SaveChangesAsync(ct);
+        return await GetByIdOrThrowAsync(orderId, ct);
     }
 
     public async Task SendToKitchenAsync(int orderId, CancellationToken ct = default)
@@ -467,13 +525,23 @@ public class OrderService : IOrderService
         return (order, matched);
     }
 
-    private static bool IsFood(OrderItem i) => i.Product?.Category?.Kind != CategoryKind.Drink;
-    private static bool IsCourse(OrderItem i, CourseType course) => IsFood(i) && i.Product?.Category?.Course == course;
+    // Respects a manual move to/out of Drinks (OrderEditor's Up/Down while Select is armed, see
+    // MoveItemsCourseAsync) before falling back to the product's own menu category — a line moved
+    // into Drinks is treated as a real drink everywhere: served via "Serve drinks", dropped from
+    // the kitchen display (both read this same OrderItemDto.IsDrink, set from here in Map).
+    private static bool IsDrink(OrderItem i) => i.IsDrinkOverride ?? i.Product?.Category?.Kind == CategoryKind.Drink;
+    private static bool IsFood(OrderItem i) => !IsDrink(i);
+    // Respects a manual course move (OrderEditor's Up/Down while Select is armed, see
+    // MoveItemsCourseAsync) before falling back to the product's own menu category, so a line
+    // reassigned e.g. from Starter to Main is served by "Serve seconds" like any other main —
+    // not still tied to whichever course its catalog entry happens to sit under.
+    private static bool IsCourse(OrderItem i, CourseType course) =>
+        IsFood(i) && (i.CourseOverride ?? i.Product?.Category?.Course) == course;
 
     public async Task ServeDrinksAsync(int orderId, CancellationToken ct = default)
     {
         var (order, matched) = await SetCourseStatusAsync(orderId,
-            i => i.Product?.Category?.Kind == CategoryKind.Drink && i.Status != OrderItemStatus.Delivered,
+            i => IsDrink(i) && i.Status != OrderItemStatus.Delivered,
             OrderItemStatus.Delivered, o => o.DrinksServedAt = DateTime.UtcNow, ct);
         if (matched.Count == 0) return;
 
@@ -485,7 +553,7 @@ public class OrderService : IOrderService
     public async Task UnserveDrinksAsync(int orderId, CancellationToken ct = default)
     {
         var (order, matched) = await SetCourseStatusAsync(orderId,
-            i => i.Product?.Category?.Kind == CategoryKind.Drink && i.Status == OrderItemStatus.Delivered,
+            i => IsDrink(i) && i.Status == OrderItemStatus.Delivered,
             OrderItemStatus.Pending, o => o.DrinksServedAt = null, ct);
         if (matched.Count == 0) return;
 
@@ -626,9 +694,7 @@ public class OrderService : IOrderService
         // Firing the seconds means the starters are done, so auto-serve any that aren't marked
         // delivered yet — same green "served" treatment as drinks, without a separate click.
         var pendingFirsts = order.Items
-            .Where(i => i.Product?.Category?.Course == CourseType.Starter
-                        && i.Product?.Category?.Kind != CategoryKind.Drink
-                        && i.Status != OrderItemStatus.Delivered)
+            .Where(i => IsCourse(i, CourseType.Starter) && i.Status != OrderItemStatus.Delivered)
             .ToList();
         foreach (var item in pendingFirsts)
         {
@@ -640,9 +706,7 @@ public class OrderService : IOrderService
         // right away — otherwise the waiter's "Serve seconds" button wouldn't appear until
         // someone also ticked every main line (or "Mark all ready") separately in /kitchen.
         var pendingMains = order.Items
-            .Where(i => i.Product?.Category?.Course == CourseType.Main
-                        && i.Product?.Category?.Kind != CategoryKind.Drink
-                        && i.Status == OrderItemStatus.Preparing)
+            .Where(i => IsCourse(i, CourseType.Main) && i.Status == OrderItemStatus.Preparing)
             .ToList();
         foreach (var item in pendingMains)
         {
@@ -750,15 +814,18 @@ public class OrderService : IOrderService
 
     private static OrderDto Map(Order o)
     {
+        // CreatedAt (not Id) is the display order: normally the two move in lockstep since both
+        // are stamped at insert time, but MoveItemsCourseAsync bumps CreatedAt on a moved line so
+        // it lands last within its new course section instead of wherever it originally sat.
         var items = o.Items
-            .OrderBy(i => i.Id)
+            .OrderBy(i => i.CreatedAt).ThenBy(i => i.Id)
             .Select(i => new OrderItemDto(
                 i.Id, i.ProductId, i.Product?.Name ?? "?", i.Quantity, i.UnitPrice, i.VatRate,
                 i.Comment, i.Status,
                 i.Extras.Select(e => new OrderItemExtraDto(e.Id, e.ExtraId, e.Name, e.Price)).ToList(),
                 i.LineGross,
-                i.Product?.Category?.Kind == CategoryKind.Drink,
-                i.Product?.Category?.Course ?? CourseType.Main,
+                IsDrink(i),
+                i.CourseOverride ?? i.Product?.Category?.Course ?? CourseType.Main,
                 i.CreatedAt, i.Product?.CategoryId ?? 0, i.UpdatedAt, i.IsInvited))
             .ToList();
 

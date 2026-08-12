@@ -30,6 +30,15 @@ window.posScrollBottom = function (el) {
     if (el) el.scrollTop = el.scrollHeight;
 };
 
+// Same purpose as posScrollBottom above, but for the comanda editor (OrderEditor.razor), where a
+// newly added line can land inside a course's own inner scroll (.order__group-lines--scroll) as
+// well as the outer order panel — a flat scrollTop-to-bottom wouldn't reach into that nested
+// container. scrollIntoView walks every scrollable ancestor on its own, so it works for both.
+window.posScrollIntoView = function (id) {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+};
+
 // Drag-to-resize the order panel in the comanda editor. `containerEl` is the grid whose
 // second column width the handle controls (via the --order-w custom property); min/max keep
 // it from shrinking past where a line's controls would wrap, or growing past being useful.
@@ -53,6 +62,61 @@ window.posOrderResize = function (handleEl, containerEl, min, max) {
         document.addEventListener('pointermove', onMove);
         document.addEventListener('pointerup', onUp);
     });
+};
+
+// Keeps each time-group's HH:mm label (the .order__time-group-time-pin inside it) centred in
+// whatever part of its own group is currently visible, in the comanda editor (OrderEditor.razor)
+// — see the long comment on .order__time-group-time-pin in app.css for why this can't just be
+// CSS position:sticky: most groups here (e.g. four separate Drinks time-groups, 1-2 lines each)
+// are shorter than the scroll viewport, so a sticky offset never falls inside their own (tiny)
+// containing block and the label just scrolls past normally. Re-run on every scroll of any
+// scrolling ancestor inside rootEl (both the outer .order__items panel and a course's own
+// .order__group-lines--scroll once it outgrows 6 lines), and after every render (call this from
+// OnAfterRenderAsync) since adding/removing lines changes group heights.
+window.posStickyTimeLabels = function (rootEl) {
+    if (!rootEl) return;
+
+    function visibleBounds(groupEl) {
+        let top = -Infinity, bottom = Infinity;
+        for (let node = groupEl.parentElement; node && node !== rootEl.parentElement; node = node.parentElement) {
+            const overflowY = getComputedStyle(node).overflowY;
+            if (overflowY === 'auto' || overflowY === 'scroll') {
+                const r = node.getBoundingClientRect();
+                top = Math.max(top, r.top);
+                bottom = Math.min(bottom, r.bottom);
+            }
+        }
+        return { top, bottom };
+    }
+
+    function updateGroup(groupEl) {
+        const pin = groupEl.querySelector('.order__time-group-time-pin');
+        if (!pin) return;
+        const gRect = groupEl.getBoundingClientRect();
+        const bounds = visibleBounds(groupEl);
+        const visTop = Math.max(gRect.top, bounds.top);
+        const visBottom = Math.min(gRect.bottom, bounds.bottom);
+        if (visBottom <= visTop) return; // fully scrolled out of view — leave it be
+        const visCenter = (visTop + visBottom) / 2;
+        // Clamped to the group's own height so the label never drifts past its first/last line.
+        const half = gRect.height / 2 - pin.offsetHeight / 2;
+        let offset = visCenter - (gRect.top + gRect.height / 2);
+        offset = half > 0 ? Math.max(-half, Math.min(half, offset)) : 0;
+        pin.style.transform = offset ? `translateY(${offset}px)` : '';
+    }
+
+    function updateAll() {
+        rootEl.querySelectorAll('.order__time-group').forEach(updateGroup);
+    }
+
+    updateAll();
+    if (!rootEl.dataset.stickyBound) {
+        rootEl.dataset.stickyBound = '1';
+        // scroll doesn't bubble, but a capture-phase listener on an ancestor still sees it fire
+        // on the way down — catches both the outer panel and any nested course scroll this way.
+        rootEl.addEventListener('scroll', updateAll, true);
+        window.addEventListener('resize', updateAll);
+    }
 };
 
 // Play a short chime when the kitchen marks an order ready (best-effort; ignored if blocked).

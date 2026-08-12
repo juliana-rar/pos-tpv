@@ -27,6 +27,12 @@ public class UnitOfWork : IUnitOfWork
 
     public Task<int> SaveChangesAsync(CancellationToken ct = default) => _db.SaveChangesAsync(ct);
 
+    public bool SkipAuditStamp
+    {
+        get => _db.SkipAuditStamp;
+        set => _db.SkipAuditStamp = value;
+    }
+
     public async Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default)
     {
         // Sqlite has no configurable isolation level (writers are serialized by the engine itself);

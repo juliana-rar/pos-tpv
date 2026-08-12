@@ -25,10 +25,11 @@
 .order-card__body > .order-card__group:first-child { margin-top: 0; padding-top: 0; border-top: none; }
 .order-card__lines { display: flex; flex-direction: column; gap: .1rem; padding-top: .1rem; padding-bottom: .05rem; }
 /* Past 7 drinks the list scrolls on its own instead of pushing the food sections further down.
-   Full-bleed scrollbar: cancels .order-card's own 1rem right padding (margin-right) then adds it
-   straight back as this element's own padding, so the scrollbar track renders flush against the
-   card's real right edge instead of sitting 1rem further left, inset inside that padding. */
-.order-card__lines--scroll { max-height: 13rem; overflow-y: auto; margin-right: -1rem; padding-right: 1rem; }
+   Full-bleed on both sides: cancels .order-card's own 1rem side padding (negative margin) then
+   adds it straight back as this element's own padding, so both the scrollbar track (right) and
+   a served batch's green frame + order-time label (left) render flush against the card's real
+   edges instead of getting clipped by this element's own overflow-y:auto one side short. */
+.order-card__lines--scroll { max-height: 13rem; overflow-y: auto; margin: 0 -1rem; padding: 0 1rem; }
 .order-card__line { min-height: 1.3rem; display: flex; justify-content: space-between; font-size: .78rem; }
 /* .order-card__drink-batch and .order-card__time-group* (served-batch frame / ordered-together
    bracket) live in app.css — shared with OrderEditor.razor, which renders the same patterns. */

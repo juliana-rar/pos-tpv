@@ -80,6 +80,7 @@ public class ProductService : IProductService
     {
         var entity = await _uow.Repository<Product>().QueryNoTracking()
             .Include(p => p.Allergens)
+            .Include(p => p.Extras)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
         return entity is null ? null : _mapper.Map<ProductFormDto>(entity);
     }
@@ -89,6 +90,7 @@ public class ProductService : IProductService
         var entity = _mapper.Map<Product>(form);
         entity.Id = 0;
         entity.Allergens = await ResolveAllergensAsync(form.AllergenIds, ct);
+        entity.Extras = await ResolveExtrasAsync(form.ExtraIds, ct);
         await _uow.Repository<Product>().AddAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
         return entity.Id;
@@ -98,10 +100,12 @@ public class ProductService : IProductService
     {
         var entity = await _uow.Repository<Product>().Query()
             .Include(p => p.Allergens)
+            .Include(p => p.Extras)
             .FirstOrDefaultAsync(p => p.Id == form.Id, ct)
             ?? throw new KeyNotFoundException($"Product {form.Id} not found.");
         _mapper.Map(form, entity);
         entity.Allergens = await ResolveAllergensAsync(form.AllergenIds, ct);
+        entity.Extras = await ResolveExtrasAsync(form.ExtraIds, ct);
         _uow.Repository<Product>().Update(entity);
         await _uow.SaveChangesAsync(ct);
     }
@@ -111,6 +115,13 @@ public class ProductService : IProductService
         var ids = allergenIds.Distinct().ToList();
         if (ids.Count == 0) return new List<Allergen>();
         return await _uow.Repository<Allergen>().Query().Where(a => ids.Contains(a.Id)).ToListAsync(ct);
+    }
+
+    private async Task<List<Extra>> ResolveExtrasAsync(IEnumerable<int> extraIds, CancellationToken ct)
+    {
+        var ids = extraIds.Distinct().ToList();
+        if (ids.Count == 0) return new List<Extra>();
+        return await _uow.Repository<Extra>().Query().Where(e => ids.Contains(e.Id)).ToListAsync(ct);
     }
 
     public async Task SetAvailabilityAsync(int id, bool available, CancellationToken ct = default)

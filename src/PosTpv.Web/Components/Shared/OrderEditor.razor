@@ -92,15 +92,16 @@
                     <div class="pos__resize-handle" @ref="_resizeHandleEl"></div>
 
                     <!-- Right: current order, same panel as /pos -->
-                    <div class="pos__order card">
+                    <div class="pos__order card" @ref="_orderPanelEl">
                         <div class="order__head">
-                            <div class="order__head-left">
-                                <span class="badge badge--primary">@Loc.T("Table") @_order.TableName · @_order.Number</span>
-                                <span class="badge">@OrderStatusLabel(_order.Status)</span>
-                            </div>
+                            @* X closes the editor without discarding anything — added lines are already saved.
+                               Left/right cells are an equal 1fr each (see .order__head's grid-template-columns),
+                               so the title in the middle cell sits at the div's true center regardless of how
+                               wide the status+confirm cluster on the right ends up being. *@
+                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Close")" @onclick="OnClose" type="button"><LucideIcon Name="x" Size="18" /></button>
+                            <span class="badge badge--primary order__head-title">@Loc.T("Table") @_order.TableName · @_order.Number</span>
                             <div class="order__head-right">
-                                @* X closes the editor without discarding anything — added lines are already saved. *@
-                                <button class="btn btn--icon btn--ghost" title="@Loc.T("Close")" @onclick="OnClose" type="button"><LucideIcon Name="x" Size="18" /></button>
+                                <span class="badge">@OrderStatusLabel(_order.Status)</span>
                                 @* Single confirm tick: sends food to the kitchen (skipped for a drinks-only order) and closes. *@
                                 <button class="btn btn--icon btn--ghost"
                                         title="@(HasKitchenItems ? Loc.T("Send to kitchen and close") : Loc.T("Confirm and close"))"
@@ -121,21 +122,47 @@
                             {
                                 @if (grp.Label is not null)
                                 {
-                                    <div class="order__group"><LucideIcon Name="@grp.Icon" Size="14" /> @Loc.T(grp.Label)</div>
+                                    <div class="order__group" role="button" tabindex="0" @onclick="() => ToggleGroupExpanded(grp.Label)">
+                                        <LucideIcon Name="@grp.Icon" Size="14" /> @Loc.T(grp.Label)
+                                        @if (grp.Items.Count > 6)
+                                        {
+                                            <LucideIcon Name="@(_expandedGroups.Contains(grp.Label) ? "chevron-up" : "chevron-down")" Size="12" />
+                                        }
+                                    </div>
                                 }
-                                <div class="@GroupLinesClass(grp)">
+                                <div class="@GroupLinesClass(grp, _expandedGroups.Contains(grp.Label ?? ""))">
                                     @foreach (var batch in GroupByServeBatch(grp.Items))
                                     {
                                         <div class="order-card__drink-batch" data-served="@(batch.ServedAt is not null ? "true" : "false")">
                                         @foreach (var timeGroup in GroupByOrderTime(batch.Items))
                                         {
                                             <div class="order__time-group">
-                                                <span class="order__time-group-time">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span>
+                                                <span class="order__time-group-time"><span class="order__time-group-time-pin">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span></span>
                                                 <div class="order__time-group-items">
                                                     @foreach (var it in timeGroup.Items)
                                                     {
-                                                        <div class="orderLine">
+                                                        <div class="orderLine" id="orderline-@it.Id">
                                                             <div class="orderLine__main">
+                                                                @* Select armed: a checkbox at the very start of the line, left of the name —
+                                                                   separate from the Invitación checkbox in orderLine__ctrl on the right. First
+                                                                   tap selects every unit on the line; a multi-unit line (Quantity > 1) then
+                                                                   grows a stepper next to it to dial the selected count down. *@
+                                                                @if (_selectMode)
+                                                                {
+                                                                    <button class="orderLine__select-box @(_selectedQty.ContainsKey(it.Id) ? "orderLine__select-box--on" : "")"
+                                                                            title="@Loc.T("Select")" disabled="@_busy"
+                                                                            @onclick="() => ToggleItemSelected(it)" type="button">
+                                                                        @if (_selectedQty.ContainsKey(it.Id)) { <LucideIcon Name="check" Size="12" /> }
+                                                                    </button>
+                                                                    @if (it.Quantity > 1 && _selectedQty.TryGetValue(it.Id, out var selQty))
+                                                                    {
+                                                                        <div class="orderLine__select-stepper">
+                                                                            <button title="@Loc.T("Down")" disabled="@_busy" @onclick="() => SetSelectedQty(it, selQty - 1)" type="button">−</button>
+                                                                            <span>@selQty</span>
+                                                                            <button title="@Loc.T("Up")" disabled="@_busy" @onclick="() => SetSelectedQty(it, selQty + 1)" type="button">+</button>
+                                                                        </div>
+                                                                    }
+                                                                }
                                                                 <span class="orderLine__name">@it.ProductName</span>
                                                                 @if (it.IsInvited)
                                                                 {
@@ -143,10 +170,6 @@
                                                                 }
                                                                 <span class="spacer"></span>
                                                                 <div class="orderLine__ctrl">
-                                                                    @if (_deleteMode)
-                                                                    {
-                                                                        <button class="btn btn--icon btn--ghost orderLine__remove" title="@Loc.T("Remove")" disabled="@_busy" @onclick="() => RemoveItem(it.Id)"><LucideIcon Name="x" Size="13" /></button>
-                                                                    }
                                                                     @* Invitación armed: a checkbox per line, so already-added items can be marked/unmarked
                                                                        as comped too — not just new taps from the product grid. *@
                                                                     @if (_invitationMode)
@@ -187,23 +210,57 @@
                                 <span>@Loc.T("Total")</span>
                                 <span>@_order.Total.ToString("N2")</span>
                             </div>
-                            <div class="order__grand-actions">
-                                @* Toggles per-line remove buttons on/off, so a stray tap can't delete a
-                                   line by accident — press again to leave delete mode. *@
-                                <button class="btn btn--delete @(_deleteMode ? "btn--delete-active" : "")"
-                                        title="@Loc.T("Delete")" disabled="@_busy"
-                                        @onclick="ToggleDeleteMode" type="button">
-                                    <LucideIcon Name="trash-2" Size="14" />@Loc.T("Delete")
+                            @* Select arms per-line checkboxes below (orderLine__select-box). Up/down will page
+                               through the selected lines, ticket will preview the printable receipt — those two
+                               have no handlers wired yet, placeholders only. *@
+                            <div class="order__toolbar-actions">
+                                <button class="btn btn--select @(_selectMode ? "btn--select-active" : "")" title="@Loc.T("Select")" disabled="@_busy" @onclick="ToggleSelectMode" type="button">
+                                    <LucideIcon Name="square-dashed" Size="16" />
                                 </button>
-                                @* Arms a single free line: the next product tap is captured at zero price
-                                   instead of opening the payment dialog. *@
-                                <button class="btn btn--invite @(_invitationMode ? "btn--invite-active" : "")"
-                                        title="@Loc.T("Tap a product to invite it (not charged)")" disabled="@_busy"
-                                        @onclick="ToggleInvitation" type="button">
-                                    <LucideIcon Name="gift" Size="14" />@Loc.T("Invitation")
+                                @* With a selection armed, Up/Down move those lines to the previous/next course
+                                   (Starter → Main → Dessert) — see MoveItemsCourseAsync. Disabled with nothing
+                                   selected, since there's nothing for them to act on. *@
+                                <button class="btn btn--nav-up" title="@Loc.T("Move to previous course")" disabled="@(_busy || _selectedQty.Count == 0)" @onclick="() => OnMoveCourse(-1)" type="button">
+                                    <LucideIcon Name="chevron-up" Size="16" />
+                                </button>
+                                <button class="btn btn--nav-down" title="@Loc.T("Move to next course")" disabled="@(_busy || _selectedQty.Count == 0)" @onclick="() => OnMoveCourse(1)" type="button">
+                                    <LucideIcon Name="chevron-down" Size="16" />
+                                </button>
+                                <button class="btn btn--ticket" title="@Loc.T("Ticket")" disabled="@_busy" type="button">
+                                    <LucideIcon Name="receipt" Size="16" />
+                                </button>
+                            </div>
+                            <div class="order__grand-actions">
+                                @* Delete+Invitación share the same grid column Eliminar/Invitación used to have
+                                   on their own — wrapped so the column lines up with Seleccionar above, and
+                                   Left/Right below line up with Subir/Bajar instead of drifting off-column. *@
+                                <div class="order__del-invite">
+                                    @* Requires a selection (Select button, left of Up/Down/Ticket) — deleting
+                                       always asks for confirmation instead of arming per-line X buttons. Shows
+                                       a ticket (coupon) instead of the trash can while Select isn't armed, since
+                                       there's nothing to delete yet — trash only once selection mode is on. *@
+                                    <button class="btn btn--delete"
+                                            title="@Loc.T("Delete")" disabled="@(_busy || _selectedQty.Count == 0)"
+                                            @onclick="OpenDeleteConfirm" type="button">
+                                        <LucideIcon Name="@(_selectMode ? "trash-2" : "ticket")" Size="16" />
+                                    </button>
+                                    @* Arms a single free line: the next product tap is captured at zero price
+                                       instead of opening the payment dialog. *@
+                                    <button class="btn btn--invite @(_invitationMode ? "btn--invite-active" : "")"
+                                            title="@Loc.T("Tap a product to invite it (not charged)")" disabled="@_busy"
+                                            @onclick="ToggleInvitation" type="button">
+                                        <LucideIcon Name="gift" Size="16" />
+                                    </button>
+                                </div>
+                                @* Jump to the previous/next order in the caller's list — see OnNavigate. *@
+                                <button class="btn btn--nav-left" title="@Loc.T("Previous order")" disabled="@_busy" @onclick="() => OnNavigate.InvokeAsync(-1)" type="button">
+                                    <LucideIcon Name="chevron-left" Size="16" />
+                                </button>
+                                <button class="btn btn--nav-right" title="@Loc.T("Next order")" disabled="@_busy" @onclick="() => OnNavigate.InvokeAsync(1)" type="button">
+                                    <LucideIcon Name="chevron-right" Size="16" />
                                 </button>
                                 <button class="btn btn--pay" title="@Loc.T("Charge")" @onclick="OpenPayment" type="button">
-                                    <LucideIcon Name="credit-card" Size="14" />@Loc.T("Charge")
+                                    <LucideIcon Name="credit-card" Size="16" />
                                 </button>
                             </div>
                         </div>
@@ -271,6 +328,18 @@
 
 <PaymentDialog Order="_order" Visible="_showPayment" OnClose="ClosePayment" OnConfirm="ConfirmPayment" />
 
+@* Trash button on a selection asks for confirmation before removing the selected units, instead
+   of arming a per-line X on every product. *@
+<Modal Visible="_confirmDeleteSelection" Title="@Loc.T("Confirm deletion")" OnClose="CancelDeleteSelection" Narrow="true">
+    <ChildContent>
+        <p>@Loc.T("Delete") @_selectedQty.Values.Sum() @Loc.T("items")? @Loc.T("This can't be undone.")</p>
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="CancelDeleteSelection">@Loc.T("Cancel")</button>
+        <button class="btn btn--danger" @onclick="ConfirmDeleteSelection">@Loc.T("Delete")</button>
+    </Footer>
+</Modal>
+
 @code {
     /// <summary>Id of the order to edit; the dialog is shown while this is non-null.</summary>
     [Parameter] public int? OrderId { get; set; }
@@ -278,6 +347,11 @@
 
     /// <summary>Raised after any change so the parent can refresh the affected board card.</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
+
+    /// <summary>Left/Right toolbar buttons: -1 for the previous order, +1 for the next one in
+    /// whatever list the caller is showing (e.g. /orders' Filtered). The caller owns that list, so
+    /// it resolves the delta to an order Id and reassigns OrderId — same pattern as OnEdit.</summary>
+    [Parameter] public EventCallback<int> OnNavigate { get; set; }
 
     /// <summary>
     /// True when the caller's own page already covers the bottom navbar itself (e.g. /tables'
@@ -299,7 +373,9 @@
 
     private ElementReference _editorPosEl;
     private ElementReference _resizeHandleEl;
+    private ElementReference _orderPanelEl;
     private bool _resizeBound;
+    private int? _scrollToItemId;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -310,10 +386,31 @@
             _resizeBound = true;
             await JS.InvokeVoidAsync("posOrderResize", _resizeHandleEl, _editorPosEl, 280, 640);
         }
+        // Reveal the line just added by OnProductClick, whichever scroll container it landed in —
+        // the outer .order__items panel, or a course's own .order__group-lines--scroll once that
+        // course alone outgrows 6 lines (see GroupLinesClass). scrollIntoView walks both.
+        if (_scrollToItemId is int itemId)
+        {
+            _scrollToItemId = null;
+            await JS.InvokeVoidAsync("posScrollIntoView", $"orderline-{itemId}");
+        }
+        // Re-run every render, not just once: adding/removing/serving lines changes each
+        // time-group's own height, which shifts how its label should be clamped.
+        if (_order is not null)
+        {
+            await JS.InvokeVoidAsync("posStickyTimeLabels", _orderPanelEl);
+        }
     }
     private bool _showPayment;
     private bool _invitationMode;
-    private bool _deleteMode;
+    // Line-selection mode (armed from the toolbar's Select button, left of Up/Down/Ticket). Keyed
+    // by item Id -> units selected on that line (not just on/off), since one line can merge several
+    // identical units (OrderItemDto.Quantity) and the user may want only some of them — see the
+    // per-line stepper in the orderLine markup below. Also what the Delete button acts on, via the
+    // confirm dialog below (_confirmDeleteSelection).
+    private bool _selectMode;
+    private readonly Dictionary<int, int> _selectedQty = new();
+    private bool _confirmDeleteSelection;
 
     private List<CategoryCommentDto> _commentPresets = new();
     private string? _commentText;
@@ -501,14 +598,17 @@
 
     // Tapping a product adds it straight away, as its own line (no dialog in the way).
     // Extras/comment can be set afterwards from the line itself. While invitation mode is
-    // armed, every tap is captured at zero price — it stays armed (like delete mode) until
-    // the Invitación button is pressed again, so several products can be invited in a row.
-    private Task OnProductClick(ProductDto p)
+    // armed, every tap is captured at zero price — it stays armed until the Invitación
+    // button is pressed again, so several products can be invited in a row.
+    private async Task OnProductClick(ProductDto p)
     {
-        if (_order is null) return Task.CompletedTask;
+        if (_order is null) return;
         var orderId = _order.Id;
         var invited = _invitationMode;
-        return Mutate(async () => await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id, Merge: false, Invited: invited)));
+        await Mutate(async () => await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id, Merge: false, Invited: invited)));
+        // Newest row for this product — Merge:false above guarantees the add always creates one,
+        // so the last match by Id is unambiguously the line that was just added.
+        _scrollToItemId = _order?.Items.Where(i => i.ProductId == p.Id).OrderByDescending(i => i.Id).FirstOrDefault()?.Id;
     }
 
     private void ToggleInvitation() => _invitationMode = !_invitationMode;
@@ -518,13 +618,62 @@
     private Task ToggleItemInvited(OrderItemDto item) =>
         Mutate(() => Orders.SetItemInvitedAsync(item.Id, !item.IsInvited));
 
-    private void ToggleDeleteMode() => _deleteMode = !_deleteMode;
+    private void OpenDeleteConfirm() => _confirmDeleteSelection = true;
+    private void CancelDeleteSelection() => _confirmDeleteSelection = false;
+
+    // Removes every unit currently selected (full lines drop out entirely — see ChangeQuantityAsync),
+    // then disarms Select the same way leaving it normally does.
+    private Task ConfirmDeleteSelection() => Mutate(async () =>
+    {
+        OrderDto? updated = null;
+        foreach (var (id, qty) in _selectedQty)
+            updated = await Orders.ChangeQuantityAsync(id, -qty);
+        _confirmDeleteSelection = false;
+        _selectMode = false;
+        _selectedQty.Clear();
+        return updated;
+    });
+
+    // Select armed/disarmed from the toolbar; leaving it clears whatever was checked so a stale
+    // selection can't linger into the next time it's armed.
+    private void ToggleSelectMode()
+    {
+        _selectMode = !_selectMode;
+        if (!_selectMode) _selectedQty.Clear();
+    }
+
+    // First tap on a line's select box grabs every unit on it; a second tap clears it. Dialing a
+    // multi-unit line's count down to zero via the stepper (SetSelectedQty) has the same effect.
+    private void ToggleItemSelected(OrderItemDto item)
+    {
+        if (!_selectedQty.Remove(item.Id)) _selectedQty[item.Id] = item.Quantity;
+    }
+
+    private void SetSelectedQty(OrderItemDto item, int qty)
+    {
+        qty = Math.Clamp(qty, 0, item.Quantity);
+        if (qty <= 0) _selectedQty.Remove(item.Id);
+        else _selectedQty[item.Id] = qty;
+    }
+
+    // Up/Down toolbar buttons while a selection is armed — steps every selected line one place
+    // along Drinks/Starter/Main/Dessert (see MoveItemsCourseAsync; a food line pushed past Starter
+    // becomes a real drink everywhere, not just visually). Selection stays armed afterwards so the
+    // same lines can be nudged again without re-picking them.
+    private async Task OnMoveCourse(int delta)
+    {
+        if (_order is null || _selectedQty.Count == 0) return;
+        var ids = _selectedQty.Keys.ToList();
+        await Mutate(async () => await Orders.MoveItemsCourseAsync(_order.Id, ids, delta));
+        // MoveItemsCourseAsync sorts moved lines to the bottom of their new section — scroll to
+        // one of them so the move is visible immediately instead of the panel staying where it was.
+        _scrollToItemId = ids[0];
+    }
 
     // Edit an already-added line: extras and the kitchen note together, same as OpenEditItem
     // in Pos.razor. Shows the dialog immediately, then fetches extras/comment presets.
     private async Task OpenEditItem(OrderItemDto item)
     {
-        _deleteMode = false;
         _editingItem = item;
         _customizeExtras = new();
         _selectedExtraIds.Clear();
@@ -564,14 +713,8 @@
         });
     }
 
-    private Task ChangeQty(int itemId, int delta)
-    {
-        _deleteMode = false;
-        return Mutate(async () => await Orders.ChangeQuantityAsync(itemId, delta));
-    }
-
-    private Task RemoveItem(int itemId) =>
-        Mutate(() => Orders.RemoveItemAsync(itemId));
+    private Task ChangeQty(int itemId, int delta) =>
+        Mutate(async () => await Orders.ChangeQuantityAsync(itemId, delta));
 
     /// <summary>True when the order has at least one non-drink line, i.e. something the kitchen must cook.</summary>
     private bool HasKitchenItems => _order?.Items.Any(i => !i.IsDrink) ?? false;
@@ -619,11 +762,22 @@
     });
 
     // Same Drinks/First/Second/Desserts grouping as /pos (OrderPresentation.Sections), so
-    // editing an order reads the same way instead of one undifferentiated column.
+    // editing an order reads the same way instead of one undifferentiated column — but always
+    // labelled here (even under 5 lines), since a single drink still needs a "Drinks" header.
     private List<OrderPresentation.OrderSection> OrderSections() =>
-        _order is null ? new() : OrderPresentation.Sections(_order.Items);
+        _order is null ? new() : OrderPresentation.Sections(_order.Items, alwaysLabel: true);
 
-    private static string GroupLinesClass(OrderPresentation.OrderSection section) => OrderPresentation.GroupLinesClass(section);
+    private static string GroupLinesClass(OrderPresentation.OrderSection section, bool expanded) => OrderPresentation.GroupLinesClass(section, expanded);
+
+    // Course sections capped to 6 lines (see GroupLinesClass) can be expanded to full height by
+    // clicking their header, and collapsed back the same way — tracked per label so Drinks/First/
+    // Second/Desserts expand independently of each other.
+    private readonly HashSet<string> _expandedGroups = new();
+
+    private void ToggleGroupExpanded(string label)
+    {
+        if (!_expandedGroups.Remove(label)) _expandedGroups.Add(label);
+    }
 
     // Same "served together" batching as OrderCard.razor, so a batch already marked served
     // gets the same green shaded frame here while editing.

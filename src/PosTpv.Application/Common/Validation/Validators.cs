@@ -37,6 +37,15 @@ public class AllergenFormValidator : AbstractValidator<AllergenFormDto>
     }
 }
 
+public class ExtraFormValidator : AbstractValidator<ExtraFormDto>
+{
+    public ExtraFormValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(80);
+        RuleFor(x => x.Price).GreaterThanOrEqualTo(0);
+    }
+}
+
 public class TableFormValidator : AbstractValidator<TableFormDto>
 {
     public TableFormValidator()

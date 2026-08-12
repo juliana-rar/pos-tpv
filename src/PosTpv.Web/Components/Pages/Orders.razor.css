@@ -135,3 +135,53 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--success) 30%, transparent);
 }
 .orders-quicknav__chip[data-status="ready"] .orders-quicknav__chip-name { color: var(--success); }
+
+/* ---- Status/sort/zone filters: custom dropdowns instead of native <select> ----
+   A native select's closed control can be restyled, but its open options popup is drawn by the
+   OS/browser and barely themeable — it can end up looking nothing like the rest of the app (or
+   even the wrong light/dark palette). Built from the same tokens (--card/--border/--shadow-lg)
+   as .resv-status__menu in Tables.razor.css, so it reads as one design system and follows
+   light/dark automatically via those variables — no separate theme-detection needed. */
+.orders-dd { position: relative; flex: none; }
+.orders-dd__trigger {
+    display: flex; align-items: center; justify-content: space-between; gap: .4rem;
+    width: 100%; height: 2.15rem; min-width: 140px; max-width: 170px;
+    padding: 0 .55rem;
+    font: inherit; font-size: .78rem; color: var(--text);
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+.orders-dd__trigger:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); box-shadow: var(--shadow-sm); }
+.orders-dd__trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.orders-dd__trigger .lucide { flex: none; opacity: .55; }
+
+/* Invisible full-viewport layer behind the menu — a click anywhere outside it closes the menu,
+   same no-JS pattern as .phone-prefix__backdrop / .resv-policy__backdrop in Tables.razor. */
+.orders-dd__backdrop { position: fixed; inset: 0; z-index: 19; background: transparent; }
+.orders-dd__menu {
+    position: absolute; top: calc(100% + .3rem); left: 0;
+    min-width: 170px; max-height: 260px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: .1rem;
+    padding: .35rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    z-index: 20;
+    animation: pop var(--transition);
+}
+.orders-dd__opt {
+    display: block; width: 100%; text-align: left;
+    padding: .4rem .5rem;
+    border: none; border-radius: var(--radius-sm);
+    background: transparent; color: var(--text);
+    font: inherit; font-size: .78rem;
+    cursor: pointer;
+    transition: background var(--transition);
+}
+.orders-dd__opt:hover { background: var(--card-2); }
+.orders-dd__opt--on { background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary); font-weight: 700; }
