@@ -88,12 +88,28 @@
                     }
                 </div>
             }
+            <div class="orders-dd">
+                <button type="button" class="orders-dd__trigger" @onclick='() => ToggleDropdown("cols")'>
+                    <span>@_cardsPerRow @Loc.T("per row")</span>
+                    <LucideIcon Name="chevron-down" Size="13" />
+                </button>
+                @if (_openDropdown == "cols")
+                {
+                    <div class="orders-dd__backdrop" @onclick="CloseDropdown"></div>
+                    <div class="orders-dd__menu">
+                        @foreach (var n in new[] { 2, 3, 4, 5 })
+                        {
+                            <button type="button" class="orders-dd__opt @(_cardsPerRow == n ? "orders-dd__opt--on" : "")" @onclick="() => SelectColumns(n)">@n @Loc.T("per row")</button>
+                        }
+                    </div>
+                }
+            </div>
             <input class="input orders-filters__search" placeholder="@Loc.T("Search table…")" @bind="_tableSearch" @bind:event="oninput" />
         </div>
     }
 </div>
 
-<div class="orders">
+<div class="orders" style="--orders-cols: @_cardsPerRow">
     @foreach (var o in Filtered)
     {
         <OrderCard @key="o.Id"
@@ -136,6 +152,7 @@
 
     private string _tableSearch = "";
     private string _zoneFilter = "";
+    private int _cardsPerRow = 4;
     private List<string> Zones => _orders
         .Select(o => o.Zone)
         .Where(z => !string.IsNullOrWhiteSpace(z))
@@ -156,6 +173,7 @@
     }
     private void SelectSort(string value) { _sortOrder = value; _openDropdown = null; }
     private void SelectZone(string value) { _zoneFilter = value; _openDropdown = null; }
+    private void SelectColumns(int value) { _cardsPerRow = value; _openDropdown = null; }
 
     private string SortLabel() => _sortOrder switch
     {

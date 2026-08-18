@@ -6,7 +6,7 @@
 }
 
 @media (min-width: 900px) {
-    .orders { grid-template-columns: repeat(4, 1fr); }
+    .orders { grid-template-columns: repeat(var(--orders-cols, 4), 1fr); }
 }
 
 /* Single full-width card bar: table quick-jump chips on the left, status/sort/refresh

@@ -174,6 +174,7 @@ public static class Loc
         // ---- Orders ----
         ["All statuses"] = "Todos los estados",
         ["Refresh"] = "Actualizar",
+        ["per row"] = "por fila",
         ["items"] = "artículos",
         ["No open orders."] = "No hay pedidos abiertos.",
         ["InPreparation"] = "En preparación",
