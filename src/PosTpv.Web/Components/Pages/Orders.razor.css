@@ -1,8 +1,12 @@
 .orders {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: .75rem;
     align-items: start;
+}
+
+@media (min-width: 900px) {
+    .orders { grid-template-columns: repeat(4, 1fr); }
 }
 
 /* Single full-width card bar: table quick-jump chips on the left, status/sort/refresh
@@ -15,25 +19,44 @@
     top: 0;
     z-index: 30;
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    flex-wrap: nowrap;
-    gap: 1rem;
+    flex-direction: column;
+    gap: .35rem;
     margin-top: -1.35rem;
-    margin-bottom: .3rem;
-    padding: .5rem .6rem;
+    margin-bottom: .25rem;
+    padding: .35rem .5rem;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     box-shadow: var(--shadow-sm);
 }
 
+/* Chips on the left, gear/refresh/expand buttons on the right — the filters row (status/sort/
+   zone/search) renders as its own full-width row below this one instead of squeezing into it,
+   so opening filters never forces this row to overflow sideways and clip the order-card grid
+   underneath. */
+.orders-quicknav__row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 1rem;
+}
+
 @media (max-width: 640px) {
-    .orders-quicknav { flex-wrap: wrap; }
+    .orders-quicknav__row { flex-wrap: wrap; }
+}
+
+/* ---- Filters row: status/sort/zone dropdowns + table search, revealed by the gear button ---- */
+.orders-quicknav__filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .4rem;
 }
 
 .toolbar { margin: 0; flex-wrap: nowrap; flex-shrink: 0; }
-.toolbar .select, .toolbar .btn, .toolbar .input { height: 2.15rem; font-size: .78rem; padding: 0 .6rem; box-sizing: border-box; }
+.toolbar .select, .toolbar .btn, .toolbar .input { height: 1.85rem; font-size: .74rem; padding: 0 .5rem; box-sizing: border-box; }
 /* Keeps room for the custom dropdown arrow (app.css's .select) instead of letting the
    compact toolbar padding above crop it against the text. */
 .toolbar .select { padding-right: 1.8rem; }
@@ -89,10 +112,10 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .4rem;
+    gap: .3rem;
     flex: 1 1 auto;
     min-width: 0;
-    max-height: calc(2 * 2.15rem + .4rem);
+    max-height: calc(2 * 1.85rem + .3rem);
     overflow: hidden;
     transition: max-height var(--transition);
 }
@@ -104,8 +127,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 2.6rem;
-    padding: .4rem .7rem;
+    min-width: 2.3rem;
+    padding: .28rem .55rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--card);
@@ -119,7 +142,7 @@
 .orders-quicknav__chip:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
 .orders-quicknav__chip:active { transform: translateY(0); }
 .orders-quicknav__chip:focus, .orders-quicknav__chip:focus-visible { outline: none; }
-.orders-quicknav__chip-name { font-weight: 800; font-size: .85rem; }
+.orders-quicknav__chip-name { font-weight: 800; font-size: .78rem; }
 
 /* Status colouring mirrors .tableChip in Pos.razor.css: same border/hover shape, coloured
    per order status using OrderCard's badge mapping (Sent/InPreparation/Ready). */
@@ -145,9 +168,9 @@
 .orders-dd { position: relative; flex: none; }
 .orders-dd__trigger {
     display: flex; align-items: center; justify-content: space-between; gap: .4rem;
-    width: 100%; height: 2.15rem; min-width: 140px; max-width: 170px;
-    padding: 0 .55rem;
-    font: inherit; font-size: .78rem; color: var(--text);
+    width: 100%; height: 1.85rem; min-width: 100px; max-width: 125px;
+    padding: 0 .4rem;
+    font: inherit; font-size: .68rem; color: var(--text);
     background: var(--card-2);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -163,10 +186,10 @@
 .orders-dd__backdrop { position: fixed; inset: 0; z-index: 19; background: transparent; }
 .orders-dd__menu {
     position: absolute; top: calc(100% + .3rem); left: 0;
-    min-width: 170px; max-height: 260px;
+    min-width: 125px; max-height: 260px;
     overflow-y: auto;
     display: flex; flex-direction: column; gap: .1rem;
-    padding: .35rem;
+    padding: .3rem;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -176,12 +199,14 @@
 }
 .orders-dd__opt {
     display: block; width: 100%; text-align: left;
-    padding: .4rem .5rem;
+    padding: .32rem .45rem;
     border: none; border-radius: var(--radius-sm);
     background: transparent; color: var(--text);
-    font: inherit; font-size: .78rem;
+    font: inherit; font-size: .68rem;
     cursor: pointer;
     transition: background var(--transition);
 }
 .orders-dd__opt:hover { background: var(--card-2); }
 .orders-dd__opt--on { background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary); font-weight: 700; }
+
+.orders-filters__search { width: 110px; flex: none; height: 1.85rem; font-size: .62rem; padding: 0 .45rem; box-sizing: border-box; }

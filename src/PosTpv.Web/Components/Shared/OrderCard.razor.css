@@ -1,47 +1,47 @@
-.order-card { height: 640px; padding: .35rem 1rem; display: flex; flex-direction: column; gap: .35rem; }
+.order-card { height: 640px; padding: .3rem .7rem; display: flex; flex-direction: column; gap: .25rem; }
 /* Pulled closer to the card's top edge — same tight fit as .ticket__head in KitchenTicket.razor.css
    (a near-bare .12rem gap there, since .ticket itself carries no padding of its own). */
 .order-card__head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: -.25rem; }
-.order-card__title { display: flex; align-items: center; gap: .35rem; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.order-card__title { display: flex; align-items: center; gap: .3rem; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .88rem; }
 .order-card__title svg { flex: none; color: var(--text-soft); }
 .order-card__head-right { flex: none; display: flex; align-items: center; gap: .4rem; }
-.order-card__head-right .btn--icon { width: 30px; height: 30px; padding: .3rem; }
-.order-card__head-right .badge { font-size: .6rem; padding: .1rem .4rem; }
-.order-card__number { font-size: .68rem; }
+.order-card__head-right .btn--icon { width: 26px; height: 26px; padding: .25rem; }
+.order-card__head-right .badge { font-size: .56rem; padding: .08rem .35rem; }
+.order-card__number { font-size: .6rem; }
 /* Bled out to the card's real edges and re-padded by the same amount (same cancel-and-reapply
    trick as .order-card__lines--scroll below), so this element's own overflow clip boundary —
    not just its content position — sits flush with the card. Without this, a served drink-batch
    trying to bleed past its normal bounds (see --batch-bleed in app.css) would have that bleed
    clipped by this element's overflow-y:auto (which forces overflow-x to clip too), since the
    card's 1rem padding lives one level up on .order-card, not here. */
-.order-card__body { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -1rem; padding: 0 1rem; --batch-bleed: 1rem; }
+.order-card__body { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -.7rem; padding: 0 .7rem; --batch-bleed: .7rem; }
 .order-card__group {
-    display: flex; align-items: center; gap: .4rem;
-    font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+    display: flex; align-items: center; gap: .35rem;
+    font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
     color: var(--primary);
-    margin-top: .15rem; padding-top: .15rem;
+    margin-top: .1rem; padding-top: .1rem;
     border-top: 1px solid var(--border);
 }
 .order-card__body > .order-card__group:first-child { margin-top: 0; padding-top: 0; border-top: none; }
-.order-card__lines { display: flex; flex-direction: column; gap: .1rem; padding-top: .1rem; padding-bottom: .05rem; }
+.order-card__lines { display: flex; flex-direction: column; gap: .06rem; padding-top: .06rem; padding-bottom: .03rem; }
 /* Past 7 drinks the list scrolls on its own instead of pushing the food sections further down.
-   Full-bleed on both sides: cancels .order-card's own 1rem side padding (negative margin) then
+   Full-bleed on both sides: cancels .order-card's own side padding (negative margin) then
    adds it straight back as this element's own padding, so both the scrollbar track (right) and
    a served batch's green frame + order-time label (left) render flush against the card's real
    edges instead of getting clipped by this element's own overflow-y:auto one side short. */
-.order-card__lines--scroll { max-height: 13rem; overflow-y: auto; margin: 0 -1rem; padding: 0 1rem; }
-.order-card__line { min-height: 1.3rem; display: flex; justify-content: space-between; font-size: .78rem; }
+.order-card__lines--scroll { max-height: 13rem; overflow-y: auto; margin: 0 -.7rem; padding: 0 .7rem; }
+.order-card__line { min-height: 1.05rem; display: flex; justify-content: space-between; font-size: .68rem; }
 /* .order-card__drink-batch and .order-card__time-group* (served-batch frame / ordered-together
    bracket) live in app.css — shared with OrderEditor.razor, which renders the same patterns. */
 .badge--btn { border: none; cursor: pointer; transition: filter .15s; }
 .badge--btn:hover { filter: brightness(0.9); }
-.order-card__actions { flex: none; display: flex; flex-direction: column; gap: .3rem; margin-top: -.25rem; }
+.order-card__actions { flex: none; display: flex; flex-direction: column; gap: .2rem; margin-top: -.25rem; }
 .order-card__actions .btn {
     width: 100%;
     justify-content: flex-start;
-    gap: .5rem;
-    padding: .32rem .6rem;
-    font-size: .68rem;
+    gap: .4rem;
+    padding: .24rem .5rem;
+    font-size: .62rem;
     font-weight: 700;
     letter-spacing: .01em;
     white-space: nowrap;
@@ -115,5 +115,13 @@
     transition-duration: 40ms;
 }
 
-.order-card__foot { display: flex; align-items: center; gap: .4rem; border-top: 1px solid var(--border); padding-top: .3rem; margin-top: .1rem; }
-.order-card__foot .btn { padding: .4rem .7rem; }
+.order-card__foot { display: flex; align-items: center; gap: .3rem; border-top: 1px solid var(--border); padding-top: .25rem; margin-top: .05rem; font-size: .82rem; }
+.order-card__foot .btn { padding: .3rem .55rem; font-size: .72rem; }
+
+/* Tighter overrides of the shared served-batch/time-group rules in app.css (kept there since
+   OrderEditor renders the same pattern) — scoped by Blazor CSS isolation to this component only,
+   so OrderEditor's own copy is untouched. */
+.order-card__drink-batch { gap: .05rem; }
+.order-card__drink-batch[data-served="true"] { padding: .2rem var(--batch-bleed, .5rem); }
+.order-card__time-group { gap: .3rem; }
+.order-card__time-group-time { width: 1.9rem; font-size: .54rem; padding-right: .4rem; }

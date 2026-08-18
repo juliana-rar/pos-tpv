@@ -239,7 +239,17 @@ a { color: var(--primary); text-decoration: none; }
 .modal--wide { width: min(680px, 100%); }
 .modal--narrow { width: min(360px, 100%); }
 .modal__head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
-.modal__head-actions { display: flex; align-items: center; gap: .4rem; }
+/* Groups the title with any extra controls a modal wants sitting right next to it (e.g. the
+   product edit modal's Available/Visible switches, via TitleActions) instead of them drifting
+   all the way to the header's far edge alongside Save/Close. min-width:0 so a long title still
+   truncates/wraps instead of pushing those controls out of the header. */
+.modal__head-title { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+.modal__head-actions { display: flex; align-items: center; gap: .4rem; flex: none; }
+/* A modal that puts toggle switches next to its title (currently just the product edit modal —
+   see TitleActions in Products.razor) is packing more into that row than a plain title, so
+   shrink the title to make room instead of letting it wrap or crowd out the switches. */
+.modal__head-title:has(.switch) h2 { font-size: .95rem; }
+.modal__head-title .switch { font-size: .68rem; gap: .25rem; }
 .modal__body { padding: 1.25rem; }
 .modal__foot { display: flex; justify-content: flex-end; gap: .6rem; padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
 
@@ -466,27 +476,22 @@ a { color: var(--primary); text-decoration: none; }
 /* align-items: center so the time label — and the vertical line beside it, which spans this
    element's own stretched height (stretched to match .order-card__time-group-items, its taller
    sibling) — sits centred against its own group's lines, whether that group is one line or
-   three. The OrderEditor sticky-pin below (.order__time-group-time-pin) is built on top of this
-   centred resting position for the one case it isn't enough on its own: a single time-group tall
-   enough to outgrow the section's own scroll viewport. */
+   three. Stays put at that centred resting position while scrolling — it used to track scroll
+   position via JS (posStickyTimeLabels) to stay visible in a tall group, but that made the time
+   visibly drift as you scrolled, which read as distracting rather than helpful. */
 .order-card__time-group-time, .order__time-group-time {
     flex: none;
     display: flex; align-items: center; justify-content: flex-start;
-    min-width: 1.6rem;
+    /* Fixed (not min-width) — every group's vertical divider (border-right) must land at the
+       exact same x position regardless of which digits its own HH:mm happens to render, since
+       non-tabular digit widths ("1" vs "0") would otherwise nudge wider times' dividers a
+       fraction of a pixel further right than narrower ones. Wide enough (plus the padding-right
+       gap below) that the HH:mm text itself never reaches the line it sits beside. */
+    width: 2.1rem;
     margin-left: -.3rem;
     font-size: .58rem; font-weight: 700; color: var(--text-soft);
+    font-variant-numeric: tabular-nums;
     border-right: 2px solid var(--border);
-    padding-right: .3rem;
+    padding-right: .5rem;
 }
 .order-card__time-group-items, .order__time-group-items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .02rem; }
-
-/* order__time-group-time-pin (OrderEditor only): keeps a time-group's HH:mm label centred in
-   whatever part of its own group is currently visible, instead of scrolling away with its lines
-   — including groups shorter than the scroll viewport, e.g. T0's four separate Drinks time-
-   groups, each just 1-2 lines. CSS position:sticky can't do this: its containing block is the
-   group's own (short) box, so a fixed viewport-relative offset only ever falls inside it for the
-   rare single-group-taller-than-the-viewport case, never for a normal list of several short
-   groups — which just scrolled past 1:1 with no stickiness at all. posStickyTimeLabels (pos.js)
-   walks each group's real intersection with its scrolling ancestors on every scroll and sets
-   this transform by hand instead. No transition — it must track the scroll 1:1 with zero lag. */
-.order__time-group-time-pin { display: block; }

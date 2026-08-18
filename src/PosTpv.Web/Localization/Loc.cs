@@ -324,6 +324,8 @@ public static class Loc
         ["Edit extra"] = "Editar extra",
         ["No extras yet."] = "Aún no hay extras.",
         ["No extras defined yet."] = "Aún no hay extras definidos.",
+        ["Filters the product list below by category — pick which products get the extra."] = "Filtra la lista de productos de abajo por categoría — elige a qué productos se aplica el extra.",
+        ["Pick a category above to see its products."] = "Elige una categoría arriba para ver sus productos.",
         ["No products yet."] = "Aún no hay productos.",
         ["Add one"] = "Añadir uno",
         ["Visible"] = "Visible",

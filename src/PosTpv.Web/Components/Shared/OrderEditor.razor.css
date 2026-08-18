@@ -45,7 +45,7 @@
 .editor__topbar {
     grid-column: 2;
     grid-row: 1;
-    width: calc(100% + 8px + .6rem);
+    width: calc(100% + 20px + .6rem);
     display: flex; align-items: center; justify-content: space-between; gap: .6rem;
     padding: .75rem .7rem;
     border: 1px solid var(--border);
@@ -53,7 +53,7 @@
     background: var(--card);
 }
 .editor__topbar-meta { display: flex; align-items: center; gap: .4rem; min-width: 0; color: var(--text-soft); }
-.editor__topbar-title { font-weight: 800; color: var(--text); white-space: nowrap; }
+.editor__topbar-title { font-size: .78rem; font-weight: 800; color: var(--text); white-space: nowrap; }
 .editor__topbar-item { display: flex; align-items: center; gap: .25rem; white-space: nowrap; font-size: .85rem; }
 .editor__topbar-sep { opacity: .5; }
 /* Party size above the open time instead of both inline with the table title, since party size
@@ -75,14 +75,20 @@
     /* Order-panel width is user-adjustable (drag .pos__resize-handle) between a floor where
        every line's controls still fit on one row and a generous ceiling — --order-w is set
        inline by posOrderResize() in pos.js. */
-    grid-template-columns: 1fr 8px clamp(280px, var(--order-w, 21rem), 640px);
+    grid-template-columns: minmax(0, 1fr) 20px clamp(200px, var(--order-w, 300px), 640px);
     gap: .3rem;
 }
 .pos__resize-handle {
     cursor: col-resize;
-    width: 8px;
+    /* Wider than the 3px grip line it draws (::after below) so the drag target is easy to grab
+       on a touch tablet, not just a mouse. */
+    width: 20px;
     position: relative;
     z-index: 2;
+    /* Without this, a touchscreen drag starting here gets read as a native scroll/pan gesture
+       instead of reaching posOrderResize's pointermove handler in pos.js — the resize just never
+       starts on a tablet even though it works fine with a mouse. */
+    touch-action: none;
 }
 .pos__resize-handle::after {
     content: '';
@@ -94,7 +100,7 @@
 .pos__resize-handle:hover::after { background: var(--text-soft); }
 /* Row 1 is the topbar's height (auto), row 2 is products; the category rail spans both (see
    .pos__cats) so it reads as one continuous column beside the topbar and the products below it. */
-.pos__main { display: grid; grid-template-columns: 150px 1fr; grid-template-rows: auto 1fr; gap: .35rem; min-height: 0; }
+.pos__main { display: grid; grid-template-columns: 150px minmax(0, 1fr); grid-template-rows: auto 1fr; gap: .35rem; min-height: 0; }
 
 /* Flush against the screen's left edge (see .order-editor-page__body's left padding), square
    corners, and no gap between buttons — reads as one continuous strip instead of separate
@@ -130,22 +136,24 @@
 .cat__icon img { width: 100%; height: 100%; object-fit: cover; }
 .cat__name { font-size: .7rem; font-weight: 600; text-align: left; line-height: 1.15; white-space: nowrap; }
 
-.pos__products { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; min-height: 0; }
-/* Always exactly 6 columns (not auto-fill) so cards stay a fixed, wider size regardless of
-   how many products are in the category. */
+.pos__products { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+/* Always exactly 5 columns (not auto-fill) so cards stay a fixed, wider size regardless of
+   how many products are in the category. minmax(0, 1fr) (not bare 1fr) so a wide order panel
+   can shrink this grid below its cards' min-content width instead of overflowing the page. */
 .product-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 0;
     overflow-y: auto;
+    min-width: 0;
     padding: .2rem;
     align-content: start;
 }
 .productCard {
     position: relative;
-    display: flex; flex-direction: column; justify-content: space-between;
+    display: flex; flex-direction: column; justify-content: flex-start;
     gap: .25rem;
-    min-height: 92px;
+    min-height: 112px;
     padding: .6rem;
     border: 1px solid var(--border);
     border-radius: 0;
@@ -154,6 +162,12 @@
     cursor: pointer;
     text-align: left;
     transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+    /* A long-press adds the product and opens its extras preview (see StartProductPress in
+       OrderEditor.razor) — these stop that hold from selecting text or popping the browser/OS
+       context menu on touch devices instead. */
+    user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
 }
 .productCard:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--text-soft); }
 .productCard:active { transform: translateY(-1px) scale(.99); }
@@ -165,19 +179,45 @@
     background: linear-gradient(180deg, rgba(0, 0, 0, .15) 0%, rgba(0, 0, 0, .65) 100%);
 }
 .productCard--img .productCard__price,
-.productCard--img .productCard__name { position: relative; }
+.productCard--img .productCard__name,
+.productCard--img .productCard__extras { position: relative; }
 .productCard--img .productCard__price { background: rgba(255, 255, 255, .16); color: #fff; }
-.productCard__name { display: flex; align-items: center; gap: .3rem; font-weight: 700; font-size: .78rem; line-height: 1.2; }
-.productCard__dot { flex: none; width: .4rem; height: .4rem; border-radius: 999px; background: var(--pc, var(--primary)); }
+/* Title/price row — order:-1 keeps it pinned at the card's top edge whether the extras preview
+   below is expanded or not, since the preview is a sibling inserted before it in markup order
+   (see the @if (_pressedProductId == p.Id) block in OrderEditor.razor). */
+.productCard__footer { display: flex; align-items: center; justify-content: space-between; gap: .4rem; order: -1; }
+.productCard__name { display: flex; align-items: center; gap: .3rem; font-weight: 700; font-size: .5rem; line-height: 1.2; min-width: 0; }
+.productCard__name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .productCard__price {
-    align-self: flex-start;
-    font-size: .66rem; font-weight: 700;
+    flex: none;
+    font-size: .5rem; font-weight: 700;
     padding: .08rem .4rem; border-radius: 999px;
     background: var(--card-2);
     color: var(--text-soft);
 }
 .productCard--off { opacity: .55; cursor: not-allowed; }
 .productCard__off { position: absolute; inset: auto .5rem .5rem auto; font-size: .7rem; color: var(--danger); font-weight: 700; }
+
+/* --- Press-and-hold extras preview (see StartProductPress/TriggerProductPress/EndProductPress
+   in OrderEditor.razor) — a small list of the product's extras opens below its title/price;
+   tapping one adds the product with that extra already attached in a single tap. --- */
+.productCard__extras { display: flex; flex-direction: column; gap: .2rem; margin-top: .1rem; }
+.productCard__extras-empty { font-size: .68rem; color: var(--text-soft); }
+.productCard--img .productCard__extras-empty { color: rgba(255, 255, 255, .85); }
+.productCard__extra-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: .3rem;
+    padding: .25rem .4rem;
+    border-radius: var(--radius-sm);
+    background: var(--card-2);
+    color: var(--text);
+    font-size: .68rem; font-weight: 600;
+    transition: background var(--transition);
+}
+.productCard__extra-row:hover { background: var(--border); }
+.productCard--img .productCard__extra-row { background: rgba(255, 255, 255, .16); color: #fff; }
+.productCard--img .productCard__extra-row:hover { background: rgba(255, 255, 255, .28); }
+.productCard__extra-price { flex: none; opacity: .8; }
 
 /* --- Right: current order, same panel as /pos --- */
 /* Extends past the page's own right/bottom padding so it sits flush against the screen's right
@@ -343,17 +383,95 @@
 .order__group::before, .order__group::after { content: ""; flex: 1 1 auto; height: 1px; background: var(--border); }
 .order__items > .order__group:first-child { margin-top: 0; padding-top: 0; }
 
-.orderLine { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 .45rem; background: var(--card-2); }
+.orderLine { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 .45rem; background: var(--card-2); cursor: pointer; }
 .orderLine__main { display: flex; align-items: center; gap: .35rem; font-weight: 700; font-size: .66rem; }
 .orderLine__main .btn--icon { flex: none; width: 18px; height: 18px; padding: 0; }
-.orderLine__name { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Wraps name + invited badge + (collapsed) extras summary as one flex item, so it still grows
+   into the line's free space and truncates the way .orderLine__name alone used to — but can now
+   carry siblings next to the name instead of being the only flexible child. */
+.orderLine__title { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: .3rem; flex-wrap: wrap; }
+.orderLine__name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .orderLine__price { flex: none; font-size: .62rem; font-weight: 600; color: color-mix(in srgb, var(--text-soft) 65%, transparent); }
 .orderLine__ctrl { flex: none; display: flex; align-items: center; gap: 0; }
 .orderLine__ctrl .btn--icon { width: 18px; height: 18px; padding: 0; margin-left: .2rem; }
 .orderLine__ctrl .btn--icon:first-child { margin-left: 0; }
 .orderLine__qty { margin-left: .2rem; min-width: 1.1rem; text-align: center; font-weight: 700; font-size: .66rem; }
 .orderLine__comment { margin-top: .15rem; font-size: .7rem; font-style: italic; }
-.orderLine__extras { margin-top: .15rem; font-size: .68rem; font-weight: 600; }
+/* Collapsed-state chip list next to the name (hidden while the line is expanded — see
+   .orderLine__extras-panel below, which replaces it with an editable list). */
+.orderLine__extras { font-size: .64rem; font-weight: 500; color: var(--text-soft); }
+
+/* --- Tap-to-expand per-line editing (replaces the old pencil → modal flow) ---
+   Comment/Extra are icon-only toggles grouped in one pill (Comment on the left, Extra on the
+   right); the active one fills with --primary. Opening Comment doesn't drop a panel below — the
+   textbox grows inline to the right of the pill, in the same row. */
+.orderLine__expand-actions {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    margin: .35rem 0 .2rem;
+}
+.orderLine__expand-btns {
+    display: inline-flex;
+    flex: none;
+    gap: 2px;
+    padding: 2px;
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+}
+.orderLine__expand-btn {
+    display: flex; align-items: center; justify-content: center;
+    flex: none;
+    width: 24px; height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-soft);
+    cursor: pointer;
+    transition: background var(--transition), color var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+.orderLine__expand-btn:hover { color: var(--text); background: color-mix(in srgb, var(--text) 6%, transparent); }
+.orderLine__expand-btn:active { transform: scale(.9); }
+.orderLine__expand-btn--active { background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow-sm); }
+.orderLine__expand-btn--active:hover { background: var(--primary-strong); }
+.orderLine__comment-inline {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: .32rem .6rem;
+    font-size: .72rem;
+    background: var(--card);
+}
+
+.orderLine__extras-panel {
+    display: flex; flex-direction: column; gap: .25rem;
+    margin: 0 0 .35rem;
+    padding: .4rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card-2);
+}
+.orderLine__extra-opt {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: .3rem;
+    padding: .32rem .55rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    background: var(--card);
+    font-size: .7rem; font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+.orderLine__extra-opt:hover { border-color: var(--border); }
+.orderLine__extra-opt--on {
+    background: color-mix(in srgb, var(--primary) 12%, var(--card));
+    border-color: var(--primary);
+    color: var(--primary-strong);
+}
+.orderLine__extra-opt-price { flex: none; font-size: .66rem; opacity: .8; }
+
+.comment-presets .btn { font-size: .66rem; padding: .22rem .5rem; }
 .order__totals { border-top: 1px solid var(--border); margin-top: auto; padding-top: .4rem; display: flex; flex-direction: column; gap: .5rem; }
 .order__grand { display: flex; justify-content: space-between; align-items: center; font-size: .74rem; font-weight: 800; }
 
@@ -496,7 +614,7 @@
 .btn--nav-left:active:not(:disabled), .btn--nav-right:active:not(:disabled) { transform: scale(.98); transition-duration: 40ms; }
 .btn--invite-active, .btn--select-active { background: var(--text-soft); color: var(--card); }
 
-@media (max-width: 1100px) {
+@media (max-width: 900px) {
     .editor__pos { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
     .pos__order { max-height: 46vh; }
     /* Stacked layout — nothing to drag left/right any more. */
@@ -514,26 +632,6 @@
     .product-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
-/* --- Customize (extras) sub-dialog --- */
-.customize { display: flex; flex-direction: column; gap: 1rem; }
-.customize__row { display: flex; align-items: center; justify-content: space-between; }
-.customize__extras > label { font-size: .82rem; font-weight: 600; color: var(--text-soft); display: block; margin-bottom: .5rem; }
-.customize__total { font-size: 1.05rem; }
-.customize__total strong { color: var(--primary); }
-
 .qty-stepper { display: flex; align-items: center; gap: .5rem; }
 .qty-stepper .btn--icon { width: 34px; height: 34px; padding: 0; }
 .qty-stepper__val { min-width: 2rem; text-align: center; font-weight: 800; font-size: 1.1rem; }
-
-.extra-chips { display: flex; flex-wrap: wrap; gap: .5rem; }
-.extra-chip {
-    display: inline-flex; align-items: center; gap: .45rem;
-    padding: .5rem .8rem;
-    border: 1px solid var(--border); border-radius: 999px;
-    background: var(--card-2); color: var(--text);
-    font: inherit; font-weight: 600; cursor: pointer;
-    transition: transform var(--transition), border-color var(--transition), background var(--transition);
-}
-.extra-chip:hover { transform: translateY(-1px); }
-.extra-chip__price { font-size: .78rem; color: var(--text-soft); }
-.extra-chip--on { border-color: var(--text); background: var(--card); color: var(--text); font-weight: 800; }

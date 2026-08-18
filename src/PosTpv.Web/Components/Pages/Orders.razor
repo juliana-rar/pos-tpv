@@ -11,18 +11,31 @@
 <PageTitle>Orders · @Branding.Current.Title</PageTitle>
 
 <div class="orders-quicknav">
-    <div class="orders-quicknav__chips @(_chipsExpanded ? "orders-quicknav__chips--expanded" : "")">
-        @foreach (var o in Filtered)
-        {
-            <button class="orders-quicknav__chip" data-status="@o.Status.ToString().ToLower()"
-                    title="@o.TableName · @o.Number · @Loc.T(o.Status.ToString())" @onclick="() => OpenEditor(o.Id)">
-                <span class="orders-quicknav__chip-name">@o.TableName</span>
+    <div class="orders-quicknav__row">
+        <div class="orders-quicknav__chips @(_chipsExpanded ? "orders-quicknav__chips--expanded" : "")">
+            @foreach (var o in Filtered)
+            {
+                <button class="orders-quicknav__chip" data-status="@o.Status.ToString().ToLower()"
+                        title="@o.TableName · @o.Number · @Loc.T(o.Status.ToString())" @onclick="() => OpenEditor(o.Id)">
+                    <span class="orders-quicknav__chip-name">@o.TableName</span>
+                </button>
+            }
+        </div>
+        <div class="toolbar">
+            <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost")" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters">
+                <LucideIcon Name="settings" Size="16" />
             </button>
-        }
+            <button class="btn btn--icon btn--ghost" title="@Loc.T("Refresh")" @onclick="Reload"><LucideIcon Name="rotate-cw" Size="16" /></button>
+            <button class="btn btn--icon @(_chipsExpanded ? "btn--primary" : "btn--ghost")"
+                    title="@(_chipsExpanded ? Loc.T("Show fewer tables") : Loc.T("Show all tables"))"
+                    @onclick="() => _chipsExpanded = !_chipsExpanded">
+                <LucideIcon Name="@(_chipsExpanded ? "chevron-up" : "chevron-down")" Size="16" />
+            </button>
+        </div>
     </div>
-    <div class="toolbar">
-        @if (_showFilters)
-        {
+    @if (_showFilters)
+    {
+        <div class="orders-quicknav__filters">
             <div class="orders-dd">
                 <button type="button" class="orders-dd__trigger" @onclick='() => ToggleDropdown("status")'>
                     <span>@(_statusFilterValue is null ? Loc.T("All statuses") : Loc.T(_statusFilterValue.ToString()!))</span>
@@ -75,18 +88,9 @@
                     }
                 </div>
             }
-            <input class="input" style="max-width:170px" placeholder="@Loc.T("Search table…")" @bind="_tableSearch" @bind:event="oninput" />
-        }
-        <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost")" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters">
-            <LucideIcon Name="settings" Size="16" />
-        </button>
-        <button class="btn btn--icon btn--ghost" title="@Loc.T("Refresh")" @onclick="Reload"><LucideIcon Name="rotate-cw" Size="16" /></button>
-        <button class="btn btn--icon @(_chipsExpanded ? "btn--primary" : "btn--ghost")"
-                title="@(_chipsExpanded ? Loc.T("Show fewer tables") : Loc.T("Show all tables"))"
-                @onclick="() => _chipsExpanded = !_chipsExpanded">
-            <LucideIcon Name="@(_chipsExpanded ? "chevron-up" : "chevron-down")" Size="16" />
-        </button>
-    </div>
+            <input class="input orders-filters__search" placeholder="@Loc.T("Search table…")" @bind="_tableSearch" @bind:event="oninput" />
+        </div>
+    }
 </div>
 
 <div class="orders">

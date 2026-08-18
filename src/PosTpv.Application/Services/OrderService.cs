@@ -377,7 +377,12 @@ public class OrderService : IOrderService
         if (item is null) return;
         item.Comment = comment;
         _uow.Repository<OrderItem>().Update(item);
-        await _uow.SaveChangesAsync(ct);
+
+        // Same reasoning as ChangeQuantityAsync: editing a comment isn't a re-serve, so it must
+        // not disturb UpdatedAt and knock an already-served line out of its green batch.
+        _uow.SkipAuditStamp = true;
+        try { await _uow.SaveChangesAsync(ct); }
+        finally { _uow.SkipAuditStamp = false; }
     }
 
     public async Task<OrderDto?> SetItemExtrasAsync(int orderItemId, IReadOnlyList<int> extraIds, CancellationToken ct = default)
@@ -397,7 +402,15 @@ public class OrderService : IOrderService
             item.Extras.Add(new OrderItemExtra { Name = ex.Name, Price = ex.Price, ExtraId = ex.Id });
 
         _uow.Repository<OrderItem>().Update(item);
-        await _uow.SaveChangesAsync(ct);
+
+        // Same reasoning as ChangeQuantityAsync: picking extras on an existing line isn't a
+        // re-serve, so it must not disturb UpdatedAt and knock an already-served line out of its
+        // green batch (see GroupByServeBatch) — this is exactly what put "CAFE CON LECHE + Extra
+        // sauce" in its own separate div after the rest of its 23:08 round was already served.
+        _uow.SkipAuditStamp = true;
+        try { await _uow.SaveChangesAsync(ct); }
+        finally { _uow.SkipAuditStamp = false; }
+
         return await GetByIdAsync(item.OrderId, ct);
     }
 

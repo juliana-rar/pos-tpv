@@ -9,7 +9,17 @@
 /* --- Left rail: categories --- */
 .catalog__cats { display: flex; flex-direction: column; min-height: 0; padding: 1rem; }
 .catalog__cats-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .8rem; }
-.catalog__cats-head h2 { margin: 0; }
+
+/* Small tracked-caps section label instead of a full heading — reads as a dashboard sidebar
+   section marker (à la Linear/Notion) rather than competing with the page's real h1. */
+.catalog__eyebrow {
+    margin: 0;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--text-soft);
+}
 
 .catalog__notice {
     margin-bottom: .8rem;
@@ -28,35 +38,32 @@
 
 .catalog__cats-list { display: flex; flex-direction: column; gap: .5rem; overflow-y: auto; padding-right: .2rem; }
 
-/* Every row (categories and the Allergens row alike) gets its own soft tinted background/border
-   from its own --cat colour instead of a flat hover-only grey — each reads as its own "branded"
-   card rather than a plain list item, and the tint/border/dot all key off the same --cat value
-   so a category's colour and the Allergens row's warning colour both flow through consistently. */
+/* Neutral card for every row (categories and the Allergens/Extras rows alike) — a single
+   consistent business-grey surface instead of each category washing its row in its own custom
+   colour. The only colour left is a small semantic tint on the Allergens/Extras icon tiles,
+   and --primary for the active/selected state, so the sidebar reads as one calm, professional
+   list instead of a rainbow of category cards. */
 .catRow {
     display: flex; align-items: center; gap: .55rem;
     padding: .55rem .6rem;
-    border: 1px solid color-mix(in srgb, var(--cat, var(--primary)) 16%, var(--border));
+    border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--cat, var(--primary)) 5%, transparent);
+    background: var(--card);
     cursor: pointer;
     transition: box-shadow var(--transition), border-color var(--transition), background var(--transition);
 }
-.catRow:hover { background: color-mix(in srgb, var(--cat, var(--primary)) 9%, transparent); }
+.catRow:hover { background: var(--card-2); border-color: color-mix(in srgb, var(--primary) 25%, var(--border)); }
 .catRow[data-active] {
-    border-color: var(--cat, var(--primary));
-    background: color-mix(in srgb, var(--cat, var(--primary)) 14%, transparent);
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 7%, var(--card));
     box-shadow: var(--shadow-sm);
 }
 
-/* Reuses --cat (see .catRow__thumb below) so the Allergens row's icon tile, dot and trailing
-   chevron all key off the warning colour instead of falling back to --primary like an ordinary
-   category would. The chevron marks it as a fixed nav destination rather than a re-orderable,
-   deletable list entry like the categories below it — hence no .catRow__actions on this one. */
-.catRow--allergens { --cat: var(--warning); }
-.catRow--allergens .catRow__thumb { color: var(--warning); }
+/* The Allergens/Extras nav rows keep a small semantic accent — just their icon tile and dot,
+   not the whole row — so they're still easy to tell apart without breaking the neutral list. */
+.catRow--allergens .catRow__thumb { color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, var(--card-2)); }
 .catRow--allergens .catRow__dot { background: var(--warning); }
-.catRow--extras { --cat: var(--secondary); }
-.catRow--extras .catRow__thumb { color: var(--secondary); }
+.catRow--extras .catRow__thumb { color: var(--secondary); background: color-mix(in srgb, var(--secondary) 12%, var(--card-2)); }
 .catRow--extras .catRow__dot { background: var(--secondary); }
 .catRow__nav { flex: none; display: flex; color: var(--text-soft); opacity: .7; }
 .catRow--allergens:hover .catRow__nav, .catRow--allergens[data-active] .catRow__nav { opacity: 1; color: var(--warning); }
@@ -67,7 +74,7 @@
     flex: none;
     width: 32px; height: 32px;
     border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--cat, var(--primary)) 12%, transparent);
+    background: var(--card-2);
     font-size: .95rem;
     overflow: hidden;
 }
@@ -87,12 +94,54 @@
 
 /* --- Right panel: products --- */
 .catalog__products { display: flex; flex-direction: column; min-height: 0; }
-.catalog__products .toolbar { margin-bottom: 1rem; }
+.catalog__products .toolbar { margin-bottom: 1.3rem; }
+
+/* Neutral, solid-fill "create" button — New category/New product read as calm structural
+   actions in a muted business grey instead of the loud brand-primary fill, which stays
+   reserved for New extra/New allergen. White + a resting shadow (base .btn has none until
+   hover) gives it real presence as a floating control instead of a flat grey patch, and the
+   plus glyph picks up --primary so it still reads as a "create" action at a glance even though
+   the label itself stays neutral. */
+.btn--neutral {
+    background: var(--card);
+    color: var(--text);
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
+}
+.btn--neutral svg { color: var(--primary); }
+.btn--neutral:hover {
+    border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+    box-shadow: var(--shadow);
+}
+
+/* Bolder, tighter page title than the app-wide h1 default, plus a small muted count line
+   underneath — the "page header with supporting caption" pattern used across most enterprise
+   dashboards, giving the section a clearer focal point than a bare heading next to a button. */
+.toolbar__title { display: flex; flex-direction: column; gap: .15rem; }
+.toolbar__title h1 { margin: 0; font-size: 1.7rem; font-weight: 800; letter-spacing: -.02em; }
+.toolbar__count { font-size: .78rem; font-weight: 600; color: var(--text-soft); min-height: 1.1em; }
+
+/* A real search field — pill-shaped with a leading glyph inset over the input, like a proper
+   dashboard search bar, instead of a bare rectangular text box that only reveals itself as a
+   search field once you read the placeholder. Widened a touch too since 220px (the app-wide
+   .search default) felt cramped once the icon ate into it. */
+.toolbar__search { position: relative; display: flex; align-items: center; }
+.toolbar__search svg { position: absolute; left: .85rem; color: var(--text-soft); pointer-events: none; }
+.toolbar__search .input {
+    width: 15rem;
+    max-width: 15rem;
+    padding: .55rem 1rem .55rem 2.4rem;
+    border-radius: 999px;
+    background: var(--card);
+    box-shadow: var(--shadow-sm);
+}
+.toolbar__search .input:hover { border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); box-shadow: var(--shadow); }
+.toolbar__search:focus-within svg { color: var(--primary); }
 /* align-items:stretch (overriding the base .grid-cards' align-items:start) so every card in a
    row fills that row's full height instead of shrinking to its own content — combined with
    .mgmt-card's flex column + .mgmt-card__actions' margin-top:auto below, this is what makes
    every card in the grid come out the same size regardless of name length/photo/allergen count. */
-.catalog__products .grid-cards { overflow-y: auto; padding: .2rem; align-content: start; align-items: stretch; gap: .8rem; }
+.catalog__products .grid-cards { grid-template-columns: repeat(4, 1fr); overflow-y: auto; padding: .2rem; align-content: start; align-items: stretch; gap: 0; }
 
 /* A quieter, more "premium" tile than the default .mgmt-card: bigger radius, no resting border/
    shadow so the grid reads as a clean catalogue, and a soft lift + shadow bloom on hover instead
@@ -101,24 +150,15 @@
    form, just not printed on every tile). */
 .mgmt-card {
     position: relative;
-    padding: 1rem 1rem .9rem;
-    gap: .5rem;
+    padding: .65rem .65rem .55rem;
+    gap: .35rem;
     border-color: transparent;
     border-radius: var(--radius);
     background: var(--card);
     box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
     overflow: hidden;
+    cursor: pointer;
     transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
-}
-/* A slim brand-colour rule along the top edge — each product's own accent colour (set in the
-   edit form), so a whole catalogue grid reads as a set of distinct "product lines" instead of
-   one flat grey wall, the way a proper catalogue/menu system would brand each item. */
-.mgmt-card::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: var(--prod, var(--primary));
 }
 .mgmt-card:hover {
     transform: translateY(-3px);
@@ -133,8 +173,8 @@
    card, and the image itself is genuinely small instead of just cropped shorter. */
 .mgmt-card__thumb {
     flex: none;
-    width: 42px; height: 42px;
-    border-radius: calc(var(--radius) - 8px);
+    width: 32px; height: 32px;
+    border-radius: calc(var(--radius) - 10px);
     overflow: hidden;
     background: linear-gradient(155deg, var(--card-2), color-mix(in srgb, var(--card-2) 70%, black 6%));
     box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .05);
@@ -163,15 +203,15 @@
     overflow: hidden; text-overflow: ellipsis;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     white-space: normal; line-height: 1.2;
-    font-size: 1rem; font-weight: 700; letter-spacing: -.01em;
+    font-size: .78rem; font-weight: 700; letter-spacing: -.01em;
 }
 .mgmt-card__price {
     flex: none;
-    padding: .25rem .6rem;
+    padding: .16rem .45rem;
     border-radius: 999px;
     background: color-mix(in srgb, var(--primary) 12%, transparent);
     color: var(--primary);
-    font-size: .88rem; font-weight: 800; letter-spacing: -.01em;
+    font-size: .68rem; font-weight: 800; letter-spacing: -.01em;
     font-variant-numeric: tabular-nums;
 }
 /* Tight enough that the switch + all six action icons stay on one row instead of the last
@@ -179,44 +219,47 @@
    from the rest so it doesn't read as just another peer action. margin-top:auto pins this row
    to the card's bottom edge — combined with .grid-cards' align-items:stretch above, that's what
    soaks up the extra height on a card stretched to match a taller sibling in the same row. */
-.mgmt-card__actions { gap: .1rem; margin-top: auto; padding-top: .3rem; border-top: 1px solid var(--border); }
-.mgmt-card__actions .btn--icon { width: 27px; height: 27px; padding: 0; border-radius: 999px; }
+.mgmt-card__actions { gap: 0; margin-top: auto; padding-top: .2rem; border-top: 1px solid var(--border); flex-wrap: nowrap; }
+.mgmt-card__actions .btn--icon { width: 18px; height: 18px; padding: 0; border-radius: 999px; flex: none; }
 .mgmt-card__actions .btn--ghost { color: var(--text-soft); background: transparent; border-color: transparent; box-shadow: none; }
 .mgmt-card__actions .btn--ghost:hover { color: var(--text); background: var(--card-2); }
 .mgmt-card__actions .btn--danger {
-    margin-left: .3rem;
+    margin-left: .15rem;
     background: transparent; border-color: transparent; box-shadow: none;
     color: color-mix(in srgb, var(--danger) 75%, var(--text-soft));
 }
 .mgmt-card__actions .btn--danger:hover { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+/* Shrunk from the base .switch (app.css) so it doesn't push the six icon buttons next to it
+   onto a second line at the card's narrower 4-per-row width. */
+.mgmt-card__actions .switch input { width: 1.5rem; height: .9rem; background-size: .7rem .7rem; }
 
 /* --- Allergen tags on a product card --- */
 /* Always rendered now (even with zero tags) so it reserves one row's height on every card,
    whether or not that product actually has allergens — see .mgmt-card__actions above for how
    the remaining slack then gets absorbed at the bottom instead. */
-.mgmt-card__allergens { display: flex; flex-wrap: wrap; align-content: flex-start; gap: .3rem; min-height: 1.5rem; }
+.mgmt-card__allergens { display: flex; flex-wrap: wrap; align-content: flex-start; gap: .25rem; min-height: 1.3rem; }
 .allergen-tag {
-    display: inline-flex; align-items: center; gap: .25rem;
-    padding: .15rem .55rem;
+    display: inline-flex; align-items: center; gap: .2rem;
+    padding: .1rem .4rem;
     border-radius: 999px;
     background: color-mix(in srgb, var(--warning) 10%, transparent);
     color: color-mix(in srgb, var(--warning) 85%, var(--text));
-    font-size: .68rem; font-weight: 700;
+    font-size: .58rem; font-weight: 700;
 }
-.allergen-tag img { width: 14px; height: 14px; border-radius: 50%; object-fit: cover; }
+.allergen-tag img { width: 12px; height: 12px; border-radius: 50%; object-fit: cover; }
 
 /* --- Extra tags on a product card --- */
 /* Unlike .mgmt-card__allergens above, this row only renders when the product actually has
    extras (see the @if in Products.razor) — extras aren't safety info, so cards without any
    don't need a reserved empty slot. */
-.mgmt-card__extras { display: flex; flex-wrap: wrap; gap: .3rem; }
+.mgmt-card__extras { display: flex; flex-wrap: wrap; gap: .25rem; }
 .extra-tag {
-    display: inline-flex; align-items: center; gap: .25rem;
-    padding: .15rem .55rem;
+    display: inline-flex; align-items: center; gap: .2rem;
+    padding: .1rem .4rem;
     border-radius: 999px;
     background: color-mix(in srgb, var(--secondary) 10%, transparent);
     color: color-mix(in srgb, var(--secondary) 85%, var(--text));
-    font-size: .68rem; font-weight: 700;
+    font-size: .58rem; font-weight: 700;
 }
 .extra-tag b { font-weight: 800; }
 
@@ -274,11 +317,13 @@
     font-weight: 800;
 }
 
-/* --- Extra manager: list of extras with name + price --- */
-.extraManager__list { display: flex; flex-direction: column; gap: .5rem; max-width: 32rem; }
+/* --- Extra manager: list of extras with name + price — kept dense (small thumb, tight
+   padding) since a pizzeria's extra list tends to run long and each row carries little
+   information, unlike a product card. */
+.extraManager__list { display: flex; flex-direction: column; gap: .35rem; max-width: 20rem; }
 .extraRow {
-    display: flex; align-items: center; gap: .6rem;
-    padding: .5rem .7rem;
+    display: flex; align-items: center; gap: .5rem;
+    padding: .32rem .5rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--card-2);
@@ -286,38 +331,53 @@
 .extraRow__thumb {
     display: grid; place-items: center;
     flex: none;
-    width: 34px; height: 34px;
+    width: 24px; height: 24px;
     border-radius: 50%;
     background: color-mix(in srgb, var(--secondary) 15%, transparent);
     color: var(--secondary);
 }
 .extraRow__main { display: flex; flex-direction: column; gap: .1rem; min-width: 0; flex: 1; }
-.extraRow__name { font-weight: 700; }
+.extraRow__name { font-weight: 600; font-size: .84rem; }
 .extraRow__price {
     flex: none;
-    font-weight: 800;
+    font-weight: 700;
+    font-size: .84rem;
     color: var(--secondary);
     font-variant-numeric: tabular-nums;
 }
+.extraRow .btn--icon { width: 26px; height: 26px; padding: 0; }
 
-/* --- Extra multi-select on the product form: toggle chips with a price --- */
-.extra-pick { display: flex; flex-wrap: wrap; gap: .4rem; }
-.extra-chip {
-    display: inline-flex; align-items: center; gap: .35rem;
-    padding: .3rem .7rem;
-    border: 1px solid var(--border); border-radius: 999px;
-    background: var(--card-2); color: var(--text-soft);
-    font: inherit; font-weight: 600; font-size: .82rem; cursor: pointer;
-    transition: transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition);
+/* --- Extra multi-select on the product form: a closed-by-default dropdown instead of an
+   always-open chip grid, so a long extras catalogue doesn't add its own height to the form —
+   same backdrop-click-to-close pattern as .resv-policy in Tables.razor.css. */
+.extra-dd { position: relative; }
+.extra-dd__trigger { display: flex; align-items: center; justify-content: space-between; gap: .4rem; cursor: pointer; text-align: left; }
+.extra-dd__summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-soft); }
+.extra-dd__backdrop { position: fixed; inset: 0; z-index: 20; }
+.extra-dd__menu {
+    position: absolute; top: calc(100% + .3rem); left: 0; right: 0; z-index: 21;
+    max-height: 220px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: .1rem;
+    padding: .35rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    animation: pop var(--transition);
 }
-.extra-chip:hover { transform: translateY(-1px); }
-.extra-chip__price { font-weight: 800; font-variant-numeric: tabular-nums; }
-.extra-chip--on {
-    border-color: var(--secondary);
-    background: color-mix(in srgb, var(--secondary) 14%, var(--card));
-    color: var(--secondary);
-    font-weight: 800;
+.extra-dd__opt {
+    display: flex; align-items: center; gap: .4rem;
+    padding: .3rem .4rem;
+    border: none; border-radius: var(--radius-sm);
+    background: transparent; color: var(--text);
+    font: inherit; font-size: .78rem; text-align: left; cursor: pointer;
+    transition: background var(--transition);
 }
+.extra-dd__opt:hover { background: var(--card-2); }
+.extra-dd__opt--on { background: color-mix(in srgb, var(--secondary) 12%, transparent); color: var(--secondary); font-weight: 700; }
+.extra-dd__check { flex: none; width: 13px; font-weight: 800; color: var(--secondary); }
+.extra-dd__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.extra-dd__price { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-soft); }
 
 /* --- Product multi-select on the extra form: grouped by category, with a search box --- */
 .product-pick { display: flex; flex-direction: column; gap: .6rem; max-height: 18rem; overflow-y: auto; margin-top: .5rem; padding-right: .2rem; }
@@ -350,3 +410,40 @@
     .catalog { grid-template-columns: 1fr; height: auto; }
     .catalog__cats-list { max-height: 40vh; }
 }
+
+/* --- Product edit modal: packed into 3-up rows and scaled down across the board (labels,
+   inputs, row-2, chips) versus the plain .field/.row-2 stack elsewhere on this page — small
+   enough that the whole form fits the modal without scrolling. Save/cancel live in the header
+   (see HeaderActions in the Modal markup) instead of a footer, so there's no bottom bar eating
+   into that height either. */
+.product-form .field { gap: .15rem; margin-bottom: .4rem; }
+.product-form .field > label { font-size: .72rem; }
+.product-form .row-2, .product-form .row-3 { gap: .4rem; }
+.product-form .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+.product-form .input, .product-form .select, .product-form textarea.input {
+    padding: .35rem .5rem;
+    font-size: .8rem;
+}
+.product-form .select { padding-right: 1.7rem; background-size: 13px; }
+.product-form textarea.input { min-height: unset; }
+.product-form .switch { font-size: .74rem; }
+.product-form .allergen-pick, .product-form .extra-pick { gap: .3rem; }
+.product-form .allergen-chip, .product-form .extra-chip { padding: .22rem .5rem; font-size: .72rem; }
+.product-form .allergen-chip__thumb { width: 14px; height: 14px; }
+
+/* --- Extra edit modal: same compact field/chip treatment as .product-form, plus a bordered
+   panel around the product picker so the category-filter + product-chip flow reads as one
+   connected control instead of two loose lists floating on the page background. */
+.extra-form .field { gap: .15rem; margin-bottom: .5rem; }
+.extra-form .field > label { font-size: .72rem; }
+.extra-form .row-2 { gap: .4rem; }
+.extra-form .input { padding: .35rem .5rem; font-size: .8rem; }
+.extra-form .allergen-pick { gap: .3rem; }
+.extra-form .allergen-chip { padding: .22rem .5rem; font-size: .72rem; }
+.extra-form .product-pick {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card-2);
+    padding: .6rem .7rem;
+}
+.extra-form .product-pick .empty { margin: .3rem 0; }

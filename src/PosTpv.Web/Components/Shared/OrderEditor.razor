@@ -76,9 +76,41 @@
                                 {
                                     <button class="productCard @(p.IsAvailable ? "" : "productCard--off") @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? "productCard--img" : "")"
                                             style="--pc:@p.Color; @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? $"background-image:url('{p.ImageUrl}')" : "")"
-                                            disabled="@(!p.IsAvailable || _busy)" @onclick="() => OnProductClick(p)" type="button">
-                                        <span class="productCard__price">@p.Price.ToString("N2")</span>
-                                        <span class="productCard__name"><span class="productCard__dot"></span>@p.Name</span>
+                                            disabled="@(!p.IsAvailable || _busy)" @onclick="() => OnProductClick(p)" type="button"
+                                            @onpointerdown="() => StartProductPress(p)" @onpointerdown:preventDefault="true"
+                                            @onpointerup="EndProductPress"
+                                            @onpointerleave="EndProductPress" @onpointercancel="EndProductPress"
+                                            @oncontextmenu="@(() => { })" @oncontextmenu:preventDefault="true">
+                                        @if (_pressedProductId == p.Id)
+                                        {
+                                            <span class="productCard__extras">
+                                                @if (_pressedExtrasLoading)
+                                                {
+                                                    <span class="productCard__extras-empty">@Loc.T("Loading extras…")</span>
+                                                }
+                                                else if (_pressedExtras.Count > 0)
+                                                {
+                                                    @foreach (var ex in _pressedExtras)
+                                                    {
+                                                        <span class="productCard__extra-row" @onclick="() => OnExtraClick(p, ex)" @onclick:stopPropagation="true"
+                                                              @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true">
+                                                            <span class="productCard__extra-name">@ex.Name</span>
+                                                            <span class="productCard__extra-price">＋@ex.Price.ToString("N2")</span>
+                                                        </span>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span class="productCard__extras-empty">@Loc.T("No extras available for this product.")</span>
+                                                }
+                                            </span>
+                                        }
+                                        @* Title/price stay put at the card's top edge whether the extras preview below is open or
+                                           not — never moves down — via order:-1 in CSS, same span either way. *@
+                                        <span class="productCard__footer">
+                                            <span class="productCard__name"><span class="productCard__name-text">@p.Name</span></span>
+                                            <span class="productCard__price">@p.Price.ToString("N2")</span>
+                                        </span>
                                         @if (!p.IsAvailable) { <span class="productCard__off">@Loc.T("Unavailable")</span> }
                                     </button>
                                 }
@@ -141,7 +173,7 @@
                                                 <div class="order__time-group-items">
                                                     @foreach (var it in timeGroup.Items)
                                                     {
-                                                        <div class="orderLine" id="orderline-@it.Id">
+                                                        <div class="orderLine" id="orderline-@it.Id" @onclick="() => ToggleLineExpanded(it)">
                                                             <div class="orderLine__main">
                                                                 @* Select armed: a checkbox at the very start of the line, left of the name —
                                                                    separate from the Invitación checkbox in orderLine__ctrl on the right. First
@@ -151,25 +183,31 @@
                                                                 {
                                                                     <button class="orderLine__select-box @(_selectedQty.ContainsKey(it.Id) ? "orderLine__select-box--on" : "")"
                                                                             title="@Loc.T("Select")" disabled="@_busy"
-                                                                            @onclick="() => ToggleItemSelected(it)" type="button">
+                                                                            @onclick="() => ToggleItemSelected(it)" @onclick:stopPropagation="true" type="button">
                                                                         @if (_selectedQty.ContainsKey(it.Id)) { <LucideIcon Name="check" Size="12" /> }
                                                                     </button>
                                                                     @if (it.Quantity > 1 && _selectedQty.TryGetValue(it.Id, out var selQty))
                                                                     {
-                                                                        <div class="orderLine__select-stepper">
+                                                                        <div class="orderLine__select-stepper" @onclick:stopPropagation="true">
                                                                             <button title="@Loc.T("Down")" disabled="@_busy" @onclick="() => SetSelectedQty(it, selQty - 1)" type="button">−</button>
                                                                             <span>@selQty</span>
                                                                             <button title="@Loc.T("Up")" disabled="@_busy" @onclick="() => SetSelectedQty(it, selQty + 1)" type="button">+</button>
                                                                         </div>
                                                                     }
                                                                 }
-                                                                <span class="orderLine__name">@it.ProductName</span>
-                                                                @if (it.IsInvited)
-                                                                {
-                                                                    <span class="orderLine__invited" title="@Loc.T("Invited — not charged")">@Loc.T("Invitation")</span>
-                                                                }
+                                                                <div class="orderLine__title">
+                                                                    <span class="orderLine__name">@it.ProductName</span>
+                                                                    @if (it.IsInvited)
+                                                                    {
+                                                                        <span class="orderLine__invited" title="@Loc.T("Invited — not charged")">@Loc.T("Invitation")</span>
+                                                                    }
+                                                                    @if (_expandedItemId != it.Id && it.Extras.Count > 0)
+                                                                    {
+                                                                        <span class="orderLine__extras">@string.Join(", ", it.Extras.Select(e => "＋ " + e.Name))</span>
+                                                                    }
+                                                                </div>
                                                                 <span class="spacer"></span>
-                                                                <div class="orderLine__ctrl">
+                                                                <div class="orderLine__ctrl" @onclick:stopPropagation="true">
                                                                     @* Invitación armed: a checkbox per line, so already-added items can be marked/unmarked
                                                                        as comped too — not just new taps from the product grid. *@
                                                                     @if (_invitationMode)
@@ -180,19 +218,67 @@
                                                                             @if (it.IsInvited) { <LucideIcon Name="check" Size="12" /> }
                                                                         </button>
                                                                     }
-                                                                    <button class="btn btn--icon btn--ghost" title="@Loc.T("Edit")" disabled="@_busy" @onclick="() => OpenEditItem(it)"><LucideIcon Name="pencil" Size="16" /></button>
                                                                     <button class="btn btn--icon btn--ghost" disabled="@_busy" @onclick="() => ChangeQty(it.Id, -1)">−</button>
                                                                     <span class="orderLine__qty">@it.Quantity</span>
                                                                     <button class="btn btn--icon btn--ghost" disabled="@_busy" @onclick="() => ChangeQty(it.Id, 1)">+</button>
                                                                 </div>
                                                             </div>
-                                                            @if (it.Extras.Count > 0)
-                                                            {
-                                                                <div class="orderLine__extras">@string.Join(", ", it.Extras.Select(e => "＋ " + e.Name))</div>
-                                                            }
                                                             @if (!string.IsNullOrWhiteSpace(it.Comment))
                                                             {
                                                                 <div class="orderLine__comment">“@it.Comment”</div>
+                                                            }
+                                                            @if (_expandedItemId == it.Id)
+                                                            {
+                                                                @* Replaces the old pencil → modal flow: expanding the line itself reveals
+                                                                   Extra/Comentario toggles, each opening its panel inline right below. *@
+                                                                <div class="orderLine__expand-actions" @onclick:stopPropagation="true">
+                                                                    <div class="orderLine__expand-btns">
+                                                                        <button class="orderLine__expand-btn @(_expandedShowComment ? "orderLine__expand-btn--active" : "")" type="button" title="@Loc.T("Comment")" @onclick="() => ToggleLineComment(it)">
+                                                                            <LucideIcon Name="message-square" Size="14" />
+                                                                        </button>
+                                                                        <button class="orderLine__expand-btn @(_expandedShowExtras ? "orderLine__expand-btn--active" : "")" type="button" title="@Loc.T("Extra")" @onclick="() => ToggleLineExtras(it)">
+                                                                            <LucideIcon Name="plus" Size="14" />
+                                                                        </button>
+                                                                    </div>
+                                                                    @if (_expandedShowComment)
+                                                                    {
+                                                                        <input class="orderLine__comment-inline input" @bind="_lineCommentText" @bind:event="oninput"
+                                                                               @onblur="() => SaveLineComment(it)"
+                                                                               placeholder="@Loc.T("No onion, well done, extra sauce…")" />
+                                                                    }
+                                                                </div>
+                                                                @if (_expandedShowExtras)
+                                                                {
+                                                                    <div class="orderLine__extras-panel" @onclick:stopPropagation="true">
+                                                                        @if (_lineExtrasLoading)
+                                                                        {
+                                                                            <span class="muted">@Loc.T("Loading extras…")</span>
+                                                                        }
+                                                                        else if (_lineExtras.Count == 0)
+                                                                        {
+                                                                            <span class="muted">@Loc.T("No extras available for this product.")</span>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            @foreach (var ex in _lineExtras)
+                                                                            {
+                                                                                <div class="orderLine__extra-opt @(_lineSelectedExtraIds.Contains(ex.Id) ? "orderLine__extra-opt--on" : "")" @onclick="() => ToggleLineExtra(it, ex)">
+                                                                                    <span>@ex.Name</span>
+                                                                                    <span class="orderLine__extra-opt-price">＋@ex.Price.ToString("N2")</span>
+                                                                                </div>
+                                                                            }
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                                @if (_expandedShowComment && _commentPresets.Count > 0)
+                                                                {
+                                                                    <div class="comment-presets" @onclick:stopPropagation="true">
+                                                                        @foreach (var preset in _commentPresets)
+                                                                        {
+                                                                            <button class="btn btn--ghost" type="button" @onclick="() => ApplyLineCommentPreset(it, preset.Text)">@preset.Text</button>
+                                                                        }
+                                                                    </div>
+                                                                }
                                                             }
                                                         </div>
                                                     }
@@ -272,60 +358,6 @@
     </div>
 }
 
-@* Edit an already-added line: extras and the kitchen note together in one dialog, same as
-   the customize modal in Pos.razor (OpenEditItem). *@
-<Modal Visible="_editingItem is not null" Title="@(_editingItem?.ProductName ?? string.Empty)" OnClose="() => _editingItem = null" CloseOnBackdrop="false">
-    <ChildContent>
-        @if (_editingItem is not null)
-        {
-            <div class="customize">
-                @if (_extrasLoading)
-                {
-                    <div class="customize__extras">
-                        <label>@Loc.T("Extras")</label>
-                        <span class="muted">@Loc.T("Loading extras…")</span>
-                    </div>
-                }
-                else if (_customizeExtras.Count > 0)
-                {
-                    <div class="customize__extras">
-                        <label>@Loc.T("Extras")</label>
-                        <div class="extra-chips">
-                            @foreach (var ex in _customizeExtras)
-                            {
-                                <button class="extra-chip @(_selectedExtraIds.Contains(ex.Id) ? "extra-chip--on" : "")"
-                                        @onclick="() => ToggleExtra(ex.Id)" type="button">
-                                    <span>@ex.Name</span>
-                                    <span class="extra-chip__price">＋@ex.Price.ToString("N2")</span>
-                                </button>
-                            }
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    <p class="muted">@Loc.T("No extras available for this product.")</p>
-                }
-
-                <div class="field">
-                    <label>@Loc.T("Note for the kitchen")</label>
-                    <textarea class="input" rows="3" @bind="_commentText" placeholder="@Loc.T("No onion, well done, extra sauce…")"></textarea>
-                </div>
-                <div class="comment-presets">
-                    @foreach (var preset in _commentPresets)
-                    {
-                        <button class="btn btn--ghost" type="button" @onclick="() => _commentText = preset.Text">@preset.Text</button>
-                    }
-                </div>
-            </div>
-        }
-    </ChildContent>
-    <Footer>
-        <button class="btn btn--ghost" @onclick="() => _editingItem = null">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" disabled="@(_busy || _extrasLoading)" @onclick="SaveItemEdits">@Loc.T("Save")</button>
-    </Footer>
-</Modal>
-
 <PaymentDialog Order="_order" Visible="_showPayment" OnClose="ClosePayment" OnConfirm="ConfirmPayment" />
 
 @* Trash button on a selection asks for confirmation before removing the selected units, instead
@@ -377,6 +409,15 @@
     private bool _resizeBound;
     private int? _scrollToItemId;
 
+    // Press-and-hold-to-preview-extras state for the product grid (see StartProductPress /
+    // TriggerProductPress / EndProductPress). _pressedProductId identifies which card is
+    // currently showing its extras preview, independent of _busy/selection state.
+    private int? _pressedProductId;
+    private bool _pressedExtrasLoading;
+    private List<ExtraDto> _pressedExtras = new();
+    private bool _suppressNextClick;
+    private CancellationTokenSource? _pressCts;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         // Order is not null only once the editor has actually rendered its grid, so bind on the
@@ -413,12 +454,16 @@
     private bool _confirmDeleteSelection;
 
     private List<CategoryCommentDto> _commentPresets = new();
-    private string? _commentText;
 
-    private OrderItemDto? _editingItem;
-    private List<ExtraDto> _customizeExtras = new();
-    private readonly HashSet<int> _selectedExtraIds = new();
-    private bool _extrasLoading;
+    // Tap-to-expand per-line editing (Extra/Comment), replacing the old pencil → modal flow — see
+    // ToggleLineExpanded/ToggleLineExtras/ToggleLineComment.
+    private int? _expandedItemId;
+    private bool _expandedShowExtras;
+    private bool _expandedShowComment;
+    private List<ExtraDto> _lineExtras = new();
+    private bool _lineExtrasLoading;
+    private readonly HashSet<int> _lineSelectedExtraIds = new();
+    private string? _lineCommentText;
 
     // Same Serve/Fire action-row state as OrderCard.razor (see Repartition below).
     private List<OrderItemDto> _drinks = new();
@@ -435,7 +480,7 @@
     {
         if (OrderId == _loadedOrderId) return;   // nothing changed
         _loadedOrderId = OrderId;
-        _editingItem = null;
+        _expandedItemId = null;
         _error = null;
         if (OrderId is null) { _order = null; return; }
 
@@ -602,6 +647,12 @@
     // button is pressed again, so several products can be invited in a row.
     private async Task OnProductClick(ProductDto p)
     {
+        // A held-past-the-delay press already showed the extras preview instead of adding the
+        // product — the pointerup/click pair that ends it shouldn't also add a line.
+        if (_suppressNextClick) { _suppressNextClick = false; return; }
+        // The extras preview stays pinned open after a press (see EndProductPress) until the
+        // product is tapped again — that tap both adds the line and closes the preview.
+        if (_pressedProductId == p.Id) _pressedProductId = null;
         if (_order is null) return;
         var orderId = _order.Id;
         var invited = _invitationMode;
@@ -610,6 +661,57 @@
         // so the last match by Id is unambiguously the line that was just added.
         _scrollToItemId = _order?.Items.Where(i => i.ProductId == p.Id).OrderByDescending(i => i.Id).FirstOrDefault()?.Id;
     }
+
+    // Tapping an extra row in the press-and-hold preview adds the product straight into the
+    // comanda with that extra already attached — one tap instead of add-then-open-customize.
+    private async Task OnExtraClick(ProductDto p, ExtraDto ex)
+    {
+        if (_order is null) return;
+        var orderId = _order.Id;
+        var invited = _invitationMode;
+        int? newItemId = null;
+        await Mutate(async () =>
+        {
+            var afterAdd = await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id, Merge: false, Invited: invited));
+            newItemId = afterAdd.Items.Where(i => i.ProductId == p.Id).OrderByDescending(i => i.Id).FirstOrDefault()?.Id;
+            return newItemId is null ? afterAdd : await Orders.SetItemExtrasAsync(newItemId.Value, new[] { ex.Id });
+        });
+        _pressedProductId = null;
+        _scrollToItemId = newItemId;
+    }
+
+    private const int ProductPressDelayMs = 450;
+
+    private void StartProductPress(ProductDto p)
+    {
+        _pressCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _pressCts = cts;
+        _ = TriggerProductPress(p, cts.Token);
+    }
+
+    private async Task TriggerProductPress(ProductDto p, CancellationToken ct)
+    {
+        try { await Task.Delay(ProductPressDelayMs, ct); }
+        catch (TaskCanceledException) { return; }
+        if (ct.IsCancellationRequested) return;
+
+        _pressedProductId = p.Id;
+        _suppressNextClick = true;
+        _pressedExtrasLoading = true;
+        _pressedExtras = new();
+        StateHasChanged();
+
+        try { _pressedExtras = await Products.GetExtrasAsync(p.Id); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _pressedExtrasLoading = false; }
+        StateHasChanged();
+    }
+
+    // Ends the hold gesture: a quick tap (released before the delay elapses) cancels the pending
+    // preview so OnProductClick's normal add-on-click still fires. Once the preview is already
+    // showing, releasing the pointer leaves it open — see OnProductClick for how it closes.
+    private void EndProductPress() => _pressCts?.Cancel();
 
     private void ToggleInvitation() => _invitationMode = !_invitationMode;
 
@@ -670,47 +772,69 @@
         _scrollToItemId = ids[0];
     }
 
-    // Edit an already-added line: extras and the kitchen note together, same as OpenEditItem
-    // in Pos.razor. Shows the dialog immediately, then fetches extras/comment presets.
-    private async Task OpenEditItem(OrderItemDto item)
+    // Tapping the product div itself arms/disarms its inline expand panel — a second tap on the
+    // same line (or switching to another) collapses it. Seeds the local extras/comment state from
+    // the line's current values so the panels open already showing what's saved.
+    private void ToggleLineExpanded(OrderItemDto item)
     {
-        _editingItem = item;
-        _customizeExtras = new();
-        _selectedExtraIds.Clear();
+        if (_expandedItemId == item.Id) { _expandedItemId = null; return; }
+        _expandedItemId = item.Id;
+        _expandedShowExtras = false;
+        _expandedShowComment = false;
+        _lineExtras = new();
+        _lineCommentText = item.Comment;
+        _lineSelectedExtraIds.Clear();
         foreach (var e in item.Extras.Where(e => e.ExtraId.HasValue))
-            _selectedExtraIds.Add(e.ExtraId!.Value);
-        _commentText = item.Comment;
-        _extrasLoading = true;
+            _lineSelectedExtraIds.Add(e.ExtraId!.Value);
+    }
+
+    private async Task ToggleLineExtras(OrderItemDto item)
+    {
+        _expandedShowExtras = !_expandedShowExtras;
+        _expandedShowComment = false;
+        if (!_expandedShowExtras || _lineExtras.Count > 0) return;
+
+        _lineExtrasLoading = true;
         StateHasChanged();
-
-        try
-        {
-            _customizeExtras = await Products.GetExtrasAsync(item.ProductId);
-            _commentPresets = await Categories.GetCommentsAsync(item.CategoryId);
-        }
+        try { _lineExtras = await Products.GetExtrasAsync(item.ProductId); }
         catch (Exception ex) { _error = ex.Message; }
-        finally { _extrasLoading = false; }
+        finally { _lineExtrasLoading = false; }
     }
 
-    private void ToggleExtra(int id)
+    private async Task ToggleLineComment(OrderItemDto item)
     {
-        if (!_selectedExtraIds.Add(id)) _selectedExtraIds.Remove(id);
+        _expandedShowComment = !_expandedShowComment;
+        _expandedShowExtras = false;
+        if (!_expandedShowComment) return;
+        try { _commentPresets = await Categories.GetCommentsAsync(item.CategoryId); }
+        catch (Exception ex) { _error = ex.Message; }
     }
 
-    private Task SaveItemEdits()
+    // Applies immediately, no separate Save step — consistent with every other line action in
+    // this editor (qty, invitation, course move). Toggling an extra here updates the line right away.
+    private Task ToggleLineExtra(OrderItemDto item, ExtraDto ex)
     {
-        if (_editingItem is null) return Task.CompletedTask;
-        var itemId = _editingItem.Id;
-        var extraIds = _selectedExtraIds.ToList();
-        var comment = _commentText;
+        if (!_lineSelectedExtraIds.Add(ex.Id)) _lineSelectedExtraIds.Remove(ex.Id);
+        var extraIds = _lineSelectedExtraIds.ToList();
+        return Mutate(() => Orders.SetItemExtrasAsync(item.Id, extraIds));
+    }
 
+    private Task SaveLineComment(OrderItemDto item)
+    {
+        if (_order is null) return Task.CompletedTask;
+        var comment = _lineCommentText;
+        var orderId = _order.Id;
         return Mutate(async () =>
         {
-            var updated = await Orders.SetItemExtrasAsync(itemId, extraIds);
-            await Orders.SetItemCommentAsync(itemId, comment);
-            _editingItem = null;
-            return updated is null ? null : await Orders.GetByIdAsync(updated.Id);
+            await Orders.SetItemCommentAsync(item.Id, comment);
+            return await Orders.GetByIdAsync(orderId);
         });
+    }
+
+    private Task ApplyLineCommentPreset(OrderItemDto item, string text)
+    {
+        _lineCommentText = text;
+        return SaveLineComment(item);
     }
 
     private Task ChangeQty(int itemId, int delta) =>

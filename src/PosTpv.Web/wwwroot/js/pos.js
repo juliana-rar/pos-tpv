@@ -64,15 +64,12 @@ window.posOrderResize = function (handleEl, containerEl, min, max) {
     });
 };
 
-// Keeps each time-group's HH:mm label (the .order__time-group-time-pin inside it) centred in
-// whatever part of its own group is currently visible, in the comanda editor (OrderEditor.razor)
-// — see the long comment on .order__time-group-time-pin in app.css for why this can't just be
-// CSS position:sticky: most groups here (e.g. four separate Drinks time-groups, 1-2 lines each)
-// are shorter than the scroll viewport, so a sticky offset never falls inside their own (tiny)
-// containing block and the label just scrolls past normally. Re-run on every scroll of any
-// scrolling ancestor inside rootEl (both the outer .order__items panel and a course's own
-// .order__group-lines--scroll once it outgrows 6 lines), and after every render (call this from
-// OnAfterRenderAsync) since adding/removing lines changes group heights.
+// Keeps each order-time group's time label pinned to the vertically-centered line of its own
+// group while that group is scrolled through, instead of scrolling off with the rest of the
+// text — approximates CSS position:sticky for groups shorter than the scroll viewport (where a
+// sticky offset would never engage). Re-run on every scroll of any scrolling ancestor inside
+// rootEl and after every render (call this from OnAfterRenderAsync) since adding/removing lines
+// changes group heights.
 window.posStickyTimeLabels = function (rootEl) {
     if (!rootEl) return;
 
