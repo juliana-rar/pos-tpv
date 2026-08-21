@@ -6,8 +6,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: .35rem;
-    padding: .6rem 1rem;
+    gap: .15rem;
+    padding: .2rem .8rem;
     flex: none;
 }
 /* Narrower than .resv__head-date on purpose — full date-pill width left too much empty
@@ -17,9 +17,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: .15rem;
-    width: 100px;
-    padding: 3px;
+    gap: .1rem;
+    width: 76px;
+    padding: 2px;
     border: 1px solid var(--border);
     border-radius: 999px;
     background: var(--card-2);
@@ -129,33 +129,13 @@
 .zoom-group--sm { padding: 1px; gap: 0; }
 .zoom-group--sm .btn--icon { width: 18px; height: 18px; }
 .zoom-group--sm .zoom-group__level { width: 2.1rem; font-size: .62rem; }
-.legend__item { display: inline-flex; align-items: center; gap: .3rem; font-size: .74rem; line-height: 1; color: var(--text-soft); font-weight: 600; }
-.dot { width: .55rem; height: .55rem; border-radius: 50%; display: inline-block; }
-.dot--available { background: var(--success); }
-.dot--occupied { background: var(--warning); }
-.dot--reserved { background: var(--secondary); }
-
 .floor-panel .floor-notice, .floor-panel .floor-hint { margin: 0; }
 
-/* Anchors the legend and the toolbar to the map's own corners (position:relative here
-   gives them that reference frame) instead of each taking its own row above the map —
-   so .floor below fills the whole panel and reads as a bigger map. */
+/* Anchors the toolbar to the map's own corner (position:relative here gives it that reference
+   frame) instead of taking its own row above the map — so .floor below fills the whole panel
+   and reads as a bigger map. Free/Occupied/Reserved used to have their own legend pill here too,
+   dropped since the status halo colours on the tables themselves already read clearly without one. */
 .floor-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
-.floor-wrap > .legend {
-    position: absolute;
-    left: .6rem;
-    top: .6rem;
-    z-index: 4;
-    display: flex;
-    gap: .6rem;
-    flex-wrap: wrap;
-    padding: .3rem .6rem;
-    background: color-mix(in srgb, var(--card) 90%, transparent);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-sm);
-    pointer-events: none;
-}
 .floor-wrap > .toolbar--tables {
     position: absolute;
     top: .6rem;
@@ -895,9 +875,23 @@
        default tap-highlight — a solid blue rectangle covering the whole element — the instant
        before OrderEditor opens, since .tbl has no tabindex/focus styling of its own to override. */
     -webkit-tap-highlight-color: transparent;
+    /* The lacquered bevel ring is split into 4 directional inset shadows (top/bottom/left/right)
+       instead of one uniform `inset 0 0 0 3px` — offset-only, zero blur/spread, each one draws a
+       solid strip on just its own edge (e.g. `inset 0 3px 0 0` = a 3px strip on the TOP edge only).
+       That lets --ring-left/--ring-right be dropped to transparent for a joined member's shared
+       seam (see .tbl--grouped[data-seam]) without touching its outer edges. --ring-color/--ring-gloss
+       are overridden wholesale by .tbl--colored/.tbl--colored-img instead of redeclaring box-shadow
+       there, so the same seam-hiding trick keeps working no matter which tabletop finish is active. */
+    --ring-color: color-mix(in srgb, black 7%, var(--card-2));
+    --ring-gloss: rgba(255, 255, 255, .4);
+    --ring-left: var(--ring-color);
+    --ring-right: var(--ring-color);
     box-shadow:
-        inset 0 0 0 3px color-mix(in srgb, black 7%, var(--card-2)),
-        inset 0 2px 2px rgba(255, 255, 255, .4),
+        inset 3px 0 0 0 var(--ring-left),
+        inset -3px 0 0 0 var(--ring-right),
+        inset 0 3px 0 0 var(--ring-color),
+        inset 0 -3px 0 0 var(--ring-color),
+        inset 0 2px 2px var(--ring-gloss),
         0 1px 2px rgba(0, 0, 0, .12),
         0 10px 14px -8px rgba(0, 0, 0, .35);
     transition: box-shadow var(--transition), outline-color var(--transition), transform var(--transition);
@@ -933,6 +927,11 @@
    --tfg (set inline in TableStyle only for dark custom accent colours) overrides the default
    colours above so labels stay legible on a black/dark table instead of going dark-on-dark. */
 .tbl__total { font-size: .64rem; font-weight: 700; color: var(--tfg, var(--primary)); margin-bottom: .35rem; }
+/* Inside a joined group's badge (see .tbl__group below), the customer name sits right above the
+   group's own name/number instead — the .35rem clearance above exists for the single-table case
+   (keeping it clear of .tbl__resv hanging right underneath), which doesn't apply here since the
+   group's own reservation badge is a separate element, not stacked directly below this. */
+.tbl__group .tbl__total { margin-bottom: 0; }
 
 /* ---- Edit mode ------------------------------------------------------------ */
 .floor-hint { margin: 0 0 .8rem; font-size: .85rem; }
@@ -1009,6 +1008,26 @@
 }
 .tbl__delete:hover { color: var(--danger); border-color: var(--danger); }
 
+/* Remove-from-reservation (top-right corner) — same spot as .tbl__delete above, but shown
+   outside layout-edit mode: only on the one table just clicked while it carries a reservation
+   (see _selectedAssignedTableId in Tables.razor). Red from the start, unlike .tbl__delete's
+   hover-only red, since this is already a single deliberate click away from removing something. */
+.tbl__unassign {
+    position: absolute;
+    top: -10px; right: -10px;
+    width: 24px; height: 24px;
+    padding: 0;
+    display: grid; place-items: center;
+    border: 1px solid var(--danger);
+    border-radius: 50%;
+    background: var(--card);
+    color: var(--danger);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    z-index: 6;
+}
+.tbl__unassign:hover { background: var(--danger); color: #fff; }
+
 /* Resize handle (bottom-right corner) */
 .tbl__handle--resize {
     position: absolute;
@@ -1057,6 +1076,18 @@
     outline: none;
 }
 .tbl--grouped:hover { box-shadow: var(--shadow-lg); z-index: 4; }
+/* Drops the border and ring on whichever side(s) butt up against a neighbour (data-seam, set in
+   Tables.razor from each member's position in the group) so two joined members read as one
+   uninterrupted tabletop instead of showing a seam where they meet. Attribute selectors outrank
+   the plain-class rules above/.tbl--colored's --ring-color override, so this always wins. */
+.tbl--grouped[data-seam="left"], .tbl--grouped[data-seam="both"] {
+    border-left-color: transparent;
+    --ring-left: transparent;
+}
+.tbl--grouped[data-seam="right"], .tbl--grouped[data-seam="both"] {
+    border-right-color: transparent;
+    --ring-right: transparent;
+}
 /* Custom per-table accent (e.g. flag a VIP table, or paint-mode) — retints the whole tabletop
    surface in the chosen colour, same sheen/gradient shape as the neutral .tbl background so it
    still reads as a tabletop material rather than a flat colour swatch. Comes after .tbl (same
@@ -1074,12 +1105,11 @@
             var(--tcolor) 62%,
             color-mix(in srgb, black 18%, var(--tcolor)) 100%);
     /* Inset bevel ring tinted to the table's own colour (darker shade) instead of the base .tbl's
-       neutral grey ring, so the bevel reads as the edge of the same coloured material. */
-    box-shadow:
-        inset 0 0 0 3px color-mix(in srgb, black 16%, var(--tcolor)),
-        inset 0 2px 2px rgba(255, 255, 255, .2),
-        0 1px 2px rgba(0, 0, 0, .12),
-        0 10px 14px -8px rgba(0, 0, 0, .35);
+       neutral grey ring, so the bevel reads as the edge of the same coloured material. Overrides
+       the --ring-* custom properties .tbl's box-shadow is built from (see .tbl) rather than
+       redeclaring box-shadow itself, so a joined+coloured table's seam-hiding still works. */
+    --ring-color: color-mix(in srgb, black 16%, var(--tcolor));
+    --ring-gloss: rgba(255, 255, 255, .2);
 }
 /* Same slot as .tbl--colored above but for an uploaded-image accent (--timg, set in TableStyle
    only when the colour value isn't a hex code) — the tabletop becomes the image itself, cover-
@@ -1091,11 +1121,10 @@
     background:
         linear-gradient(rgba(0, 0, 0, .2), rgba(0, 0, 0, .38)),
         var(--timg) center / cover no-repeat;
-    box-shadow:
-        inset 0 0 0 3px rgba(0, 0, 0, .3),
-        inset 0 2px 2px rgba(255, 255, 255, .12),
-        0 1px 2px rgba(0, 0, 0, .12),
-        0 10px 14px -8px rgba(0, 0, 0, .35);
+    /* See .tbl--colored above — overrides the --ring-* custom properties instead of box-shadow
+       itself, so joined+image-accented tables also get the seam-hiding treatment. */
+    --ring-color: rgba(0, 0, 0, .3);
+    --ring-gloss: rgba(255, 255, 255, .12);
 }
 /* One per seat, ringed around the table's own edge (see ChairStyles in Tables.razor) so a
    table with 6 seats visibly reads as bigger/busier than one with 2 — closer to a real floor
@@ -1243,6 +1272,15 @@
     white-space: nowrap;
     box-shadow: var(--shadow-sm);
 }
+/* Joined-group variant: a sibling of the .tbl elements (like .tbl__group above) instead of a
+   child of the anchor member, positioned via left/top set inline from the group's own bounding
+   box (see GroupBottomCenterStyle) so it lands centred under the whole merged row rather than
+   just the anchor's own narrower box. `bottom` has to be cancelled since the inline `top` and the
+   base rule's `bottom: -11px` would otherwise both apply to an auto-height element. */
+.tbl__resv--group {
+    bottom: auto;
+    z-index: 6;
+}
 
 /* Side drawer */
 /* Left column: the date-picker box and the reservations list box, stacked as two separate
@@ -1281,38 +1319,34 @@
     color: var(--text-soft);
     white-space: nowrap;
 }
-/* Compact Lunch/Dinner toggle to the left of "New reservation" — click the active one
-   again to clear the filter, so no separate "All" option is needed in this tight space. */
+/* Compact Lunch/Dinner toggle, nested inside .resv__day-nav to its left — click the
+   active one again to clear the filter, so no separate "All" option is needed. */
 .resv__head-periods { margin: 0; padding: 2px; flex: none; }
-.resv__head-periods .tabs__opt { padding: .32rem .5rem; }
+.resv__head-periods .tabs__opt { padding: .18rem .3rem; }
 .resv__new-btn { flex: none; box-shadow: var(--shadow-sm); }
 
 /* Day nav (.resv__day-nav / .resv__head-date) and the small icon actions under it
    (.resv__stats-btn) now live in app.css — shared with the reservations dashboard. */
 
-.resv__list { flex: 1 1 auto; overflow: auto; padding: .6rem 1rem 1rem; display: flex; flex-direction: column; gap: .4rem; }
+.resv__list { flex: 1 1 auto; overflow: auto; padding: .5rem .8rem .8rem; display: flex; flex-direction: column; gap: .35rem; }
 
 .resv-card {
-    padding: .4rem .55rem;
+    padding: .35rem .55rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--card-2);
     transition: box-shadow var(--transition);
+    font-size: .95em;
 }
 .resv-card--active { box-shadow: 0 0 0 2px var(--text); }
-.resv-card__top { display: flex; align-items: center; gap: .4rem; font-size: .8rem; }
-.resv-card__top .btn--icon { flex: none; width: 24px; height: 24px; padding: 0; }
-.resv-card__settings-btn--on { background: var(--card); color: var(--text); }
+.resv-card__top { display: flex; align-items: center; gap: .35rem; font-size: .8rem; }
+.resv-card__top .btn--icon { flex: none; width: 22px; height: 22px; padding: 0; }
 .resv-card__period { display: inline-flex; color: var(--text-soft); }
 .resv-card__name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.resv-card__meta { display: flex; align-items: center; gap: .2rem; flex-wrap: wrap; font-size: .7rem; margin: .2rem 0 .35rem; }
+.resv-card__meta { display: flex; align-items: center; gap: .2rem; flex-wrap: wrap; font-size: .7rem; margin: .18rem 0 .3rem; }
 .resv-card__stat { display: inline-flex; align-items: center; gap: .1rem; }
-/* Reassign/Unassign: much smaller than the card's other .btn--sm actions (Seat, Mark as
-   left), so both fit on the same line as those instead of wrapping to a second row. Grouped
-   in their own flex span so that if the line does run out of room, the pair wraps together
-   instead of splitting Unassign onto its own row away from Reassign. */
-.resv-card__assign-actions { display: inline-flex; flex: none; gap: .2rem; }
-.resv-card__mini-btn { flex: none; padding: .1rem .35rem; font-size: .6rem; font-weight: 600; }
+.resv-card__meta .btn--sm { padding: .22rem .5rem; font-size: .72rem; }
+.resv-card .badge { padding: .18rem .48rem; font-size: .7rem; }
 /* Status badge doubles as a <select> so it can be changed right from the card,
    without opening the edit modal — same pill look as .badge, no native chrome. */
 .resv-card__status {
@@ -1330,6 +1364,16 @@
     outline: none;
     box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 35%, transparent);
 }
+/* "Pending" has no semantic badge color (unlike Confirmed/Seated/Finished/Cancelled), so on
+   its own it read as flat muted text rather than something clickable. A visible border + resting
+   shadow gives it the same tappable-button weight as the rest of the card's controls. */
+.badge--pending {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+}
+.resv-card__status.badge--pending:hover { filter: none; background: var(--card-2); }
 
 /* Custom status dropdown: a plain <select>'s option list is native browser chrome and can't
    follow the app's light/dark theme, so this is a small card-styled menu instead (same pattern
@@ -1533,11 +1577,22 @@
 .phone-prefix__opt:hover { background: var(--card-2); }
 .phone-prefix__opt--on { background: color-mix(in srgb, var(--primary) 14%, transparent); font-weight: 700; }
 
-/* ---- Reservation-taking policy: gear button + dropdown, left of the "+" new-reservation btn */
-.resv-policy { position: relative; }
+/* ---- Reservation-taking policy: colour-coded status dot + dropdown, right of the "Reservations"
+   title (green = open, yellow = phone only, red = closed — see PolicyDotColor) ---------------- */
+.resv-policy { position: relative; flex: none; }
+.resv-policy-dot {
+    width: 11px; height: 11px;
+    border: none; border-radius: 50%;
+    padding: 0;
+    background: var(--dot);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--dot) 30%, transparent);
+    cursor: pointer;
+    transition: transform var(--transition);
+}
+.resv-policy-dot:hover { transform: scale(1.2); }
 .resv-policy__backdrop { position: fixed; inset: 0; z-index: 20; }
 .resv-policy__menu {
-    position: absolute; top: calc(100% + .3rem); right: 0; z-index: 21;
+    position: absolute; top: calc(100% + .3rem); left: 0; z-index: 21;
     width: 230px; max-width: 75vw;
     display: flex; flex-direction: column; gap: .2rem;
     padding: .4rem;
@@ -1637,7 +1692,7 @@
     transition: transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition);
 }
 .tbl-chip:hover { transform: translateY(-1px); }
-.tbl-chip--sm { padding: .12rem .5rem; font-size: .72rem; font-weight: 700; background: var(--card); border-color: var(--border); }
+.tbl-chip--sm { padding: .12rem .5rem; font-size: .7rem; font-weight: 700; background: var(--card); border-color: var(--border); }
 /* "Unassigned" as an actionable chip (dashed border, muted text) instead of plain static text —
    reads as a prompt to tap and pick a table rather than a real assigned-table pill. */
 .tbl-chip--unassigned {
@@ -1648,7 +1703,28 @@
 .tbl-chip--unassigned:hover { color: var(--text); border-color: var(--text-soft); }
 /* Confirms the in-progress table pick right where the just-picked chip(s) are, instead of only
    via the floating "Done" hint above the map. */
-.resv-card__confirm-assign { width: 22px; height: 22px; padding: 0; }
+.resv-card__confirm-assign { width: 21px; height: 21px; padding: 0; }
+
+/* Wraps a single sidebar table chip so its quick-remove X (below) can be positioned relative to
+   just that chip, not the whole .resv-card__tables row. */
+.tbl-chip-wrap { position: relative; display: inline-flex; }
+/* Same remove-from-reservation affordance as the floor map's .tbl__unassign, scaled down to fit
+   a small sidebar chip — revealed on the one chip just clicked (see _selectedAssignedTableId). */
+.tbl-chip__unassign {
+    position: absolute;
+    top: -6px; right: -6px;
+    width: 12px; height: 12px;
+    padding: 0;
+    display: grid; place-items: center;
+    border: 1px solid var(--danger);
+    border-radius: 50%;
+    background: var(--card);
+    color: var(--danger);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    z-index: 2;
+}
+.tbl-chip__unassign:hover { background: var(--danger); color: #fff; }
 
 .field-hint { display: flex; align-items: center; gap: .4rem; margin: -.5rem 0 .9rem; font-size: .8rem; }
 

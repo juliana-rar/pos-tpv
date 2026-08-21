@@ -8,6 +8,21 @@ public record ReservationDto(
     ReservationStatus Status, IReadOnlyList<int> TableIds, IReadOnlyList<string> TableNames,
     int ChildrenCount, int HighChairCount);
 
+/// <summary>Narrow, anonymous-facing request contract for the public reservation intake endpoint —
+/// deliberately excludes Id/Status/TableIds/Color so an external caller can only ever create a
+/// brand-new Pending, tableless reservation, never edit or assign an existing one.</summary>
+public class PublicReservationRequestDto
+{
+    public string CustomerName { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public DateTime Date { get; set; }
+    public TimeOnly Time { get; set; }
+    public int PartySize { get; set; } = 2;
+    public int ChildrenCount { get; set; }
+    public int HighChairCount { get; set; }
+    public string? Comments { get; set; }
+}
+
 public class ReservationFormDto
 {
     public int Id { get; set; }

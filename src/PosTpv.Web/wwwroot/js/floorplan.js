@@ -142,9 +142,11 @@ function onDown(e) {
         ? Array.from(container.querySelectorAll('.tbl[data-group="' + groupId + '"]'))
             .map(g => ({ el: g, x: num(g.dataset.x), y: num(g.dataset.y) }))
         : [{ el, x, y }];
-    // The "Joined" badge floats at the group's midpoint — drag it along too, live, instead of
-    // leaving it stranded until the next server render (which only happens on Save layout).
+    // The "Joined" badge floats at the group's midpoint, and the reservation-time badge (if any)
+    // hangs off its bottom edge — drag both along too, live, instead of leaving them stranded
+    // until the next server render (which only happens on Save layout).
     const badge = (mode === 'drag' && groupId) ? container.querySelector('.tbl__group[data-group="' + groupId + '"]') : null;
+    const resvBadge = (mode === 'drag' && groupId) ? container.querySelector('.tbl__resv--group[data-group="' + groupId + '"]') : null;
 
     // Resizing one member of a joined row also has to keep the row looking like one table:
     // JoinTablesAsync gives every member the same height and snaps them edge-to-edge, and
@@ -164,7 +166,7 @@ function onDown(e) {
     }
 
     action = {
-        el, mode, groupEls, badge, heightSyncEls, widthFollowers,
+        el, mode, groupEls, badge, resvBadge, heightSyncEls, widthFollowers,
         startX: e.clientX, startY: e.clientY,
         x, y, w, h, rot: num(el.dataset.rot),
         // Table centre in viewport space (for rotation) — canvas-space x/y/w/h need scaling by
@@ -180,7 +182,7 @@ function onDown(e) {
 
 function onMove(e) {
     if (!action) return;
-    const { el, mode, groupEls, badge } = action;
+    const { el, mode, groupEls, badge, resvBadge } = action;
     // Mouse deltas are screen pixels; the canvas is scaled by `zoom`, so a screen pixel is
     // worth 1/zoom canvas pixels (zoomed in → each screen px is a smaller canvas move).
     const dx = (e.clientX - action.startX) / zoom;
@@ -205,6 +207,16 @@ function onMove(e) {
             const bottom = Math.max(...groupEls.map(g => num(g.el.dataset.y) + num(g.el.dataset.h)));
             badge.style.left = ((left + right) / 2) + 'px';
             badge.style.top = ((top + bottom) / 2) + 'px';
+        }
+        if (resvBadge) {
+            // Matches GroupBottomCenterStyle in Tables.razor: horizontally centred on the group's
+            // bounding box but pinned to its bottom edge (not the true centre, unlike the badge
+            // above), same offset the single-table reservation badge always hung at.
+            const left = Math.min(...groupEls.map(g => num(g.el.dataset.x)));
+            const right = Math.max(...groupEls.map(g => num(g.el.dataset.x) + num(g.el.dataset.w)));
+            const bottom = Math.max(...groupEls.map(g => num(g.el.dataset.y) + num(g.el.dataset.h)));
+            resvBadge.style.left = ((left + right) / 2) + 'px';
+            resvBadge.style.top = bottom + 'px';
         }
     } else if (mode === 'resize') {
         const nw = Math.max(MIN, snap(action.w + dx));

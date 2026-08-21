@@ -116,6 +116,13 @@ window.posStickyTimeLabels = function (rootEl) {
     }
 };
 
+// Opens the native picker for a date input. Used by the custom calendar icon next to the
+// reservations day input — its own ::-webkit-calendar-picker-indicator reserves a fixed gap
+// that CSS can't tighten, so that icon is hidden and this one drives the same input instead.
+window.posShowDatePicker = function (el) {
+    el?.showPicker?.();
+};
+
 // Play a short chime when the kitchen marks an order ready (best-effort; ignored if blocked).
 window.posBeep = function () {
     try {

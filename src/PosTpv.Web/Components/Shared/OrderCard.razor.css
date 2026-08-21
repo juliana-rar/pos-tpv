@@ -15,14 +15,22 @@
    clipped by this element's overflow-y:auto (which forces overflow-x to clip too), since the
    card's 1rem padding lives one level up on .order-card, not here. */
 .order-card__body { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -.7rem; padding: 0 .7rem; --batch-bleed: .7rem; }
+/* Centered label with a rule flanking it on the same line (::before/::after as equal-flex
+   line segments either side of the label), instead of a full-width border sitting above
+   a left-aligned label. */
 .order-card__group {
-    display: flex; align-items: center; gap: .35rem;
+    display: flex; align-items: center; justify-content: center;
     font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
     color: var(--primary);
-    margin-top: .1rem; padding-top: .1rem;
-    border-top: 1px solid var(--border);
+    margin-top: .15rem; padding-top: 0;
 }
-.order-card__body > .order-card__group:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.order-card__group::before, .order-card__group::after { content: ""; flex: 1 1 auto; height: 1px; background: var(--border); }
+/* The icon is pulled out of flow and anchored to the label's left edge instead of sitting
+   inline before the text, so the span the two rules center on is exactly the text's own
+   width — otherwise the icon's width tags along and drags the readable text off-center. */
+.order-card__group-label { position: relative; margin: 0 .4rem; }
+.order-card__group-label svg { position: absolute; right: 100%; margin-right: .35rem; top: 50%; transform: translateY(-50%); }
+.order-card__body > .order-card__group:first-child { margin-top: 0; }
 .order-card__lines { display: flex; flex-direction: column; gap: .06rem; padding-top: .06rem; padding-bottom: .03rem; }
 /* Past 7 drinks the list scrolls on its own instead of pushing the food sections further down.
    Full-bleed on both sides: cancels .order-card's own side padding (negative margin) then

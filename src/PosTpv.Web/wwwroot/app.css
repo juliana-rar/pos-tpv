@@ -302,24 +302,48 @@ a { color: var(--primary); text-decoration: none; }
 /* ---- Reservations day picker (used on /tables and the /reservations dashboard) --- */
 /* align-self: center keeps this sized to its content (not stretched full-width) even
    when its parent is a stretching flex column, so it looks identical on both screens. */
-.resv__day-nav { display: flex; align-items: center; justify-content: center; gap: .5rem; align-self: center; }
-.resv__day-nav .btn--icon { width: 32px; height: 32px; border-radius: 999px; }
-.resv__head-date {
-    max-width: 160px;
-    padding: .55rem .8rem;
-    font-size: .9rem;
-    font-weight: 600;
-    text-align: center;
-    border-radius: 999px;
-    box-shadow: var(--shadow-sm);
-    /* text-align alone doesn't centre a native date input — its digits and calendar icon
-       are internal flex children that pack to flex-start by default, so without an explicit
-       justify-content they hug the left edge regardless of text-align. */
+.resv__day-nav { display: flex; align-items: center; justify-content: center; gap: .3rem; align-self: center; }
+.resv__day-nav .btn--icon { width: 21px; height: 21px; border-radius: 999px; }
+/* Groups the Lunch/Dinner toggle with the date input into a single pill so the sun/moon
+   icons sit right next to the date digits, inside the same box — not as a separate pill
+   beside it. The pill chrome (background/border-radius/box-shadow) lives here on the
+   wrapper; the tabs and the input below are stripped of their own so only one pill shows. */
+.resv__head-date-wrap {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: .35rem;
+    gap: .2rem;
+    padding: .2rem .45rem;
+    border-radius: 999px;
+    box-shadow: var(--shadow-sm);
 }
+.resv__head-date-wrap .resv__head-periods { border: none; background: transparent; padding: 0; }
+/* No display:flex/fixed width here on purpose — forcing the native date control into a flex
+   box breaks its internal intrinsic sizing in Chromium and makes it overflow past whatever
+   width is set, which read as the date being "cut off". Left unset (auto), the control's
+   own layout is already left-aligned and sized tightly to its content. */
+.resv__head-date {
+    padding: 0;
+    font-size: .68rem;
+    font-weight: 600;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+}
+/* Chromium reserves a fixed layout gap in front of the native calendar icon that no amount of
+   margin/padding/width on ::-webkit-calendar-picker-indicator can close — it's baked into the
+   control's internal (non-stylable) layout. Hidden here entirely; .resv__head-date-icon below
+   is a real button standing in for it, right next to the digits with a gap we control. */
+.resv__head-date::-webkit-calendar-picker-indicator { display: none; }
+.resv__head-date-icon {
+    display: flex; align-items: center; justify-content: center;
+    flex: none;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-soft);
+    cursor: pointer;
+}
+.resv__head-date-icon:hover { color: var(--text); }
 /* Small, unobtrusive icon actions centred right under the date, on both screens.
    Pulled up to sit right under the date input like .tables-datebar's tight .35rem
    gap — the panel's own flex gap (1.1rem, shared with the tabs below) is too wide. */
@@ -333,12 +357,12 @@ a { color: var(--primary); text-decoration: none; }
     background: var(--card-2);
 }
 .resv__stats-btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: .3rem;
+    display: inline-flex; align-items: center; justify-content: center; gap: .2rem;
     border: none; cursor: pointer;
     background: transparent;
     color: var(--text-soft);
-    font-size: .68rem; font-weight: 600;
-    padding: .3rem .55rem;
+    font-size: .54rem; font-weight: 600;
+    padding: .14rem .32rem;
     border-radius: 999px;
     transition: background var(--transition), color var(--transition);
 }

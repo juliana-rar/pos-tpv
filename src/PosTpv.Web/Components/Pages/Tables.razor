@@ -262,6 +262,7 @@
                  data-locked="@(t.IsLocked ? "true" : "false")"
                  data-shape="@((int)t.Shape)"
                  data-group="@(t.GroupId?.ToString() ?? "")"
+                 data-seam="@GroupSeamAttr(t)"
                  style="@TableStyle(t)"
                  @onclick="() => OnTableClick(t)"
                  @oncontextmenu:preventDefault="true"
@@ -287,18 +288,25 @@
                     {
                         <span class="tbl__name">@t.Name</span>
                         <span class="tbl__seats">@t.Seats<LucideIcon Name="user" Size="12" /></span>
-                    }
-                    @if (t.GroupId is null || IsGroupAnchor(t))
-                    {
                         @if (rv is not null)
                         {
                             <span class="tbl__total">@rv.CustomerName</span>
                         }
                     }
                 </div>
-                @if (!_editing && rv is not null)
+                @* Grouped tables skip this entirely — see the .tbl__resv--group badge below,
+                   rendered once per group and centred on the whole joined row instead of hanging
+                   off whichever member happens to be the anchor. *@
+                @if (!_editing && rv is not null && t.GroupId is null)
                 {
                     <span class="tbl__resv" title="@rv.CustomerName"><LucideIcon Name="@(rv.Status == ReservationStatus.Seated ? "armchair" : PeriodIcon(rv.Time))" Size="14" /> @rv.Time.ToString("HH:mm")</span>
+                }
+                @* Revealed by a first click on this same assigned table (see OnTableClick) instead of
+                   showing on every reserved table all the time — a second click on the table itself
+                   still opens its comanda as usual; this X only removes the table from the reservation. *@
+                @if (!_editing && rv is not null && _selectedAssignedTableId == t.Id)
+                {
+                    <button type="button" class="tbl__unassign" title="@Loc.T("Remove from reservation")" @onclick="() => RemoveTableFromReservation(t)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
                 }
                 @if (_editing)
                 {
@@ -333,10 +341,19 @@
            dragged, and carries the group's own name now that no single member shows it. *@
         @foreach (var gid in visible.Where(t => t.GroupId.HasValue).Select(t => t.GroupId!.Value).Distinct())
         {
+            var grv = GroupReservation(gid, resByTable);
             <span class="tbl__group" data-group="@gid" style="@GroupCenterStyle(gid, visible) --grp:@GroupColor(gid)">
+                @if (grv is not null)
+                {
+                    <span class="tbl__total">@grv.CustomerName</span>
+                }
                 <span class="tbl__group-name">@GroupDisplayName(gid)</span>
                 <span class="tbl__group-seats"><LucideIcon Name="link" Size="15" /> @GroupSeats(gid)<LucideIcon Name="user" Size="14" /></span>
             </span>
+            @if (!_editing && grv is not null)
+            {
+                <span class="tbl__resv tbl__resv--group" data-group="@gid" style="@GroupBottomCenterStyle(gid, visible)" title="@grv.CustomerName"><LucideIcon Name="@(grv.Status == ReservationStatus.Seated ? "armchair" : PeriodIcon(grv.Time))" Size="14" /> @grv.Time.ToString("HH:mm")</span>
+            }
         }
         @foreach (var d in VisibleDecor)
         {
@@ -360,25 +377,32 @@
         else if (visible.Count == 0) { <p class="empty">@Loc.T("No tables in this zone.")</p> }
     </div>
     </div>
-    @* Floats over the map's bottom-right corner instead of sharing the toolbar's line. *@
-    <div class="legend">
-        <span class="legend__item"><i class="dot dot--available"></i>@Loc.T("Free")</span>
-        <span class="legend__item"><i class="dot dot--occupied"></i>@Loc.T("Occupied")</span>
-        <span class="legend__item"><i class="dot dot--reserved"></i>@Loc.T("Reserved")</span>
-    </div>
     </div>
     </div>
 
         <div class="resv-col">
         <div class="tables-datebar card">
             <div class="resv__day-nav">
-                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Previous day")" @onclick="() => ShiftDay(-1)"><LucideIcon Name="arrow-left" Size="15" /></button>
-                <input type="date" class="input resv__head-date" @bind="_reserveDate" @bind:after="LoadReservations" />
-                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Next day")" @onclick="() => ShiftDay(1)"><LucideIcon Name="arrow-right" Size="15" /></button>
+                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Previous day")" @onclick="() => ShiftDay(-1)"><LucideIcon Name="arrow-left" Size="11" /></button>
+                <div class="resv__head-date-wrap">
+                    <div class="tabs resv__head-periods">
+                        <button class="tabs__opt @(_periodFilter == ServicePeriod.Lunch ? "tabs__opt--on" : "")" title="@Loc.T("Lunch")"
+                                @onclick="() => _periodFilter = _periodFilter == ServicePeriod.Lunch ? null : ServicePeriod.Lunch">
+                            <LucideIcon Name="sun" Size="10" />
+                        </button>
+                        <button class="tabs__opt @(_periodFilter == ServicePeriod.Dinner ? "tabs__opt--on" : "")" title="@Loc.T("Dinner")"
+                                @onclick="() => _periodFilter = _periodFilter == ServicePeriod.Dinner ? null : ServicePeriod.Dinner">
+                            <LucideIcon Name="moon" Size="10" />
+                        </button>
+                    </div>
+                    <input @ref="_dateInputEl" type="date" class="input resv__head-date" @bind="_reserveDate" @bind:after="LoadReservations" />
+                    <button type="button" class="resv__head-date-icon" title="@Loc.T("Pick a date")" @onclick="OpenDatePicker"><LucideIcon Name="calendar" Size="11" /></button>
+                </div>
+                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Next day")" @onclick="() => ShiftDay(1)"><LucideIcon Name="arrow-right" Size="11" /></button>
             </div>
             <div class="tables-datebar__actions">
-                <button class="resv__stats-btn resv__stats-btn--on" title="@Loc.T("Tables")" @onclick="GoToTables"><LucideIcon Name="calendar" Size="12" /></button>
-                <button class="resv__stats-btn" title="@Loc.T("Reservations")" @onclick="OpenDashboard"><LucideIcon Name="bar-chart-3" Size="12" /></button>
+                <button class="resv__stats-btn resv__stats-btn--on" title="@Loc.T("Tables")" @onclick="GoToTables"><LucideIcon Name="calendar" Size="10" /></button>
+                <button class="resv__stats-btn" title="@Loc.T("Reservations")" @onclick="OpenDashboard"><LucideIcon Name="bar-chart-3" Size="10" /></button>
             </div>
         </div>
         <aside class="resv card">
@@ -533,28 +557,11 @@
         {
             <div class="resv__head">
                 <h2>@Loc.T("Reservations")</h2>
-                @if (Branding.Current.ReservationPolicy != "open")
-                {
-                    <span class="badge badge--warning">@Loc.T(PolicyLabel(Branding.Current.ReservationPolicy))</span>
-                }
-                <span class="spacer"></span>
-                @if (_reservations.Count > 0)
-                {
-                    <div class="tabs resv__head-periods">
-                        <button class="tabs__opt @(_periodFilter == ServicePeriod.Lunch ? "tabs__opt--on" : "")" title="@Loc.T("Lunch")"
-                                @onclick="() => _periodFilter = _periodFilter == ServicePeriod.Lunch ? null : ServicePeriod.Lunch">
-                            <LucideIcon Name="sun" Size="14" />
-                        </button>
-                        <button class="tabs__opt @(_periodFilter == ServicePeriod.Dinner ? "tabs__opt--on" : "")" title="@Loc.T("Dinner")"
-                                @onclick="() => _periodFilter = _periodFilter == ServicePeriod.Dinner ? null : ServicePeriod.Dinner">
-                            <LucideIcon Name="moon" Size="14" />
-                        </button>
-                    </div>
-                }
                 <div class="resv-policy">
-                    <button type="button" class="btn btn--icon btn--ghost" title="@Loc.T("Reservation policy")" @onclick="TogglePolicyMenu">
-                        <LucideIcon Name="settings" Size="15" />
-                    </button>
+                    @* Replaces the old gear-icon trigger: the dot itself already shows the current
+                       policy at a glance (colour-coded, see PolicyDotColor), still opens the same
+                       picker menu on click. *@
+                    <button type="button" class="resv-policy-dot" style="--dot:@PolicyDotColor(Branding.Current.ReservationPolicy)" title="@Loc.T(PolicyLabel(Branding.Current.ReservationPolicy))" @onclick="TogglePolicyMenu"></button>
                     @if (_policyMenuOpen)
                     {
                         <div class="resv-policy__backdrop" @onclick="ClosePolicyMenu"></div>
@@ -578,6 +585,7 @@
                         </div>
                     }
                 </div>
+                <span class="spacer"></span>
                 <button class="btn btn--primary btn--icon resv__new-btn" title="@Loc.T("New reservation")" @onclick="() => OpenResForm(null)"><LucideIcon Name="plus" Size="15" /></button>
             </div>
 
@@ -607,7 +615,6 @@
                                 }
                             </div>
                             <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")" @onclick="() => OpenResForm(r.Id)"><LucideIcon Name="pencil" Size="14" /></button>
-                            <button class="btn btn--icon btn--ghost btn--sm @(_resSettingsOpen.Contains(r.Id) ? "resv-card__settings-btn--on" : "")" title="@Loc.T("Table settings")" @onclick="() => ToggleResSettings(r.Id)"><LucideIcon Name="settings" Size="14" /></button>
                         </div>
                         <div class="resv-card__meta muted">
                             <LucideIcon Name="users" Size="14" /> @(r.PartySize + r.ChildrenCount)
@@ -622,20 +629,32 @@
                             @if (r.TableNames.Count > 0)
                             {
                                 <span class="resv-card__tables">
-                                    @foreach (var name in r.TableNames)
+                                    @* First click on an assigned chip only reveals its own quick-remove X
+                                       (shares _selectedAssignedTableId with the floor map's identical X) instead
+                                       of jumping straight into the "change table" picker — a second click on that
+                                       same chip falls through to ToggleAssign as before. *@
+                                    @foreach (var (tableId, name) in r.TableIds.Zip(r.TableNames))
                                     {
-                                        @* Tapping an already-assigned table chip opens the same picking mode as
-                                           "Reassign" directly — tap a different table on the map to swap it, or
-                                           tap this same chip's table again to drop it. The change applies the
-                                           moment a table is tapped on the map, so tick and cross here both just
-                                           close the picker — shown together for the same affordance as the
-                                           unassigned case below, regardless of whether a table was already picked. *@
-                                        <button type="button" class="tbl-chip tbl-chip--sm" title="@Loc.T("Click to change table")" @onclick="() => ToggleAssign(r)"><LucideIcon Name="armchair" Size="12" /> @name</button>
+                                        <span class="tbl-chip-wrap">
+                                            <button type="button" class="tbl-chip tbl-chip--sm" title="@Loc.T("Click to change table")" @onclick="() => OnAssignedChipClick(r, tableId)"><LucideIcon Name="armchair" Size="12" /> @name</button>
+                                            @if (_selectedAssignedTableId == tableId)
+                                            {
+                                                <button type="button" class="tbl-chip__unassign" title="@Loc.T("Remove from reservation")" @onclick="() => RemoveTableFromReservation(r.Id, tableId)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="7" /></button>
+                                            }
+                                        </span>
                                     }
                                     @if (_assignReservationId == r.Id)
                                     {
                                         <button type="button" class="btn btn--icon btn--primary btn--sm resv-card__confirm-assign" title="@Loc.T("Done")" @onclick="CancelAssign"><LucideIcon Name="check" Size="13" /></button>
                                         <button type="button" class="btn btn--icon btn--ghost btn--sm resv-card__confirm-assign" title="@Loc.T("Cancel")" @onclick="CancelAssign"><LucideIcon Name="x" Size="13" /></button>
+                                    }
+                                    else if (_selectedAssignedTableId is not null && r.TableIds.Contains(_selectedAssignedTableId.Value))
+                                    {
+                                        @* Shown alongside a chip's revealed X (see above) so the row-level check/cross
+                                           are reachable right away too — check opens the same "change table" picker as
+                                           tapping the chip a second time, cross just closes the reveal. *@
+                                        <button type="button" class="btn btn--icon btn--primary btn--sm resv-card__confirm-assign" title="@Loc.T("Change table")" @onclick="() => ToggleAssign(r)"><LucideIcon Name="check" Size="13" /></button>
+                                        <button type="button" class="btn btn--icon btn--ghost btn--sm resv-card__confirm-assign" title="@Loc.T("Close")" @onclick="() => _selectedAssignedTableId = null"><LucideIcon Name="x" Size="13" /></button>
                                     }
                                 </span>
                             }
@@ -658,21 +677,11 @@
                             {
                                 <button class="btn btn--primary btn--sm" disabled="@(r.TableIds.Count == 0)"
                                         title="@(r.TableIds.Count == 0 ? Loc.T("Assign a table before seating this reservation.") : null)"
-                                        @onclick="() => SetResStatus(r.Id, ReservationStatus.Seated)"><LucideIcon Name="check" Size="16" />@Loc.T("Seat")</button>
+                                        @onclick="() => SetResStatus(r.Id, ReservationStatus.Seated)"><LucideIcon Name="check" Size="15" />@Loc.T("Seat")</button>
                             }
                             else if (r.Status == ReservationStatus.Seated)
                             {
-                                <button class="btn btn--primary btn--sm" @onclick="() => SetResStatus(r.Id, ReservationStatus.Finished)"><LucideIcon Name="log-out" Size="16" />@Loc.T("Mark as left")</button>
-                            }
-                            @if (_resSettingsOpen.Contains(r.Id))
-                            {
-                                <span class="resv-card__assign-actions">
-                                    <button class="btn @(_assignReservationId == r.Id ? "btn--primary" : "btn--ghost") resv-card__mini-btn" @onclick="() => ToggleAssign(r)">@(r.TableIds.Count == 0 ? Loc.T("Assign") : Loc.T("Reassign"))</button>
-                                    @if (r.TableIds.Count > 0)
-                                    {
-                                        <button class="btn btn--ghost resv-card__mini-btn" @onclick="() => Unassign(r.Id)">@Loc.T("Unassign")</button>
-                                    }
-                                </span>
+                                <button class="btn btn--primary btn--sm" @onclick="() => SetResStatus(r.Id, ReservationStatus.Finished)"><LucideIcon Name="log-out" Size="15" />@Loc.T("Mark as left")</button>
                             }
                         </div>
                     </div>
@@ -1224,6 +1233,8 @@
     // Docked to the left of the floor plan (visually, via CSS order).
     private bool _mapExpanded;
     private DateTime _reserveDate = DateTime.Today;
+    private ElementReference _dateInputEl;
+    private Task OpenDatePicker() => JS.InvokeVoidAsync("posShowDatePicker", _dateInputEl).AsTask();
     private List<ReservationDto> _reservations = new();
     private ServicePeriod? _periodFilter;
 
@@ -1240,7 +1251,9 @@
         .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Res.Time).First().Res);
     private int? _assignReservationId;
     private string? _assignName;
-    private readonly HashSet<int> _resSettingsOpen = new();
+    // Table clicked once while carrying a reservation, revealing its quick-remove X (see
+    // OnTableClick and RemoveTableFromReservation) instead of jumping straight to its comanda.
+    private int? _selectedAssignedTableId;
     private int? _statusMenuOpenId;
     private ReservationFormDto? _resForm;
     private string? _resError;
@@ -1257,6 +1270,14 @@
 
     private static string PolicyLabel(string value) =>
         ReservationPolicies.FirstOrDefault(o => o.Value == value).Label ?? value;
+
+    private static string PolicyDotColor(string value) => value switch
+    {
+        "open" => "var(--success)",
+        "phone_only" => "var(--warning)",
+        "closed" => "var(--danger)",
+        _ => "var(--success)",
+    };
 
     private void TogglePolicyMenu() => _policyMenuOpen = !_policyMenuOpen;
     private void ClosePolicyMenu() => _policyMenuOpen = false;
@@ -1296,6 +1317,28 @@
                           (o.PositionX < t.PositionX ||
                            (o.PositionX == t.PositionX && o.PositionY < t.PositionY)));
 
+    // Which of a joined member's shared edges (left/right) butt up against a neighbour, so the
+    // CSS can drop the border/bevel there and the row reads as one continuous table surface
+    // instead of a seam down the middle. Mirrors ChairStyles' own hideLeft/hideRight logic,
+    // since both rely on the same "always snapped left-to-right" layout (see JoinTablesAsync).
+    private string GroupSeamAttr(TableDto t)
+    {
+        if (t.GroupId is null) return "";
+        var members = _tables.Where(m => m.GroupId == t.GroupId).OrderBy(m => m.PositionX).ToList();
+        var idx = members.FindIndex(m => m.Id == t.Id);
+        var left = idx > 0;
+        var right = idx >= 0 && idx < members.Count - 1;
+        return left && right ? "both" : left ? "left" : right ? "right" : "";
+    }
+
+    // The reservation shown on a joined group's own overlay badge — any member carries the same
+    // reservation object (see ResByTable), so the first one found is enough.
+    private ReservationDto? GroupReservation(int gid, Dictionary<int, ReservationDto> resByTable)
+    {
+        var member = _tables.FirstOrDefault(t => t.GroupId == gid);
+        return member is not null && resByTable.TryGetValue(member.Id, out var rv) ? rv : null;
+    }
+
     // Joining tables loses a seat on each side of every seam where two tables meet (nobody can
     // sit facing into the next table) — a chain of N tables has N-1 seams, so 2 seats go for
     // each one. Two 4-seat tables joined into one therefore seat 6, not 8.
@@ -1327,6 +1370,20 @@
         var top = members.Min(t => t.PositionY);
         var bottom = members.Max(t => t.PositionY + t.Height);
         return $"left:{N((left + right) / 2)}px; top:{N((top + bottom) / 2)}px;";
+    }
+
+    // Bottom-centre of the group's bounding box — where the joined row's one shared
+    // reservation-time badge hangs (see .tbl__resv--group), centred under the whole merged span
+    // instead of just the anchor member's own narrower box. floorplan.js's onMove uses this same
+    // formula live during a drag, for the same reason GroupCenterStyle documents above.
+    private string GroupBottomCenterStyle(int gid, List<TableDto> visible)
+    {
+        var members = visible.Where(t => t.GroupId == gid).ToList();
+        if (members.Count == 0) return "";
+        var left = members.Min(t => t.PositionX);
+        var right = members.Max(t => t.PositionX + t.Width);
+        var bottom = members.Max(t => t.PositionY + t.Height);
+        return $"left:{N((left + right) / 2)}px; top:{N(bottom)}px;";
     }
 
     private string? _zoneFilter;
@@ -1689,11 +1746,15 @@
         else StartAssign(r);
     }
 
-    // Toggles the per-card table-settings row (Reassign/Unassign), tucked behind a gear icon
-    // instead of always showing on every reservation card.
-    private void ToggleResSettings(int id)
+    // First click on a sidebar table chip only reveals its quick-remove X (see the chip markup
+    // above and _selectedAssignedTableId, shared with the floor map's identical X) instead of
+    // opening the "change table" picker straight away; a second click on that same chip falls
+    // through to the normal ToggleAssign behaviour.
+    private void OnAssignedChipClick(ReservationDto r, int tableId)
     {
-        if (!_resSettingsOpen.Add(id)) _resSettingsOpen.Remove(id);
+        if (_selectedAssignedTableId != tableId) { _selectedAssignedTableId = tableId; return; }
+        _selectedAssignedTableId = null;
+        ToggleAssign(r);
     }
 
     // Clicking a table while assigning toggles its membership; assign mode stays open so
@@ -1706,9 +1767,21 @@
         await Load();
     }
 
-    private async Task Unassign(int reservationId)
+    // Quick removal from the floor map's revealed X (see OnTableClick/_selectedAssignedTableId) —
+    // drops just this one table from whichever reservation it's carrying, unlike Unassign above
+    // which clears every table off a reservation from the sidebar card.
+    private Task RemoveTableFromReservation(TableDto t)
     {
-        await ReservationService.AssignTablesAsync(reservationId, Array.Empty<int>());
+        if (!ResByTable.TryGetValue(t.Id, out var rv)) return Task.CompletedTask;
+        return RemoveTableFromReservation(rv.Id, t.Id);
+    }
+
+    // Same drop-just-this-table action, reachable from the sidebar chip's own X (see
+    // OnAssignedChipClick) without needing to look the reservation up via ResByTable.
+    private async Task RemoveTableFromReservation(int reservationId, int tableId)
+    {
+        await ReservationService.ToggleTableAsync(reservationId, tableId);
+        _selectedAssignedTableId = null;
         await LoadReservations();
         await Load();
     }
@@ -1950,6 +2023,7 @@
         ReservationStatus.Seated => "badge--warning",
         ReservationStatus.Finished => "badge--success",
         ReservationStatus.Cancelled => "badge--danger",
+        ReservationStatus.Pending => "badge--pending",
         _ => ""
     };
 
@@ -1972,21 +2046,34 @@
     // ---- Table click routing ----
     private async Task OnTableClick(TableDto t)
     {
-        if (_paintMode) { await PaintTable(t); return; }
+        if (_paintMode) { _selectedAssignedTableId = null; await PaintTable(t); return; }
         if (_editing) return;   // in edit mode a click is a drag (JS owns it)
         if (_selecting)
         {
+            _selectedAssignedTableId = null;
             if (!_selection.Add(t.Id)) _selection.Remove(t.Id);
             return;
         }
-        if (_assignReservationId is not null) { await AssignToTable(t.Id); return; }
+        if (_assignReservationId is not null) { _selectedAssignedTableId = null; await AssignToTable(t.Id); return; }
         if (_reassigning)
         {
+            _selectedAssignedTableId = null;
             // Only an occupied table (with an order to move) opens the inline confirm+destination
             // picker; clicking a free table while reassigning does nothing.
             if (t.ActiveOrderId is not null) { _reassignSource = t; _reassignDestId = null; }
             return;
         }
+
+        // First click on a table carrying a reservation only reveals its quick-remove X (see
+        // RemoveTableFromReservation) instead of opening the comanda; a second click on that same
+        // table falls through below and opens it as usual. Clicking any other table — reserved or
+        // not — clears the reveal instead of leaving it stuck open on a table no longer selected.
+        if (ResByTable.TryGetValue(t.Id, out _) && _selectedAssignedTableId != t.Id)
+        {
+            _selectedAssignedTableId = t.Id;
+            return;
+        }
+        _selectedAssignedTableId = null;
 
         // A single tap always jumps straight into the table's comanda (opening one if it doesn't
         // have one yet, same as tapping a table in /pos) instead of the properties form — same

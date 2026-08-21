@@ -109,8 +109,8 @@
                                            not — never moves down — via order:-1 in CSS, same span either way. *@
                                         <span class="productCard__footer">
                                             <span class="productCard__name"><span class="productCard__name-text">@p.Name</span></span>
-                                            <span class="productCard__price">@p.Price.ToString("N2")</span>
                                         </span>
+                                        <span class="productCard__price">@p.Price.ToString("N2")</span>
                                         @if (!p.IsAvailable) { <span class="productCard__off">@Loc.T("Unavailable")</span> }
                                     </button>
                                 }
@@ -196,14 +196,20 @@
                                                                     }
                                                                 }
                                                                 <div class="orderLine__title">
-                                                                    <span class="orderLine__name">@it.ProductName</span>
-                                                                    @if (it.IsInvited)
+                                                                    <span class="orderLine__name-group">
+                                                                        <span class="orderLine__name">@it.ProductName</span>
+                                                                        @if (it.IsInvited)
+                                                                        {
+                                                                            <span class="orderLine__invited" title="@Loc.T("Invited — not charged")">@Loc.T("Invitation")</span>
+                                                                        }
+                                                                        @if (it.Extras.Count > 0)
+                                                                        {
+                                                                            <span class="orderLine__extra">＋ @it.Extras[0].Name</span>
+                                                                        }
+                                                                    </span>
+                                                                    @foreach (var ex in it.Extras.Skip(1))
                                                                     {
-                                                                        <span class="orderLine__invited" title="@Loc.T("Invited — not charged")">@Loc.T("Invitation")</span>
-                                                                    }
-                                                                    @if (_expandedItemId != it.Id && it.Extras.Count > 0)
-                                                                    {
-                                                                        <span class="orderLine__extras">@string.Join(", ", it.Extras.Select(e => "＋ " + e.Name))</span>
+                                                                        <span class="orderLine__extra">＋ @ex.Name</span>
                                                                     }
                                                                 </div>
                                                                 <span class="spacer"></span>
@@ -234,17 +240,16 @@
                                                                 <div class="orderLine__expand-actions" @onclick:stopPropagation="true">
                                                                     <div class="orderLine__expand-btns">
                                                                         <button class="orderLine__expand-btn @(_expandedShowComment ? "orderLine__expand-btn--active" : "")" type="button" title="@Loc.T("Comment")" @onclick="() => ToggleLineComment(it)">
-                                                                            <LucideIcon Name="message-square" Size="14" />
+                                                                            <LucideIcon Name="message-square" Size="10" />
                                                                         </button>
                                                                         <button class="orderLine__expand-btn @(_expandedShowExtras ? "orderLine__expand-btn--active" : "")" type="button" title="@Loc.T("Extra")" @onclick="() => ToggleLineExtras(it)">
-                                                                            <LucideIcon Name="plus" Size="14" />
+                                                                            <LucideIcon Name="plus" Size="10" />
                                                                         </button>
                                                                     </div>
                                                                     @if (_expandedShowComment)
                                                                     {
                                                                         <input class="orderLine__comment-inline input" @bind="_lineCommentText" @bind:event="oninput"
-                                                                               @onblur="() => SaveLineComment(it)"
-                                                                               placeholder="@Loc.T("No onion, well done, extra sauce…")" />
+                                                                               @onblur="() => SaveLineComment(it)" />
                                                                     }
                                                                 </div>
                                                                 @if (_expandedShowExtras)
@@ -267,15 +272,6 @@
                                                                                     <span class="orderLine__extra-opt-price">＋@ex.Price.ToString("N2")</span>
                                                                                 </div>
                                                                             }
-                                                                        }
-                                                                    </div>
-                                                                }
-                                                                @if (_expandedShowComment && _commentPresets.Count > 0)
-                                                                {
-                                                                    <div class="comment-presets" @onclick:stopPropagation="true">
-                                                                        @foreach (var preset in _commentPresets)
-                                                                        {
-                                                                            <button class="btn btn--ghost" type="button" @onclick="() => ApplyLineCommentPreset(it, preset.Text)">@preset.Text</button>
                                                                         }
                                                                     </div>
                                                                 }
@@ -425,7 +421,7 @@
         if (!_resizeBound && _order is not null)
         {
             _resizeBound = true;
-            await JS.InvokeVoidAsync("posOrderResize", _resizeHandleEl, _editorPosEl, 280, 640);
+            await JS.InvokeVoidAsync("posOrderResize", _resizeHandleEl, _editorPosEl, 280, 720);
         }
         // Reveal the line just added by OnProductClick, whichever scroll container it landed in —
         // the outer .order__items panel, or a course's own .order__group-lines--scroll once that
@@ -452,8 +448,6 @@
     private bool _selectMode;
     private readonly Dictionary<int, int> _selectedQty = new();
     private bool _confirmDeleteSelection;
-
-    private List<CategoryCommentDto> _commentPresets = new();
 
     // Tap-to-expand per-line editing (Extra/Comment), replacing the old pencil → modal flow — see
     // ToggleLineExpanded/ToggleLineExtras/ToggleLineComment.
@@ -801,13 +795,10 @@
         finally { _lineExtrasLoading = false; }
     }
 
-    private async Task ToggleLineComment(OrderItemDto item)
+    private void ToggleLineComment(OrderItemDto item)
     {
         _expandedShowComment = !_expandedShowComment;
         _expandedShowExtras = false;
-        if (!_expandedShowComment) return;
-        try { _commentPresets = await Categories.GetCommentsAsync(item.CategoryId); }
-        catch (Exception ex) { _error = ex.Message; }
     }
 
     // Applies immediately, no separate Save step — consistent with every other line action in
@@ -829,12 +820,6 @@
             await Orders.SetItemCommentAsync(item.Id, comment);
             return await Orders.GetByIdAsync(orderId);
         });
-    }
-
-    private Task ApplyLineCommentPreset(OrderItemDto item, string text)
-    {
-        _lineCommentText = text;
-        return SaveLineComment(item);
     }
 
     private Task ChangeQty(int itemId, int delta) =>

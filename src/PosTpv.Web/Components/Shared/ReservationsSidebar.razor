@@ -1,0 +1,584 @@
+@* Same reservations panel as /tables (date bar + list + full create/edit wizard), reused here
+   on /reservations. Table assignment is left out: on /tables "Assign/Reassign" works by tapping
+   a table on the floor plan, which doesn't exist on this page — that stays a /tables-only action. *@
+@using System.Globalization
+@using FluentValidation
+@inject IReservationService ReservationService
+@inject IValidator<ReservationFormDto> ResValidator
+@inject AppSettingsCache Branding
+@inject ISettingsService Settings
+@inject NavigationManager Nav
+
+<div class="resv-col">
+    <div class="tables-datebar card">
+        <div class="resv__day-nav">
+            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Previous day")" @onclick="() => ShiftDay(-1)"><LucideIcon Name="arrow-left" Size="11" /></button>
+            <div class="resv__head-date-wrap">
+                <div class="tabs resv__head-periods">
+                    <button class="tabs__opt @(_periodFilter == ServicePeriod.Lunch ? "tabs__opt--on" : "")" title="@Loc.T("Lunch")"
+                            @onclick="() => _periodFilter = _periodFilter == ServicePeriod.Lunch ? null : ServicePeriod.Lunch">
+                        <LucideIcon Name="sun" Size="10" />
+                    </button>
+                    <button class="tabs__opt @(_periodFilter == ServicePeriod.Dinner ? "tabs__opt--on" : "")" title="@Loc.T("Dinner")"
+                            @onclick="() => _periodFilter = _periodFilter == ServicePeriod.Dinner ? null : ServicePeriod.Dinner">
+                        <LucideIcon Name="moon" Size="10" />
+                    </button>
+                </div>
+                <input type="date" class="input resv__head-date" @bind="_reserveDate" @bind:after="LoadReservations" />
+            </div>
+            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Next day")" @onclick="() => ShiftDay(1)"><LucideIcon Name="arrow-right" Size="11" /></button>
+        </div>
+        <div class="tables-datebar__actions">
+            <button class="resv__stats-btn" title="@Loc.T("Tables")" @onclick="GoToTables"><LucideIcon Name="calendar" Size="10" /></button>
+            <button class="resv__stats-btn resv__stats-btn--on" title="@Loc.T("Reservations")"><LucideIcon Name="bar-chart-3" Size="10" /></button>
+        </div>
+    </div>
+    <aside class="resv card">
+    @if (_resForm is not null)
+    {
+        <div class="resv__head">
+            <h2>@(_resForm.Id > 0 ? Loc.T("Edit reservation") : Loc.T("New reservation"))</h2>
+            <span class="spacer"></span>
+            @if (_resForm.Id > 0)
+            {
+                <button class="btn btn--icon btn--ghost" title="@Loc.T("Delete")" @onclick="() => DeleteRes(_resForm.Id)" type="button"><LucideIcon Name="trash-2" Size="16" /></button>
+            }
+            <button class="btn btn--icon btn--ghost" title="@Loc.T("Close")" @onclick="CloseResForm" type="button"><LucideIcon Name="x" Size="16" /></button>
+            <button class="btn btn--icon btn--primary" title="@Loc.T("Save")" disabled="@_savingRes" @onclick="SaveRes" type="button"><LucideIcon Name="check" Size="16" /></button>
+        </div>
+        <div class="resv-wizard">
+            @if (_saveSuccess)
+            {
+                <div class="resv-success">
+                    <div class="resv-success__circle"><LucideIcon Name="check" Size="26" /></div>
+                    <p class="resv-success__text">@(_wasNewReservation ? Loc.T("Reservation created") : Loc.T("Changes saved"))</p>
+                </div>
+            }
+            else
+            {
+            <div class="resv-form">
+                <div class="resv-steps">
+                    <div class="resv-steps__track"></div>
+                    <div class="resv-steps__progress" style="width:@(N(StepProgressWidthPercent))%"></div>
+                    @foreach (var s in ResSteps)
+                    {
+                        <button type="button"
+                                class="resv-step @(s.Step == _resStep ? "resv-step--on" : "") @(s.Step < _resMaxStep && s.Step != _resStep ? "resv-step--done" : "")"
+                                disabled="@(s.Step > _resMaxStep)" @onclick="() => GoToStep(s.Step)">
+                            <span class="resv-step__num">@(s.Step < _resMaxStep ? "✓" : s.Step.ToString())</span>
+                            <span class="resv-step__label">@Loc.T(s.Label)</span>
+                        </button>
+                    }
+                </div>
+
+                <div class="resv-step-panel">
+                    @if (_resStep == 1)
+                    {
+                        <div class="resv-row">
+                            <div class="field"><label>@Loc.T("Customer name")</label><input class="input" @bind="_resForm.CustomerName" /></div>
+                            <div class="field">
+                                <label>@Loc.T("Phone")</label>
+                                <div class="phone-field">
+                                    <button type="button" class="phone-prefix" @onclick="TogglePrefixMenu">
+                                        @_phonePrefix<LucideIcon Name="chevron-down" Size="11" />
+                                    </button>
+                                    <input class="input" @bind="_phoneLocal" @bind:event="oninput" @bind:after="SyncPhone" />
+                                    @if (_prefixMenuOpen)
+                                    {
+                                        <div class="phone-prefix__backdrop" @onclick="ClosePrefixMenu"></div>
+                                        <div class="phone-prefix__menu" @onclick:stopPropagation="true">
+                                            <input class="input phone-prefix__search" placeholder="@Loc.T("Search country or code…")"
+                                                   @bind="_prefixSearch" @bind:event="oninput" autofocus />
+                                            <div class="phone-prefix__list">
+                                                @foreach (var p in FilteredPrefixes)
+                                                {
+                                                    <button type="button" class="phone-prefix__opt @(p.Code == _phonePrefix ? "phone-prefix__opt--on" : "")" @onclick="() => PickPrefix(p.Code)">
+                                                        <span>@p.Name</span>
+                                                        <span class="muted">@p.Code</span>
+                                                    </button>
+                                                }
+                                                @if (!FilteredPrefixes.Any()) { <p class="empty">@Loc.T("No matches.")</p> }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        <div class="resv-row resv-row--guest">
+                            <div class="field"><label>@Loc.T("Party size")</label><input type="number" min="0" class="input" @bind="_resForm.PartySize" /></div>
+                            <div class="field"><label><LucideIcon Name="baby" Size="12" /> @Loc.T("Children")</label><input type="number" min="0" class="input" @bind="_resForm.ChildrenCount" /></div>
+                            <div class="field"><label><LucideIcon Name="armchair" Size="12" /> @Loc.T("High chairs")</label><input type="number" min="0" class="input" @bind="_resForm.HighChairCount" /></div>
+                        </div>
+                        <div class="field"><label>@Loc.T("Total")</label><div class="field-static">@FormTotalGuests @Loc.T("people")</div></div>
+                    }
+                    else if (_resStep == 2)
+                    {
+                        <Calendar Value="_resForm.Date" ValueChanged="PickDate" />
+                    }
+                    else if (_resStep == 3)
+                    {
+                        <div class="period-picker">
+                            <button type="button" class="period-opt @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "period-opt--on" : "")"
+                                    @onclick="() => PickPeriod(Branding.Current.LunchStart)">
+                                <LucideIcon Name="sun" Size="16" />
+                                <span class="period-opt__label">@Loc.T("Lunch")</span>
+                                <span class="period-opt__time">@Branding.Current.LunchStart.ToString("HH:mm")–@Branding.Current.LunchEnd.ToString("HH:mm")</span>
+                            </button>
+                            <button type="button" class="period-opt @(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Dinner ? "period-opt--on" : "")"
+                                    @onclick="() => PickPeriod(Branding.Current.DinnerStart)">
+                                <LucideIcon Name="moon" Size="16" />
+                                <span class="period-opt__label">@Loc.T("Dinner")</span>
+                                <span class="period-opt__time">@Branding.Current.DinnerStart.ToString("HH:mm")–@Branding.Current.DinnerEnd.ToString("HH:mm")</span>
+                            </button>
+                        </div>
+                        var slots = CurrentPeriodSlots;
+                        @if (slots.Count > 0)
+                        {
+                            <div class="slot-grid">
+                                @foreach (var slot in slots)
+                                {
+                                    <button type="button" class="slot-chip @(slot == _resForm.Time ? "slot-chip--on" : "")" @onclick="() => PickSlot(slot)">@slot.ToString("HH:mm")</button>
+                                }
+                            </div>
+                        }
+                    }
+                    else if (_resStep == 4)
+                    {
+                        <div class="resv-summary__title">@(_resForm.Id > 0 ? Loc.T("Edit reservation") : Loc.T("New reservation"))</div>
+                        <div class="resv-summary">
+                            <div class="resv-summary__row"><LucideIcon Name="user" Size="14" /> @(string.IsNullOrWhiteSpace(_resForm.CustomerName) ? Loc.T("Customer name") : _resForm.CustomerName) @if (!string.IsNullOrWhiteSpace(_resForm.Phone)) { <span class="muted"> · @_resForm.Phone</span> }</div>
+                            <div class="resv-summary__row"><LucideIcon Name="users" Size="14" /> @FormTotalGuests @Loc.T("people")
+                                @if (_resForm.ChildrenCount > 0) { <span class="muted"> · <LucideIcon Name="baby" Size="13" /> @_resForm.ChildrenCount</span> }
+                                @if (_resForm.HighChairCount > 0) { <span class="muted"> · <LucideIcon Name="armchair" Size="13" /> @_resForm.HighChairCount</span> }
+                            </div>
+                            <div class="resv-summary__row"><LucideIcon Name="calendar" Size="14" /> @_resForm.Date.ToString("dd MMM yyyy")</div>
+                            <div class="resv-summary__row"><LucideIcon Name="@(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "sun" : "moon")" Size="14" /> @Loc.T(Branding.Current.GetPeriod(_resForm.Time) == ServicePeriod.Lunch ? "Lunch" : "Dinner") · @_resForm.Time.ToString("HH:mm")</div>
+                        </div>
+                        <div class="field"><label>@Loc.T("Comments")</label><textarea class="input" rows="2" @bind="_resForm.Comments"></textarea></div>
+                    }
+
+                    @if (_resError is not null) { <div class="field-error">@_resError</div> }
+                </div>
+
+                <div class="resv-nav @(_resStep == ResSteps.Length ? "resv-nav--joined" : "")">
+                    @if (_resStep > 1)
+                    {
+                        <button type="button" class="btn btn--ghost resv-nav__back--full" @onclick="GoBack"><LucideIcon Name="arrow-left" Size="16" />@Loc.T("Back")</button>
+                    }
+                    @if (_resStep == 1 && _resStep < ResSteps.Length)
+                    {
+                        <button type="button" class="btn btn--primary resv-nav__next"
+                                @onclick="GoNext">@Loc.T("Next")<LucideIcon Name="arrow-right" Size="16" /></button>
+                    }
+                    else if (_resStep == ResSteps.Length)
+                    {
+                        <button type="button" class="btn btn--primary resv-nav__next" disabled="@_savingRes" @onclick="SaveRes">
+                            @(_resForm.Id > 0 ? Loc.T("Save changes") : Loc.T("Create reservation"))
+                        </button>
+                    }
+                </div>
+            </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="resv__head">
+            <h2>@Loc.T("Reservations")</h2>
+            <div class="resv-policy">
+                @* Replaces the old gear-icon trigger: the dot itself already shows the current
+                   policy at a glance (colour-coded, see PolicyDotColor), still opens the same
+                   picker menu on click. *@
+                <button type="button" class="resv-policy-dot" style="--dot:@PolicyDotColor(Branding.Current.ReservationPolicy)" title="@Loc.T(PolicyLabel(Branding.Current.ReservationPolicy))" @onclick="TogglePolicyMenu"></button>
+                @if (_policyMenuOpen)
+                {
+                    <div class="resv-policy__backdrop" @onclick="ClosePolicyMenu"></div>
+                    <div class="resv-policy__menu" @onclick:stopPropagation="true">
+                        <div class="resv-policy__title">@Loc.T("Taking reservations")</div>
+                        @foreach (var opt in ReservationPolicies)
+                        {
+                            <button type="button" class="resv-policy__opt @(Branding.Current.ReservationPolicy == opt.Value ? "resv-policy__opt--on" : "")"
+                                    disabled="@opt.ComingSoon" @onclick="() => SetReservationPolicy(opt.Value)">
+                                <span>@Loc.T(opt.Label)</span>
+                                @if (opt.ComingSoon)
+                                {
+                                    <span class="badge">@Loc.T("Coming soon")</span>
+                                }
+                                else if (Branding.Current.ReservationPolicy == opt.Value)
+                                {
+                                    <LucideIcon Name="check" Size="14" />
+                                }
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+            <span class="spacer"></span>
+            <button class="btn btn--primary btn--icon resv__new-btn" title="@Loc.T("New reservation")" @onclick="() => OpenResForm(null)"><LucideIcon Name="plus" Size="15" /></button>
+        </div>
+
+        <div class="resv__list">
+            @foreach (var r in FilteredReservations)
+            {
+                <div class="resv-card">
+                    <div class="resv-card__top">
+                        <span class="resv-card__period" title="@Loc.T(PeriodLabel(r.Time))"><LucideIcon Name="@PeriodIcon(r.Time)" Size="14" /></span>
+                        <strong>@r.Time.ToString("HH:mm")</strong>
+                        <span class="resv-card__name">@r.CustomerName</span>
+                        <span class="spacer"></span>
+                        <div class="resv-status">
+                            <button type="button" class="badge resv-card__status @StatusClass(r.Status)" title="@Loc.T("Status")" @onclick="() => ToggleStatusMenu(r.Id)">
+                                @Loc.T(r.Status.ToString())
+                            </button>
+                            @if (_statusMenuOpenId == r.Id)
+                            {
+                                <div class="resv-status__menu">
+                                    @foreach (var s in Enum.GetValues<ReservationStatus>())
+                                    {
+                                        <button type="button" class="resv-status__opt @(s == r.Status ? "resv-status__opt--on" : "")" @onclick="() => ChooseStatus(r.Id, s)">
+                                            <span class="badge @StatusClass(s)">@Loc.T(s.ToString())</span>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")" @onclick="() => OpenResForm(r.Id)"><LucideIcon Name="pencil" Size="14" /></button>
+                    </div>
+                    <div class="resv-card__meta muted">
+                        <LucideIcon Name="users" Size="14" /> @(r.PartySize + r.ChildrenCount)
+                        @if (r.ChildrenCount > 0)
+                        {
+                            <span class="resv-card__stat"><LucideIcon Name="baby" Size="14" /> @r.ChildrenCount</span>
+                        }
+                        @if (r.HighChairCount > 0)
+                        {
+                            <span class="resv-card__stat"><LucideIcon Name="armchair" Size="14" /> @r.HighChairCount</span>
+                        }
+                        @if (r.TableNames.Count > 0)
+                        {
+                            <span class="resv-card__tables">
+                                @foreach (var name in r.TableNames)
+                                {
+                                    <span class="tbl-chip tbl-chip--sm" title="@Loc.T("Assign a table from /tables")"><LucideIcon Name="armchair" Size="12" /> @name</span>
+                                }
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="tbl-chip tbl-chip--sm tbl-chip--unassigned" title="@Loc.T("Assign a table from /tables")">@Loc.T("Unassigned")</span>
+                        }
+                        <span class="spacer"></span>
+                        @if (r.Status is ReservationStatus.Pending or ReservationStatus.Confirmed)
+                        {
+                            <button class="btn btn--primary btn--sm" disabled="@(r.TableIds.Count == 0)"
+                                    title="@(r.TableIds.Count == 0 ? Loc.T("Assign a table before seating this reservation.") : null)"
+                                    @onclick="() => SetResStatus(r.Id, ReservationStatus.Seated)"><LucideIcon Name="check" Size="16" />@Loc.T("Seat")</button>
+                        }
+                        else if (r.Status == ReservationStatus.Seated)
+                        {
+                            <button class="btn btn--primary btn--sm" @onclick="() => SetResStatus(r.Id, ReservationStatus.Finished)"><LucideIcon Name="log-out" Size="16" />@Loc.T("Mark as left")</button>
+                        }
+                    </div>
+                </div>
+            }
+            @if (_reservations.Count == 0) { <p class="empty">@Loc.T("No reservations for this day.")</p> }
+            else if (FilteredReservations.Count == 0) { <p class="empty">@Loc.T("No reservations for this service.")</p> }
+        </div>
+    }
+    </aside>
+</div>
+
+@code {
+    private DateTime _reserveDate = DateTime.Today;
+    private List<ReservationDto> _reservations = new();
+    private ServicePeriod? _periodFilter;
+
+    private List<ReservationDto> FilteredReservations => _periodFilter is null
+        ? _reservations
+        : _reservations.Where(r => Branding.Current.GetPeriod(r.Time) == _periodFilter).ToList();
+
+    private int? _statusMenuOpenId;
+    private ReservationFormDto? _resForm;
+    private string? _resError;
+
+    private bool _policyMenuOpen;
+    private static readonly (string Value, string Label, bool ComingSoon)[] ReservationPolicies =
+    {
+        ("open", "Accepting reservations", false),
+        ("phone_only", "Phone only", false),
+        ("closed", "Not accepting reservations", false),
+        ("web", "Online booking", true),
+    };
+
+    private static string PolicyLabel(string value) =>
+        ReservationPolicies.FirstOrDefault(o => o.Value == value).Label ?? value;
+
+    private static string PolicyDotColor(string value) => value switch
+    {
+        "open" => "var(--success)",
+        "phone_only" => "var(--warning)",
+        "closed" => "var(--danger)",
+        _ => "var(--success)",
+    };
+
+    private void TogglePolicyMenu() => _policyMenuOpen = !_policyMenuOpen;
+    private void ClosePolicyMenu() => _policyMenuOpen = false;
+
+    private async Task SetReservationPolicy(string value)
+    {
+        _policyMenuOpen = false;
+        var form = await Settings.GetForEditAsync();
+        form.ReservationPolicy = value;
+        await Settings.UpdateAsync(form);
+    }
+
+    private int _resStep = 1;
+    private int _resMaxStep = 1;
+    private static readonly (int Step, string Label)[] ResSteps =
+    {
+        (1, "Guest"), (2, "Date"), (3, "Service"), (4, "Summary")
+    };
+
+    private double StepProgressWidthPercent => (100.0 / ResSteps.Length) * (_resStep - 1);
+
+    private static string N(double d) => d.ToString(CultureInfo.InvariantCulture);
+
+    protected override async Task OnInitializedAsync() => await LoadReservations();
+
+    private void GoToTables() => Nav.NavigateTo("/tables");
+
+    private Task ShiftDay(int days)
+    {
+        _reserveDate = _reserveDate.AddDays(days);
+        return LoadReservations();
+    }
+
+    private async Task LoadReservations() => _reservations = await ReservationService.GetByDateAsync(_reserveDate);
+
+    private async Task SetResStatus(int reservationId, ReservationStatus status)
+    {
+        try { await ReservationService.SetStatusAsync(reservationId, status); }
+        catch (InvalidOperationException ex) { _resError = ex.Message; return; }
+        await LoadReservations();
+    }
+
+    private void ToggleStatusMenu(int id) => _statusMenuOpenId = _statusMenuOpenId == id ? null : id;
+
+    private async Task ChooseStatus(int reservationId, ReservationStatus status)
+    {
+        _statusMenuOpenId = null;
+        await SetResStatus(reservationId, status);
+    }
+
+    private async Task OpenResForm(int? id)
+    {
+        _resError = null;
+        _resForm = id is null
+            ? new ReservationFormDto { Date = _reserveDate }
+            : await ReservationService.GetForEditAsync(id.Value) ?? new ReservationFormDto();
+        _resStep = 1;
+        _resMaxStep = id is null ? 1 : ResSteps.Length;
+        SplitPhone();
+    }
+
+    private void CloseResForm() => _resForm = null;
+
+    private string _phonePrefix = "+34";
+    private string _phoneLocal = "";
+    private bool _prefixMenuOpen;
+    private string _prefixSearch = "";
+
+    private static readonly (string Name, string Code)[] PhonePrefixes =
+    {
+        ("Spain", "+34"), ("Andorra", "+376"), ("Portugal", "+351"), ("France", "+33"),
+        ("Italy", "+39"), ("Germany", "+49"), ("United Kingdom", "+44"), ("Ireland", "+353"),
+        ("Netherlands", "+31"), ("Belgium", "+32"), ("Luxembourg", "+352"), ("Switzerland", "+41"),
+        ("Austria", "+43"), ("Denmark", "+45"), ("Norway", "+47"), ("Sweden", "+46"),
+        ("Finland", "+358"), ("Iceland", "+354"), ("Poland", "+48"), ("Czechia", "+420"),
+        ("Slovakia", "+421"), ("Hungary", "+36"), ("Romania", "+40"), ("Bulgaria", "+359"),
+        ("Greece", "+30"), ("Turkey", "+90"), ("Croatia", "+385"), ("Serbia", "+381"),
+        ("Ukraine", "+380"), ("Russia", "+7"), ("Morocco", "+212"), ("Algeria", "+213"),
+        ("Tunisia", "+216"), ("Egypt", "+20"), ("Israel", "+972"),
+        ("United Arab Emirates", "+971"), ("Saudi Arabia", "+966"),
+        ("United States", "+1"), ("Canada", "+1"), ("Mexico", "+52"),
+        ("Guatemala", "+502"), ("Costa Rica", "+506"), ("Panama", "+507"), ("Cuba", "+53"),
+        ("Dominican Republic", "+1"), ("Colombia", "+57"), ("Venezuela", "+58"),
+        ("Ecuador", "+593"), ("Peru", "+51"), ("Bolivia", "+591"), ("Chile", "+56"),
+        ("Argentina", "+54"), ("Paraguay", "+595"), ("Uruguay", "+598"), ("Brazil", "+55"),
+        ("China", "+86"), ("Japan", "+81"), ("South Korea", "+82"), ("India", "+91"),
+        ("Australia", "+61"), ("New Zealand", "+64"), ("South Africa", "+27"),
+    };
+
+    private IReadOnlyList<(string Name, string Code)> FilteredPrefixes =>
+        (string.IsNullOrWhiteSpace(_prefixSearch)
+            ? PhonePrefixes.AsEnumerable()
+            : PhonePrefixes.Where(p =>
+                p.Name.Contains(_prefixSearch, StringComparison.OrdinalIgnoreCase) ||
+                p.Code.Contains(_prefixSearch, StringComparison.OrdinalIgnoreCase)))
+        .ToList();
+
+    private void TogglePrefixMenu()
+    {
+        _prefixMenuOpen = !_prefixMenuOpen;
+        _prefixSearch = "";
+    }
+
+    private void ClosePrefixMenu() => _prefixMenuOpen = false;
+
+    private void PickPrefix(string code)
+    {
+        _phonePrefix = code;
+        _prefixMenuOpen = false;
+        SyncPhone();
+    }
+
+    private void SyncPhone()
+    {
+        if (_resForm is null) return;
+        _resForm.Phone = string.IsNullOrWhiteSpace(_phoneLocal) ? null : $"{_phonePrefix} {_phoneLocal.Trim()}";
+    }
+
+    private void SplitPhone()
+    {
+        _phonePrefix = "+34";
+        _phoneLocal = "";
+        var raw = _resForm?.Phone?.Trim();
+        if (string.IsNullOrWhiteSpace(raw)) return;
+
+        var match = PhonePrefixes
+            .OrderByDescending(p => p.Code.Length)
+            .FirstOrDefault(p => raw.StartsWith(p.Code, StringComparison.Ordinal));
+        if (match.Code is not null)
+        {
+            _phonePrefix = match.Code;
+            _phoneLocal = raw[match.Code.Length..].TrimStart();
+        }
+        else
+        {
+            _phoneLocal = raw;
+        }
+    }
+
+    private void GoToStep(int step)
+    {
+        if (step <= _resMaxStep) _resStep = step;
+    }
+
+    private void GoNext()
+    {
+        if (_resStep == 1 && _resForm is not null)
+        {
+            if (string.IsNullOrWhiteSpace(_resForm.CustomerName)) { _resError = Loc.T("Enter the customer's name."); return; }
+            if (string.IsNullOrWhiteSpace(_resForm.Phone)) { _resError = Loc.T("Enter a phone number."); return; }
+        }
+
+        _resError = null;
+        _resStep = Math.Min(ResSteps.Length, _resStep + 1);
+        _resMaxStep = Math.Max(_resMaxStep, _resStep);
+    }
+
+    private void GoBack() => _resStep = Math.Max(1, _resStep - 1);
+
+    private void PickDate(DateTime date)
+    {
+        if (_resForm is null) return;
+        _resForm.Date = date;
+        GoNext();
+    }
+
+    private void PickPeriod(TimeOnly start)
+    {
+        if (_resForm is null) return;
+        _resForm.Time = start;
+    }
+
+    private void PickSlot(TimeOnly slot)
+    {
+        if (_resForm is null) return;
+        _resForm.Time = slot;
+        GoNext();
+    }
+
+    private List<TimeOnly> CurrentPeriodSlots => _resForm is null ? new() : Branding.Current.GetPeriod(_resForm.Time) switch
+    {
+        ServicePeriod.Lunch => ServiceSlots(Branding.Current.LunchStart, Branding.Current.LunchEnd),
+        ServicePeriod.Dinner => ServiceSlots(Branding.Current.DinnerStart, Branding.Current.DinnerEnd),
+        _ => new()
+    };
+
+    private static List<TimeOnly> ServiceSlots(TimeOnly start, TimeOnly end)
+    {
+        var slots = new List<TimeOnly>();
+        var t = start;
+        for (var i = 0; i < 96 && t <= end; i++)
+        {
+            slots.Add(t);
+            t = t.AddMinutes(15);
+        }
+        return slots;
+    }
+
+    private int FormTotalGuests => _resForm is null ? 0 : _resForm.PartySize + _resForm.ChildrenCount;
+
+    private bool _saveSuccess;
+    private bool _savingRes;
+    private bool _wasNewReservation;
+
+    private async Task SaveRes()
+    {
+        if (_resForm is null || _savingRes) return;
+        var result = await ResValidator.ValidateAsync(_resForm);
+        if (!result.IsValid) { _resError = result.Errors[0].ErrorMessage; return; }
+
+        _savingRes = true;
+        try
+        {
+            _wasNewReservation = _resForm.Id == 0;
+            if (_resForm.Id > 0) await ReservationService.UpdateAsync(_resForm);
+            else await ReservationService.CreateAsync(_resForm);
+
+            await LoadReservations();
+
+            _saveSuccess = true;
+            StateHasChanged();
+            await Task.Delay(650);
+
+            _saveSuccess = false;
+            _resForm = null;
+        }
+        finally
+        {
+            _savingRes = false;
+        }
+    }
+
+    private async Task DeleteRes(int id)
+    {
+        await ReservationService.DeleteAsync(id);
+        _resForm = null;
+        await LoadReservations();
+    }
+
+    private static string StatusClass(ReservationStatus s) => s switch
+    {
+        ReservationStatus.Confirmed => "badge--primary",
+        ReservationStatus.Seated => "badge--warning",
+        ReservationStatus.Finished => "badge--success",
+        ReservationStatus.Cancelled => "badge--danger",
+        _ => ""
+    };
+
+    private string PeriodIcon(TimeOnly time) => Branding.Current.GetPeriod(time) switch
+    {
+        ServicePeriod.Lunch => "sun",
+        ServicePeriod.Dinner => "moon",
+        _ => "clock"
+    };
+
+    private string PeriodLabel(TimeOnly time) => Branding.Current.GetPeriod(time) switch
+    {
+        ServicePeriod.Lunch => "Lunch",
+        ServicePeriod.Dinner => "Dinner",
+        _ => "Outside service hours"
+    };
+}

@@ -89,7 +89,7 @@
     @* ---- Drinks ---- *@
     @if (_drinks.Count > 0)
     {
-        <div class="order-card__group"><LucideIcon Name="cup-soda" Size="16" /> @Loc.T("Drinks")</div>
+        <div class="order-card__group"><span class="order-card__group-label"><LucideIcon Name="cup-soda" Size="16" />@Loc.T("Drinks")</span></div>
         <div class="order-card__lines @(_drinks.Count > 7 ? "order-card__lines--scroll" : "")">
             @foreach (var group in _drinkGroups)
             {
@@ -120,7 +120,7 @@
     @* ---- First course: same served-batch/green-badge pattern as drinks ---- *@
     @if (_starters.Count > 0)
     {
-        <div class="order-card__group"><LucideIcon Name="salad" Size="16" /> @Loc.T("First course")</div>
+        <div class="order-card__group"><span class="order-card__group-label"><LucideIcon Name="salad" Size="16" />@Loc.T("First course")</span></div>
         <div class="order-card__lines">
             @foreach (var group in _starterGroups)
             {
@@ -153,7 +153,7 @@
     @* ---- Second course: same served-batch/green-badge pattern as first course ---- *@
     @if (_mains.Count > 0)
     {
-        <div class="order-card__group"><LucideIcon Name="utensils" Size="16" /> @Loc.T("Second course")</div>
+        <div class="order-card__group"><span class="order-card__group-label"><LucideIcon Name="utensils" Size="16" />@Loc.T("Second course")</span></div>
         <div class="order-card__lines">
             @foreach (var group in _mainGroups)
             {
@@ -186,7 +186,7 @@
     @* ---- Desserts: same served-batch/green-badge pattern as first course ---- *@
     @if (_desserts.Count > 0)
     {
-        <div class="order-card__group"><LucideIcon Name="cake-slice" Size="16" /> @Loc.T("Desserts")</div>
+        <div class="order-card__group"><span class="order-card__group-label"><LucideIcon Name="cake-slice" Size="16" />@Loc.T("Desserts")</span></div>
         <div class="order-card__lines">
             @foreach (var group in _dessertGroups)
             {
