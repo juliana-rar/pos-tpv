@@ -74,7 +74,7 @@
                             <div class="product-grid">
                                 @foreach (var p in _products)
                                 {
-                                    <button class="productCard @(p.IsAvailable ? "" : "productCard--off") @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? "productCard--img" : "")"
+                                    <button class="productCard @(p.IsAvailable ? "" : "productCard--off") @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? "productCard--img" : "") @(_pressedProductId == p.Id ? "productCard--pressed" : "")"
                                             style="--pc:@p.Color; @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? $"background-image:url('{p.ImageUrl}')" : "")"
                                             disabled="@(!p.IsAvailable || _busy)" @onclick="() => OnProductClick(p)" type="button"
                                             @onpointerdown="() => StartProductPress(p)" @onpointerdown:preventDefault="true"

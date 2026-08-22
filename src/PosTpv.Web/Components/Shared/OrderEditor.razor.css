@@ -176,8 +176,7 @@
     border-radius: inherit;
     background: linear-gradient(180deg, rgba(0, 0, 0, .15) 0%, rgba(0, 0, 0, .65) 100%);
 }
-.productCard--img .productCard__name,
-.productCard--img .productCard__extras { position: relative; }
+.productCard--img .productCard__name { position: relative; }
 .productCard--img .productCard__price { background: rgba(255, 255, 255, .16); color: #fff; }
 /* Title row — order:-1 keeps it pinned at the card's top edge whether the extras preview
    below is expanded or not, since the preview is a sibling inserted before it in markup order
@@ -188,21 +187,44 @@
 .productCard__price {
     position: absolute;
     inset: auto .5rem .5rem auto;
+    z-index: 2;
     font-size: .5rem; font-weight: 700;
     padding: .08rem .4rem; border-radius: 999px;
     background: var(--card-2);
     color: var(--text-soft);
 }
+/* While pressed, the extras panel below occupies the card's usual bottom-right corner, so the
+   price pill moves up next to the title instead of sitting on top of the extras list. */
+.productCard--pressed .productCard__price { top: .5rem; bottom: auto; }
 .productCard--off { opacity: .55; cursor: not-allowed; }
 .productCard__off { position: absolute; inset: .5rem .5rem auto auto; font-size: .7rem; color: var(--danger); font-weight: 700; }
 
+/* A pressed card's extras panel (below) grows taller than the card's own grid row and has to
+   spill over whatever sits underneath it in the grid — it must paint above that, not behind it.
+   z-index:auto siblings stack by DOM order, so without this the panel would appear under any
+   product that comes later in _products. */
+.productCard--pressed { z-index: 20; }
+
 /* --- Press-and-hold extras preview (see StartProductPress/TriggerProductPress/EndProductPress
-   in OrderEditor.razor) — a small list of the product's extras opens below its title/price;
-   tapping one adds the product with that extra already attached in a single tap.
-   Card keeps its normal width (no lateral growth) — rows just get taller/roomier. --- */
-.productCard__extras { display: flex; flex-direction: column; gap: .22rem; margin-top: -.1rem; }
+   in OrderEditor.razor) — the full list of the product's extras opens below its title, inside
+   the same card. Positioned absolute (the card stays position:relative) so the card's own box —
+   and its CSS grid row — never grows: every OTHER product div keeps its exact grid position no
+   matter how many extras this one has. No bottom/overflow limit (every extra shows, no scroll),
+   so the panel's height grows with its content and spills past the card's own bottom edge over
+   whatever is underneath in the grid — its own background/border/shadow (matching the card's)
+   make that read as the same card growing taller, not a separate floating popup. */
+.productCard__extras {
+    position: absolute;
+    top: 1.7rem; left: 0; right: 0;
+    z-index: 1;
+    display: flex; flex-direction: column; gap: .22rem;
+    padding: .3rem .6rem .6rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: none;
+    box-shadow: var(--shadow);
+}
 .productCard__extras-empty { font-size: .7rem; color: var(--text-soft); }
-.productCard--img .productCard__extras-empty { color: rgba(255, 255, 255, .85); }
 .productCard__extra-row {
     display: flex; align-items: center; justify-content: space-between;
     gap: .3rem;
@@ -215,8 +237,6 @@
     transition: background var(--transition);
 }
 .productCard__extra-row:hover { background: var(--border); }
-.productCard--img .productCard__extra-row { background: rgba(255, 255, 255, .16); color: #fff; }
-.productCard--img .productCard__extra-row:hover { background: rgba(255, 255, 255, .28); }
 .productCard__extra-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .productCard__extra-price { flex: none; opacity: .8; }
 
