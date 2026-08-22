@@ -48,27 +48,6 @@
                             }
                         </div>
 
-                        @* Large-screen only (hidden below the layout's stacking breakpoint, see
-                           .editor__topbar in OrderEditor.razor.css): starts right of the category
-                           rail and spans to the order panel, so the Serve/Fire actions live up
-                           here instead of eating into the order panel's height — that panel is
-                           then free to show just the product lines. *@
-                        <div class="editor__topbar">
-                            <div class="editor__topbar-meta">
-                                <LucideIcon Name="armchair" Size="15" />
-                                <span class="editor__topbar-title">@Loc.T("Editing table") @_order.TableName</span>
-                                <span class="editor__topbar-sep">·</span>
-                                <div class="editor__topbar-stack">
-                                    <span class="editor__topbar-item"><LucideIcon Name="users" Size="13" />@_tableSeats</span>
-                                    <span class="editor__topbar-item"><LucideIcon Name="clock" Size="13" />@_order.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
-                                </div>
-                            </div>
-                            @if (_drinks.Count > 0 || _hasSeconds || _showServeFirsts)
-                            {
-                                <div class="editor__topbar-actions">@ActionsRow</div>
-                            }
-                        </div>
-
                         <!-- Centre: product grid, same look as /pos -->
                         <div class="pos__products">
                             <div class="product-grid">
@@ -83,7 +62,7 @@
                                             @oncontextmenu="@(() => { })" @oncontextmenu:preventDefault="true">
                                         @if (_pressedProductId == p.Id)
                                         {
-                                            <span class="productCard__extras" id="product-extras-@p.Id">
+                                            <span class="productCard__extras">
                                                 <span class="productCard__extras-inner">
                                                     @if (_pressedExtrasLoading)
                                                     {
@@ -93,8 +72,12 @@
                                                     {
                                                         @foreach (var ex in _pressedExtras)
                                                         {
-                                                            <span class="productCard__extra-row" @onclick="() => OnExtraClick(p, ex)" @onclick:stopPropagation="true"
+                                                            <span class="productCard__extra-row @(_pressedSelectedExtraIds.Contains(ex.Id) ? "productCard__extra-row--on" : "")"
+                                                                  @onclick="() => TogglePressedExtra(ex)" @onclick:stopPropagation="true"
                                                                   @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true">
+                                                                <span class="productCard__extra-check">
+                                                                    @if (_pressedSelectedExtraIds.Contains(ex.Id)) { <LucideIcon Name="check" Size="10" /> }
+                                                                </span>
                                                                 <span class="productCard__extra-name">@ex.Name</span>
                                                                 <span class="productCard__extra-price">＋@ex.Price.ToString("N2")</span>
                                                             </span>
@@ -104,6 +87,20 @@
                                                     {
                                                         <span class="productCard__extras-empty">@Loc.T("No extras available for this product.")</span>
                                                     }
+                                                    @* X discards the preview with nothing added; the tick adds the product with
+                                                       whatever extras are ticked above (none ticked still adds the plain product) —
+                                                       replaces the old tap-a-row-to-add-immediately flow now that rows are multi-select. *@
+                                                    <span class="productCard__extras-actions" @onclick:stopPropagation="true"
+                                                          @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true">
+                                                        <span class="productCard__extras-btn productCard__extras-btn--cancel" role="button" tabindex="0"
+                                                              title="@Loc.T("Cancel")" @onclick="ClosePressedPreview">
+                                                            <LucideIcon Name="x" Size="13" />
+                                                        </span>
+                                                        <span class="productCard__extras-btn productCard__extras-btn--confirm" role="button" tabindex="0"
+                                                              title="@Loc.T("Add")" @onclick="() => ConfirmPressedExtras(p)">
+                                                            <LucideIcon Name="check" Size="13" />
+                                                        </span>
+                                                    </span>
                                                 </span>
                                             </span>
                                         }
@@ -143,6 +140,27 @@
                                 }
                                 @if (_products.Count == 0) { <p class="empty">@Loc.T("No products in this category.")</p> }
                             </div>
+                        </div>
+
+                        @* Large-screen only (hidden below the layout's stacking breakpoint, see
+                           .editor__topbar in OrderEditor.razor.css): starts right of the category
+                           rail and ends exactly where the order panel begins — never under it —
+                           so the Serve/Fire actions live down here instead of eating into the
+                           order panel's own height. *@
+                        <div class="editor__topbar">
+                            <div class="editor__topbar-meta">
+                                <LucideIcon Name="armchair" Size="15" />
+                                <span class="editor__topbar-title">@Loc.T("Editing table") @_order.TableName</span>
+                                <span class="editor__topbar-sep">·</span>
+                                <div class="editor__topbar-stack">
+                                    <span class="editor__topbar-item"><LucideIcon Name="users" Size="13" />@_tableSeats</span>
+                                    <span class="editor__topbar-item"><LucideIcon Name="clock" Size="13" />@_order.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
+                                </div>
+                            </div>
+                            @if (_drinks.Count > 0 || _hasSeconds || _showServeFirsts)
+                            {
+                                <div class="editor__topbar-actions">@ActionsRow</div>
+                            }
                         </div>
                     </div>
 
@@ -438,6 +456,9 @@
     private int? _pressedProductId;
     private bool _pressedExtrasLoading;
     private List<ExtraDto> _pressedExtras = new();
+    // Extras ticked in the preview so far (see TogglePressedExtra) — multiple can be picked before
+    // confirming with the tick button (ConfirmPressedExtras). Cleared on every new press and on close.
+    private readonly HashSet<int> _pressedSelectedExtraIds = new();
     // Id of the product whose held-past-the-delay press already opened its extras preview — the
     // pointerup/click pair that ends that specific hold shouldn't also add a line (see
     // OnProductClick). Scoped to a product id, not a bare bool: on touch, the release doesn't
@@ -447,7 +468,6 @@
     // instead of closing its preview and adding that product, as it should.
     private int? _suppressClickForProductId;
     private CancellationTokenSource? _pressCts;
-    private bool _scrollToPressedExtras;
 
     // Closing-animation state (see ClosePressedPreview) — holds a frozen snapshot of whichever
     // preview was just closed so its shrink-back animation has something to render while it plays,
@@ -472,17 +492,6 @@
         {
             _scrollToItemId = null;
             await JS.InvokeVoidAsync("posScrollIntoView", $"orderline-{itemId}");
-        }
-        // A pressed card near the bottom of the product grid opens an extras panel taller than
-        // the grid's own remaining visible space (see .productCard__extras in
-        // OrderEditor.razor.css) — the grid's overflow-y:auto clips it out of view instead of
-        // resizing, since the panel is positioned absolute and doesn't push the grid's scroll
-        // height until it's actually rendered. Scroll it into view once it's in the DOM so every
-        // extra is reachable without the user having to find a way to scroll mid-press.
-        if (_scrollToPressedExtras && _pressedProductId is int pressedId)
-        {
-            _scrollToPressedExtras = false;
-            await JS.InvokeVoidAsync("posScrollIntoView", $"product-extras-{pressedId}");
         }
         // Re-run every render, not just once: adding/removing/serving lines changes each
         // time-group's own height, which shifts how its label should be clamped.
@@ -712,19 +721,27 @@
         _scrollToItemId = _order?.Items.Where(i => i.ProductId == p.Id).OrderByDescending(i => i.Id).FirstOrDefault()?.Id;
     }
 
-    // Tapping an extra row in the press-and-hold preview adds the product straight into the
-    // comanda with that extra already attached — one tap instead of add-then-open-customize.
-    private async Task OnExtraClick(ProductDto p, ExtraDto ex)
+    // Tapping an extra row in the press-and-hold preview just arms/disarms it — several can be
+    // ticked before the tick button below actually adds the product (see ConfirmPressedExtras).
+    private void TogglePressedExtra(ExtraDto ex)
+    {
+        if (!_pressedSelectedExtraIds.Add(ex.Id)) _pressedSelectedExtraIds.Remove(ex.Id);
+    }
+
+    // Tick button: adds the product with every extra currently ticked (none ticked still adds the
+    // plain product), then closes the preview like a cancel would.
+    private async Task ConfirmPressedExtras(ProductDto p)
     {
         if (_order is null) return;
         var orderId = _order.Id;
         var invited = _invitationMode;
+        var extraIds = _pressedSelectedExtraIds.ToList();
         int? newItemId = null;
         await Mutate(async () =>
         {
             var afterAdd = await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id, Merge: false, Invited: invited));
             newItemId = afterAdd.Items.Where(i => i.ProductId == p.Id).OrderByDescending(i => i.Id).FirstOrDefault()?.Id;
-            return newItemId is null ? afterAdd : await Orders.SetItemExtrasAsync(newItemId.Value, new[] { ex.Id });
+            return newItemId is null || extraIds.Count == 0 ? afterAdd : await Orders.SetItemExtrasAsync(newItemId.Value, extraIds);
         });
         ClosePressedPreview();
         _scrollToItemId = newItemId;
@@ -744,6 +761,7 @@
         _pressedProductId = null;
         _pressedExtras = new();
         _pressedExtrasLoading = false;
+        _pressedSelectedExtraIds.Clear();
         _ = ClearClosingPreview(closingId);
     }
 
@@ -780,12 +798,12 @@
         _suppressClickForProductId = p.Id;
         _pressedExtrasLoading = true;
         _pressedExtras = new();
+        _pressedSelectedExtraIds.Clear();
         StateHasChanged();
 
         try { _pressedExtras = await Products.GetExtrasAsync(p.Id); }
         catch (Exception ex) { _error = ex.Message; }
         finally { _pressedExtrasLoading = false; }
-        _scrollToPressedExtras = true;
         StateHasChanged();
     }
 
