@@ -74,7 +74,7 @@
                             <div class="product-grid">
                                 @foreach (var p in _products)
                                 {
-                                    <button class="productCard @(p.IsAvailable ? "" : "productCard--off") @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? "productCard--img" : "") @(_pressedProductId == p.Id ? "productCard--pressed" : "")"
+                                    <button class="productCard @(p.IsAvailable ? "" : "productCard--off") @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? "productCard--img" : "") @(_pressedProductId == p.Id || _closingProductId == p.Id ? "productCard--pressed" : "")"
                                             style="--pc:@p.Color; @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? $"background-image:url('{p.ImageUrl}')" : "")"
                                             disabled="@(!p.IsAvailable || _busy)" @onclick="() => OnProductClick(p)" type="button"
                                             @onpointerdown="() => StartProductPress(p)" @onpointerdown:preventDefault="true"
@@ -83,26 +83,53 @@
                                             @oncontextmenu="@(() => { })" @oncontextmenu:preventDefault="true">
                                         @if (_pressedProductId == p.Id)
                                         {
-                                            <span class="productCard__extras">
-                                                @if (_pressedExtrasLoading)
-                                                {
-                                                    <span class="productCard__extras-empty">@Loc.T("Loading extras…")</span>
-                                                }
-                                                else if (_pressedExtras.Count > 0)
-                                                {
-                                                    @foreach (var ex in _pressedExtras)
+                                            <span class="productCard__extras" id="product-extras-@p.Id">
+                                                <span class="productCard__extras-inner">
+                                                    @if (_pressedExtrasLoading)
                                                     {
-                                                        <span class="productCard__extra-row" @onclick="() => OnExtraClick(p, ex)" @onclick:stopPropagation="true"
-                                                              @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true">
-                                                            <span class="productCard__extra-name">@ex.Name</span>
-                                                            <span class="productCard__extra-price">＋@ex.Price.ToString("N2")</span>
-                                                        </span>
+                                                        <span class="productCard__extras-empty">@Loc.T("Loading extras…")</span>
                                                     }
-                                                }
-                                                else
-                                                {
-                                                    <span class="productCard__extras-empty">@Loc.T("No extras available for this product.")</span>
-                                                }
+                                                    else if (_pressedExtras.Count > 0)
+                                                    {
+                                                        @foreach (var ex in _pressedExtras)
+                                                        {
+                                                            <span class="productCard__extra-row" @onclick="() => OnExtraClick(p, ex)" @onclick:stopPropagation="true"
+                                                                  @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true">
+                                                                <span class="productCard__extra-name">@ex.Name</span>
+                                                                <span class="productCard__extra-price">＋@ex.Price.ToString("N2")</span>
+                                                            </span>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="productCard__extras-empty">@Loc.T("No extras available for this product.")</span>
+                                                    }
+                                                </span>
+                                            </span>
+                                        }
+                                        else if (_closingProductId == p.Id)
+                                        {
+                                            @* Another tap (or a new long-press elsewhere) closed this preview — instead of
+                                               vanishing instantly, it shrinks back to the card's normal size (see
+                                               .productCard__extras--closing in OrderEditor.razor.css), rendering a frozen
+                                               snapshot of its extras taken at the moment it closed (see ClosePressedPreview). *@
+                                            <span class="productCard__extras productCard__extras--closing">
+                                                <span class="productCard__extras-inner">
+                                                    @if (_closingExtras.Count > 0)
+                                                    {
+                                                        @foreach (var ex in _closingExtras)
+                                                        {
+                                                            <span class="productCard__extra-row">
+                                                                <span class="productCard__extra-name">@ex.Name</span>
+                                                                <span class="productCard__extra-price">＋@ex.Price.ToString("N2")</span>
+                                                            </span>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="productCard__extras-empty">@Loc.T("No extras available for this product.")</span>
+                                                    }
+                                                </span>
                                             </span>
                                         }
                                         @* Title/price stay put at the card's top edge whether the extras preview below is open or
@@ -411,8 +438,23 @@
     private int? _pressedProductId;
     private bool _pressedExtrasLoading;
     private List<ExtraDto> _pressedExtras = new();
-    private bool _suppressNextClick;
+    // Id of the product whose held-past-the-delay press already opened its extras preview — the
+    // pointerup/click pair that ends that specific hold shouldn't also add a line (see
+    // OnProductClick). Scoped to a product id, not a bare bool: on touch, the release doesn't
+    // always land back on the same element as a synthetic click (varies by browser/gesture), so a
+    // click may never arrive for THIS product to consume the flag — if it were a bare bool, that
+    // leftover "true" would then swallow the very next tap on a completely different product
+    // instead of closing its preview and adding that product, as it should.
+    private int? _suppressClickForProductId;
     private CancellationTokenSource? _pressCts;
+    private bool _scrollToPressedExtras;
+
+    // Closing-animation state (see ClosePressedPreview) — holds a frozen snapshot of whichever
+    // preview was just closed so its shrink-back animation has something to render while it plays,
+    // even though _pressedProductId/_pressedExtras have already moved on to the next product.
+    private int? _closingProductId;
+    private List<ExtraDto> _closingExtras = new();
+    private const int ProductPressCloseAnimMs = 220;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -430,6 +472,17 @@
         {
             _scrollToItemId = null;
             await JS.InvokeVoidAsync("posScrollIntoView", $"orderline-{itemId}");
+        }
+        // A pressed card near the bottom of the product grid opens an extras panel taller than
+        // the grid's own remaining visible space (see .productCard__extras in
+        // OrderEditor.razor.css) — the grid's overflow-y:auto clips it out of view instead of
+        // resizing, since the panel is positioned absolute and doesn't push the grid's scroll
+        // height until it's actually rendered. Scroll it into view once it's in the DOM so every
+        // extra is reachable without the user having to find a way to scroll mid-press.
+        if (_scrollToPressedExtras && _pressedProductId is int pressedId)
+        {
+            _scrollToPressedExtras = false;
+            await JS.InvokeVoidAsync("posScrollIntoView", $"product-extras-{pressedId}");
         }
         // Re-run every render, not just once: adding/removing/serving lines changes each
         // time-group's own height, which shifts how its label should be clamped.
@@ -642,11 +695,14 @@
     private async Task OnProductClick(ProductDto p)
     {
         // A held-past-the-delay press already showed the extras preview instead of adding the
-        // product — the pointerup/click pair that ends it shouldn't also add a line.
-        if (_suppressNextClick) { _suppressNextClick = false; return; }
-        // The extras preview stays pinned open after a press (see EndProductPress) until the
-        // product is tapped again — that tap both adds the line and closes the preview.
-        if (_pressedProductId == p.Id) _pressedProductId = null;
+        // product — the pointerup/click pair that ends it shouldn't also add a line. Only
+        // suppresses a click on the SAME product that was just pressed — a click on any other
+        // product still goes through below, closing this one's preview and adding the one tapped.
+        if (_suppressClickForProductId == p.Id) { _suppressClickForProductId = null; return; }
+        // The extras preview stays pinned open after a press (see EndProductPress) until any
+        // product is tapped — same one or a different one — which both adds the tapped line and
+        // closes whichever preview was open (see ClosePressedPreview for the shrink animation).
+        ClosePressedPreview();
         if (_order is null) return;
         var orderId = _order.Id;
         var invited = _invitationMode;
@@ -670,8 +726,33 @@
             newItemId = afterAdd.Items.Where(i => i.ProductId == p.Id).OrderByDescending(i => i.Id).FirstOrDefault()?.Id;
             return newItemId is null ? afterAdd : await Orders.SetItemExtrasAsync(newItemId.Value, new[] { ex.Id });
         });
-        _pressedProductId = null;
+        ClosePressedPreview();
         _scrollToItemId = newItemId;
+    }
+
+    // Closes whichever product's extras preview is currently pinned open, handing it off to the
+    // closing-animation state (_closingProductId/_closingExtras) instead of just nulling
+    // _pressedProductId outright — an @if removing the panel's DOM node in the same render gives
+    // CSS no chance to transition, so a frozen snapshot keeps rendering (with a
+    // .productCard__extras--closing class — see OrderEditor.razor.css) until the shrink animation
+    // finishes, then ClearClosingPreview drops it for good.
+    private void ClosePressedPreview()
+    {
+        if (_pressedProductId is not { } closingId) return;
+        _closingProductId = closingId;
+        _closingExtras = _pressedExtras;
+        _pressedProductId = null;
+        _pressedExtras = new();
+        _pressedExtrasLoading = false;
+        _ = ClearClosingPreview(closingId);
+    }
+
+    private async Task ClearClosingPreview(int productId)
+    {
+        await Task.Delay(ProductPressCloseAnimMs);
+        if (_closingProductId != productId) return;
+        _closingProductId = null;
+        StateHasChanged();
     }
 
     private const int ProductPressDelayMs = 450;
@@ -690,8 +771,13 @@
         catch (TaskCanceledException) { return; }
         if (ct.IsCancellationRequested) return;
 
+        // Long-pressing straight into a different product while another's preview is still
+        // open swaps it out — the old one plays its shrink-back animation instead of just
+        // disappearing under the new one.
+        if (_pressedProductId is not null && _pressedProductId != p.Id) ClosePressedPreview();
+
         _pressedProductId = p.Id;
-        _suppressNextClick = true;
+        _suppressClickForProductId = p.Id;
         _pressedExtrasLoading = true;
         _pressedExtras = new();
         StateHasChanged();
@@ -699,6 +785,7 @@
         try { _pressedExtras = await Products.GetExtrasAsync(p.Id); }
         catch (Exception ex) { _error = ex.Message; }
         finally { _pressedExtrasLoading = false; }
+        _scrollToPressedExtras = true;
         StateHasChanged();
     }
 

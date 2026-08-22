@@ -212,11 +212,22 @@
    matter how many extras this one has. No bottom/overflow limit (every extra shows, no scroll),
    so the panel's height grows with its content and spills past the card's own bottom edge over
    whatever is underneath in the grid — its own background/border/shadow (matching the card's)
-   make that read as the same card growing taller, not a separate floating popup. */
+   make that read as the same card growing taller, not a separate floating popup.
+   The outer element is just a grid-row animator (see .productCard__extras--closing below) — all
+   the actual chrome (background/border/padding) lives on .productCard__extras-inner, whose height
+   the 1fr/0fr row track controls, since animating a raw `height` needs a fixed end value but this
+   panel's height depends on however many extras the product has. */
 .productCard__extras {
     position: absolute;
     top: 1.7rem; left: 0; right: 0;
     z-index: 1;
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 220ms ease, opacity 220ms ease;
+}
+.productCard__extras-inner {
+    min-height: 0;
+    overflow: hidden;
     display: flex; flex-direction: column; gap: .22rem;
     padding: .3rem .6rem .6rem;
     background: var(--card);
@@ -224,6 +235,12 @@
     border-top: none;
     box-shadow: var(--shadow);
 }
+/* Set by ClosePressedPreview (OrderEditor.razor) when a different tap or a new long-press
+   elsewhere closes this preview — collapses the 1fr row to 0fr, shrinking the whole panel
+   (border/background included, since .productCard__extras-inner's box lives entirely inside that
+   row) back down to nothing instead of the @if just yanking it out of the DOM instantly.
+   pointer-events:none so a stray tap on the fading-out list can't fire OnExtraClick. */
+.productCard__extras--closing { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
 .productCard__extras-empty { font-size: .7rem; color: var(--text-soft); }
 .productCard__extra-row {
     display: flex; align-items: center; justify-content: space-between;
