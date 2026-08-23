@@ -320,12 +320,19 @@
    pointer-events:none so a stray tap on the fading-out list can't fire OnExtraClick. */
 .productCard__extras--closing { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
 .productCard__extras-empty { font-size: .58rem; color: var(--text-soft); }
-/* In-flow with the rest of .productCard__extras-inner's content (not position:absolute) so it
-   sits at the true bottom-right of the panel whatever height the panel grows to, and never
-   overlaps/gets hidden the way a fixed-position pill anchored to the card's own (non-growing)
-   box would — see .productCard__price, which this replaces while the preview is open. */
+/* Row pinning the extras total + price together at the far right, and how many extras are
+   selected at the far left — in-flow with the rest of .productCard__extras-inner's content (not
+   position:absolute) so it sits at the true bottom of the panel whatever height the panel grows
+   to, and never overlaps/gets hidden the way a fixed-position pill anchored to the card's own
+   (non-growing) box would — see .productCard__price, which this replaces while the preview is
+   open. */
+.productCard__extras-footer { display: flex; align-items: center; justify-content: space-between; gap: .3rem; }
+.productCard__extras-selcount { font-size: .42rem; font-weight: 700; color: var(--text-soft); }
+/* Total price stays flush-right with a small gap to the price pill next to it. */
+.productCard__extras-total { display: flex; align-items: center; gap: .12rem; }
+/* Plain text, no pill chrome — just the word "Extras" and the running total. */
+.productCard__extras-count { font-size: .42rem; font-weight: 700; color: var(--text-soft); }
 .productCard__extras-price {
-    align-self: flex-end;
     font-size: .42rem; font-weight: 700;
     padding: .06rem .32rem; border-radius: 999px;
     background: var(--card-2);
