@@ -384,15 +384,13 @@
    own offset instead of the card's. */
 .productCard__extras-actions {
     position: absolute;
-    top: .15rem; right: .5rem;
+    top: 0; right: 0;
     z-index: 4;
     display: flex;
-    gap: .3rem;
 }
 .productCard__extras-btn {
     display: grid; place-items: center;
     width: 20px; height: 20px;
-    border-radius: 999px;
     cursor: pointer;
     transition: background var(--transition);
 }
