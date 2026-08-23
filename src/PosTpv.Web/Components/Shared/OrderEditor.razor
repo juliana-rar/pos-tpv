@@ -179,16 +179,18 @@
                             {
                                 <div class="editor__topbar-actions">@ActionsRow</div>
                             }
-                            @* Placeholder actions, pinned to the topbar's far right (margin-left:auto in CSS)
-                               regardless of whether the Serve/Fire actions above render — functionality TBD.
-                               Same flat card-2 tile look/size as the order panel's own bottom toolbar
-                               (.order__toolbar-actions/.order__grand-actions below), not the default
-                               circular .btn--icon.btn--ghost, so both icon rows read as one family. *@
+                            @* Pinned to the topbar's far right (margin-left:auto in CSS) regardless of whether
+                               the Serve/Fire actions above render. Same flat card-2 tile look/size as the order
+                               panel's own bottom toolbar (.order__toolbar-actions/.order__grand-actions below),
+                               not the default circular .btn--icon.btn--ghost, so both icon rows read as one
+                               family. Lock/open drawer and the 4th tile are placeholders (no hardware wired up
+                               yet, 4th tile's label still TBD); only Move table calls through to OrderService
+                               (see StartMoveTable below). *@
                             <div class="editor__topbar-extra">
-                                <button class="btn" title="@Loc.T("Action 1")" type="button"><LucideIcon Name="star" Size="16" /></button>
-                                <button class="btn" title="@Loc.T("Action 2")" type="button"><LucideIcon Name="flag" Size="16" /></button>
-                                <button class="btn" title="@Loc.T("Action 3")" type="button"><LucideIcon Name="printer" Size="16" /></button>
-                                <button class="btn" title="@Loc.T("Action 4")" type="button"><LucideIcon Name="settings" Size="16" /></button>
+                                <button class="btn" title="@Loc.T("Move table")" @onclick="StartMoveTable" type="button"><LucideIcon Name="move" Size="16" /><span>@Loc.T("Move table")</span></button>
+                                <button class="btn" title="@Loc.T("Lock drawer")" type="button"><LucideIcon Name="lock" Size="16" /><span>@Loc.T("Lock drawer")</span></button>
+                                <button class="btn" title="@Loc.T("Open drawer")" type="button"><LucideIcon Name="package-open" Size="16" /><span>@Loc.T("Open drawer")</span></button>
+                                <button class="btn btn--pending" title="@Loc.T("Print bill")" type="button"><LucideIcon Name="printer" Size="16" /></button>
                             </div>
                         </div>
                     </div>
@@ -442,6 +444,32 @@
     </Footer>
 </Modal>
 
+@* Move table: same OrderService.MoveOrderToTableAsync call as /tables' reassign-popover. The picker
+   is an always-expanded list (not a popup menu) so a big table count is visible at once without the
+   list getting clipped by .modal's own overflow:auto — a popup absolutely-positioned past the
+   modal's shrink-wrapped height would get cut off there instead of just scrolling. Styled with the
+   same tokens as /orders' status/sort/zone filters (.orders-dd in Orders.razor.css) even though the
+   shape differs, so it still reads as the same design system; Blazor's CSS isolation scopes that
+   file to Orders.razor, so the rules are duplicated here under movetable-list (see
+   OrderEditor.razor.css) rather than shared across components.
+   Lists every other table, not just free ones — MoveOrderToTableAsync itself already rejects an
+   occupied/reserved destination (surfaced as _error below), so filtering here would only hide
+   options without adding real protection. *@
+<Modal Visible="_showMoveTable" Title="@Loc.T("Move table")" OnClose="CancelMoveTable" Wide="true">
+    <ChildContent>
+        <div class="movetable-list">
+            @foreach (var dest in _tables.Where(t => t.Id != _order!.TableId).OrderBy(t => t.Name))
+            {
+                <button type="button" class="movetable-list__opt @(_moveTableDestId == dest.Id ? "movetable-list__opt--on" : "")" @onclick="() => SelectMoveTableDest(dest.Id)">@dest.Name</button>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="CancelMoveTable">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" disabled="@(_moveTableDestId is null || _busy)" @onclick="ConfirmMoveTable">@Loc.T("Confirm")</button>
+    </Footer>
+</Modal>
+
 @code {
     /// <summary>Id of the order to edit; the dialog is shown while this is non-null.</summary>
     [Parameter] public int? OrderId { get; set; }
@@ -549,6 +577,10 @@
     private bool _lineExtrasLoading;
     private readonly HashSet<int> _lineSelectedExtraIds = new();
     private string? _lineCommentText;
+
+    // Move-table modal state, armed from the topbar's Move table action — see StartMoveTable.
+    private bool _showMoveTable;
+    private int? _moveTableDestId;
 
     // Same Serve/Fire action-row state as OrderCard.razor (see Repartition below).
     private List<OrderItemDto> _drinks = new();
@@ -863,6 +895,31 @@
         _selectedQty.Clear();
         return updated;
     });
+
+    private void StartMoveTable() { _showMoveTable = true; _moveTableDestId = null; }
+    private void CancelMoveTable() { _showMoveTable = false; _moveTableDestId = null; }
+    private void SelectMoveTableDest(int id) => _moveTableDestId = id;
+
+    // Same call /tables' reassign-popover makes (OrderService.MoveOrderToTableAsync); refreshes both
+    // the order (new TableId/TableName) and the table list (old table freed up, new one occupied) so
+    // a second move in the same session offers the right destinations again.
+    private async Task ConfirmMoveTable()
+    {
+        if (_moveTableDestId is null || _busy) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            _order = await Orders.MoveOrderToTableAsync(_order!.Id, _moveTableDestId.Value);
+            _tables = await Tables.GetAllAsync();
+            _tableSeats = _tables.FirstOrDefault(t => t.Id == _order!.TableId)?.Seats ?? 0;
+            _showMoveTable = false;
+            _moveTableDestId = null;
+            await OnChanged.InvokeAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
 
     // Select armed/disarmed from the toolbar; leaving it clears whatever was checked so a stale
     // selection can't linger into the next time it's armed.

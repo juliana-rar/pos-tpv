@@ -220,6 +220,10 @@ public static class Loc
         ["Send to kitchen and close"] = "Enviar a cocina y cerrar",
         ["Confirm and close"] = "Confirmar y cerrar",
         ["or split"] = "o dividir",
+        ["Open drawer"] = "Abrir cajón",
+        ["Lock drawer"] = "Bloquear cajón",
+        ["Move table"] = "Mover mesa",
+        ["Print bill"] = "Imprimir cuenta",
 
         // ---- Tables ----
         ["Floor plan"] = "Plano de sala",
