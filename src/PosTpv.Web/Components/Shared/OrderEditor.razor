@@ -87,20 +87,28 @@
                                                     {
                                                         <span class="productCard__extras-empty">@Loc.T("No extras available for this product.")</span>
                                                     }
-                                                    @* X discards the preview with nothing added; the tick adds the product with
-                                                       whatever extras are ticked above (none ticked still adds the plain product) —
-                                                       replaces the old tap-a-row-to-add-immediately flow now that rows are multi-select. *@
-                                                    <span class="productCard__extras-actions" @onclick:stopPropagation="true"
-                                                          @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true">
-                                                        <span class="productCard__extras-btn productCard__extras-btn--cancel" role="button" tabindex="0"
-                                                              title="@Loc.T("Cancel")" @onclick="ClosePressedPreview">
-                                                            <LucideIcon Name="x" Size="13" />
-                                                        </span>
-                                                        <span class="productCard__extras-btn productCard__extras-btn--confirm" role="button" tabindex="0"
-                                                              title="@Loc.T("Add")" @onclick="() => ConfirmPressedExtras(p)">
-                                                            <LucideIcon Name="check" Size="13" />
-                                                        </span>
-                                                    </span>
+                                                    @* Base price stays visible while the preview is open (see .productCard__price,
+                                                       which the actions pair takes over up top) — pinned to the bottom-right of
+                                                       this panel instead of top-right, in flow with the rest of the content so it
+                                                       grows/shrinks with it and never forces a scrollbar. *@
+                                                    <span class="productCard__extras-price">@p.Price.ToString("N2")</span>
+                                                </span>
+                                            </span>
+                                            @* X discards the preview with nothing added; the tick adds the product with
+                                               whatever extras are ticked above (none ticked still adds the plain product) —
+                                               replaces the old tap-a-row-to-add-immediately flow now that rows are multi-select.
+                                               Sibling of .productCard__extras (not nested inside it) so .productCard — not the
+                                               extras panel — is its positioned ancestor; see .productCard__extras-actions in
+                                               OrderEditor.razor.css. *@
+                                            <span class="productCard__extras-actions" @onclick:stopPropagation="true"
+                                                  @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true">
+                                                <span class="productCard__extras-btn productCard__extras-btn--cancel" role="button" tabindex="0"
+                                                      title="@Loc.T("Cancel")" @onclick="ClosePressedPreview">
+                                                    <LucideIcon Name="x" Size="13" />
+                                                </span>
+                                                <span class="productCard__extras-btn productCard__extras-btn--confirm" role="button" tabindex="0"
+                                                      title="@Loc.T("Add")" @onclick="() => ConfirmPressedExtras(p)">
+                                                    <LucideIcon Name="check" Size="13" />
                                                 </span>
                                             </span>
                                         }
@@ -149,18 +157,31 @@
                            order panel's own height. *@
                         <div class="editor__topbar">
                             <div class="editor__topbar-meta">
-                                <LucideIcon Name="armchair" Size="15" />
-                                <span class="editor__topbar-title">@Loc.T("Editing table") @_order.TableName</span>
-                                <span class="editor__topbar-sep">·</span>
+                                <div class="editor__topbar-meta-row">
+                                    <LucideIcon Name="pencil" Size="12" />
+                                    <span class="editor__topbar-title">@_order.TableName</span>
+                                </div>
                                 <div class="editor__topbar-stack">
-                                    <span class="editor__topbar-item"><LucideIcon Name="users" Size="13" />@_tableSeats</span>
-                                    <span class="editor__topbar-item"><LucideIcon Name="clock" Size="13" />@_order.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
+                                    <span class="editor__topbar-item"><LucideIcon Name="users" Size="10" />@_tableSeats</span>
+                                    <span class="editor__topbar-sep">·</span>
+                                    <span class="editor__topbar-item"><LucideIcon Name="clock" Size="10" />@_order.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
                                 </div>
                             </div>
                             @if (_drinks.Count > 0 || _hasSeconds || _showServeFirsts)
                             {
                                 <div class="editor__topbar-actions">@ActionsRow</div>
                             }
+                            @* Placeholder actions, pinned to the topbar's far right (margin-left:auto in CSS)
+                               regardless of whether the Serve/Fire actions above render — functionality TBD.
+                               Same flat card-2 tile look/size as the order panel's own bottom toolbar
+                               (.order__toolbar-actions/.order__grand-actions below), not the default
+                               circular .btn--icon.btn--ghost, so both icon rows read as one family. *@
+                            <div class="editor__topbar-extra">
+                                <button class="btn" title="@Loc.T("Action 1")" type="button"><LucideIcon Name="star" Size="16" /></button>
+                                <button class="btn" title="@Loc.T("Action 2")" type="button"><LucideIcon Name="flag" Size="16" /></button>
+                                <button class="btn" title="@Loc.T("Action 3")" type="button"><LucideIcon Name="printer" Size="16" /></button>
+                                <button class="btn" title="@Loc.T("Action 4")" type="button"><LucideIcon Name="settings" Size="16" /></button>
+                            </div>
                         </div>
                     </div>
 

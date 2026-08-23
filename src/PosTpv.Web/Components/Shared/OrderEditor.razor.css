@@ -50,25 +50,76 @@
     grid-column: 1 / 3;
     grid-row: 2;
     width: calc(100% + 20px + .1rem);
-    display: flex; align-items: center; justify-content: space-between; gap: .6rem;
-    padding: .75rem .7rem;
+    /* Floor of two rows of the order panel's own bottom icon toolbar (see --order-toolbar-row-h
+       on .editor__pos above), so this strip and that toolbar read as the same height instead of
+       just "roughly" matching. min-height (not height) so taller content — e.g. the 4-icon
+       .editor__topbar-extra tiles — can still grow the strip instead of being clipped.
+       box-sizing:border-box (global reset) folds this div's own padding+border into that height
+       instead of adding on top of it. */
+    min-height: calc(var(--order-toolbar-row-h) * 2 + 1px);
+    /* flex-start (not space-between): Serve drinks/Seconds prepared sit right next to the table
+       meta on the left instead of pushed out to the strip's far right edge. */
+    display: flex; align-items: center; justify-content: flex-start; gap: .9rem;
+    padding: .15rem .7rem;
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--card);
+    /* Square corners — flush strip, not a floating rounded chip like the rest of the cards. */
+    border-radius: 0;
+    /* Same card-2 tone as the order panel's own icon buttons below (see .btn--delete etc.) — a
+       shade darker than the page's plain white cards without going as dark as --background. */
+    background: var(--card-2);
 }
-.editor__topbar-meta { display: flex; align-items: center; gap: .4rem; min-width: 0; color: var(--text-soft); }
-.editor__topbar-title { font-size: .78rem; font-weight: 800; color: var(--text); white-space: nowrap; }
-.editor__topbar-item { display: flex; align-items: center; gap: .25rem; white-space: nowrap; font-size: .85rem; }
-.editor__topbar-sep { opacity: .5; }
-/* Party size above the open time instead of both inline with the table title, since party size
-   is now just the icon + number (no "Party"/"Comensales" label). */
-.editor__topbar-stack { display: flex; flex-direction: column; gap: .1rem; }
+/* Column, not row: title on its own line, party size + time on a smaller line below it —
+   instead of everything inline on one row. Centered (not flex-start): the pencil+table-name row
+   and the seats+time row below it line up on a shared center axis instead of both hugging the
+   left edge regardless of which one is wider. */
+.editor__topbar-meta { display: flex; flex-direction: column; align-items: center; gap: .1rem; min-width: 0; color: var(--text-soft); }
+.editor__topbar-meta-row { display: flex; align-items: center; gap: .3rem; }
+.editor__topbar-title { font-size: .68rem; font-weight: 800; color: var(--text); white-space: nowrap; }
+.editor__topbar-item { display: flex; align-items: center; gap: .18rem; white-space: nowrap; font-size: .58rem; }
+.editor__topbar-sep { opacity: .5; font-size: .58rem; }
+/* Party size and open time side by side on this smaller line below the title, not stacked. */
+.editor__topbar-stack { display: flex; align-items: center; justify-content: center; gap: .3rem; }
 .editor__topbar-actions { display: flex; gap: .3rem; flex: none; }
 /* Stacked (Serve drinks above Fire seconds above Serve firsts) instead of side by side, only
    in this large-screen topbar — the inline mobile copy (.order-card__actions--inline further
-   down) keeps its own horizontal row. */
-.editor__topbar-actions .order-card__actions-row { flex-direction: column; }
+   down) keeps its own horizontal row. Tighter gap than that shared .order-card__actions-row
+   default (.3rem) so two stacked buttons come out roughly as tall as the order panel's own
+   bottom icon toolbar (.order__toolbar-actions + .order__grand-actions) below, not taller. */
+.editor__topbar-actions .order-card__actions-row { flex-direction: column; gap: .15rem; }
 .editor__topbar-actions .order-card__actions-row .btn { flex: none; }
+
+/* Placeholder action buttons pinned to the topbar's extreme right — margin-left:auto pushes
+   them past .editor__topbar-meta/.editor__topbar-actions regardless of whether the latter
+   renders (it's conditional on Serve/Fire state), instead of sitting right after them. Same
+   flat card-2 tile styling as .order__toolbar-actions/.order__grand-actions below (the panel's
+   own bottom icon toolbar) — see the shared rule below — so this row reads as the same family
+   of controls instead of the plain circular .btn--icon.btn--ghost default. */
+/* 2x2 grid, not a single row of 4 — the 1px gap plus this container's own border color painted
+   underneath (each .btn is opaque card-2) reads as hairline grid lines between the four tiles,
+   same look as the inset-shadow separators in the bottom toolbar without needing 2D box-shadow
+   logic for the extra row/column edge. */
+/* margin-right cancels .editor__topbar's own right padding (.7rem) so this block sits flush
+   against the strip's right border instead of floating inside the padded content area. */
+.editor__topbar-extra {
+    display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr);
+    gap: 1px;
+    flex: none; margin-left: auto; margin-right: -.7rem;
+    border: 1px solid var(--border);
+    background: var(--border);
+}
+.editor__topbar-extra .btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 56px; height: 28px;
+    padding: .3rem;
+    border: none;
+    border-radius: 0;
+    background: var(--card-2);
+    color: var(--text);
+    cursor: pointer;
+    transition: background 120ms ease, transform 80ms ease;
+}
+.editor__topbar-extra .btn:hover { background: var(--border); }
+.editor__topbar-extra .btn:active { transform: scale(.98); transition-duration: 40ms; }
 
 /* --- Same categories/products/order-panel layout and look as /pos, so editing a comanda
    here feels like the same screen instead of a stripped-down modal. --- */
@@ -86,6 +137,13 @@
     grid-template-columns: minmax(0, 1fr) 20px clamp(200px, var(--order-w, 300px), 720px);
     grid-template-rows: minmax(0, 1fr);
     gap: .05rem;
+    /* Height of one row of the order panel's bottom icon toolbar (.order__toolbar-actions /
+       .order__grand-actions below) — padding (.3rem top+bottom, from .btn--select etc.) plus
+       their 16px icons, which are what actually caps each row's height, not the smaller text
+       line-height. Shared here (on the common ancestor of both .editor__topbar and .pos__order)
+       so .editor__topbar can size itself to exactly two of these rows instead of drifting out of
+       sync with whatever those buttons' padding/icon size happen to be. */
+    --order-toolbar-row-h: calc(.6rem + 16px);
 }
 .pos__resize-handle {
     cursor: col-resize;
@@ -198,16 +256,23 @@
 .productCard__price {
     position: absolute;
     inset: .5rem .5rem auto auto;
-    z-index: 2;
+    /* Above .productCard__extras (z-index:3) — the price stays visible in the top-right corner,
+       level with the title, even while the extras preview is open and its panel grows past the
+       card's own bottom edge, instead of being painted over. */
+    z-index: 5;
     font-size: .42rem; font-weight: 700;
     padding: .06rem .32rem; border-radius: 999px;
     background: var(--card-2);
     color: var(--text-soft);
+    box-shadow: 0 0 0 1px var(--border);
 }
+/* The cancel/confirm pair (.productCard__extras-actions) takes this same top-right corner while
+   the preview is open, so the price pill vacates it rather than sitting on top of those buttons. */
+.productCard:has(.productCard__extras-actions) .productCard__price { opacity: 0; pointer-events: none; }
 .productCard--off { opacity: .55; cursor: not-allowed; }
-/* Bottom-right, opposite the price pill above — an unavailable product still shows its price,
+/* Top-right, opposite the price pill above — an unavailable product still shows its price,
    so this can't share the same corner. */
-.productCard__off { position: absolute; inset: auto .5rem .5rem auto; font-size: .7rem; color: var(--danger); font-weight: 700; }
+.productCard__off { position: absolute; inset: .5rem .5rem auto auto; font-size: .7rem; color: var(--danger); font-weight: 700; }
 
 /* A pressed card's extras panel (below) grows taller than the card's own grid row and has to
    spill over whatever sits underneath it in the grid — it must paint above that, not behind it.
@@ -230,7 +295,10 @@
 .productCard__extras {
     position: absolute;
     top: 1.7rem; left: 0; right: 0;
-    z-index: 1;
+    /* Below .productCard__price (z-index:5) — the panel can grow past the card's own bottom
+       edge into where the price pill sits (see .productCard__price), but the price must stay
+       visible there always, so it stacks above this panel instead of being painted over. */
+    z-index: 3;
     display: grid;
     grid-template-rows: 1fr;
     transition: grid-template-rows 220ms ease, opacity 220ms ease;
@@ -252,6 +320,18 @@
    pointer-events:none so a stray tap on the fading-out list can't fire OnExtraClick. */
 .productCard__extras--closing { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
 .productCard__extras-empty { font-size: .58rem; color: var(--text-soft); }
+/* In-flow with the rest of .productCard__extras-inner's content (not position:absolute) so it
+   sits at the true bottom-right of the panel whatever height the panel grows to, and never
+   overlaps/gets hidden the way a fixed-position pill anchored to the card's own (non-growing)
+   box would — see .productCard__price, which this replaces while the preview is open. */
+.productCard__extras-price {
+    align-self: flex-end;
+    font-size: .42rem; font-weight: 700;
+    padding: .06rem .32rem; border-radius: 999px;
+    background: var(--card-2);
+    color: var(--text-soft);
+    box-shadow: 0 0 0 1px var(--border);
+}
 .productCard__extra-row {
     display: flex; align-items: center; justify-content: space-between;
     gap: .3rem;
@@ -286,14 +366,21 @@
 .productCard__extra-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .productCard__extra-price { flex: none; opacity: .8; }
 
-/* Cancel/confirm row under the extras list — X discards the preview with nothing added, the tick
-   adds the product with whatever's ticked above (see ClosePressedPreview/ConfirmPressedExtras).
-   Plain spans (role="button"), not <button>, since this whole preview already sits inside the
-   product card's own outer <button> — nesting a real button there would be invalid HTML. */
+/* Cancel/confirm pair pinned to the card's top-right corner, level with the title (the same
+   spot the price pill vacates while pressed, see .productCard__price) instead of trailing the
+   extras list — X discards the preview with nothing added, the tick adds the product with
+   whatever's ticked above (see ClosePressedPreview/ConfirmPressedExtras). Plain spans, not
+   <button>, since this whole preview already sits inside the product card's own outer <button>
+   — nesting a real button there would be invalid HTML. Markup-level sibling of
+   .productCard__extras, not nested inside it (see OrderEditor.razor) — .productCard, not the
+   extras panel, must be its positioned ancestor, or top/right end up measured from the panel's
+   own offset instead of the card's. */
 .productCard__extras-actions {
-    display: flex; justify-content: flex-end;
+    position: absolute;
+    top: .15rem; right: .5rem;
+    z-index: 4;
+    display: flex;
     gap: .3rem;
-    margin-top: .12rem;
 }
 .productCard__extras-btn {
     display: grid; place-items: center;
@@ -302,10 +389,10 @@
     cursor: pointer;
     transition: background var(--transition);
 }
-.productCard__extras-btn--cancel { background: color-mix(in srgb, var(--danger) 14%, var(--card-2)); color: var(--danger); }
-.productCard__extras-btn--cancel:hover { background: color-mix(in srgb, var(--danger) 24%, var(--card-2)); }
-.productCard__extras-btn--confirm { background: color-mix(in srgb, var(--success) 16%, var(--card-2)); color: var(--success); }
-.productCard__extras-btn--confirm:hover { background: color-mix(in srgb, var(--success) 26%, var(--card-2)); }
+/* Both cancel and confirm read as the same neutral light-gray chip — not red/green — so
+   they match the flat gray tiles used elsewhere (.editor__topbar-extra .btn, .productCard__price). */
+.productCard__extras-btn--cancel, .productCard__extras-btn--confirm { background: var(--border); color: var(--text-soft); }
+.productCard__extras-btn--cancel:hover, .productCard__extras-btn--confirm:hover { background: color-mix(in srgb, var(--text-soft) 20%, var(--border)); }
 
 /* --- Right: current order, same panel as /pos --- */
 /* Extends past the page's own right padding so it sits flush against the screen's right edge
@@ -383,7 +470,7 @@
    (.editor__topbar-actions), not the vertical full-width stack .order-card__actions is for. */
 .editor__topbar-actions .btn {
     gap: .5rem;
-    padding: .32rem .6rem;
+    padding: .14rem .6rem;
     font-size: .6rem;
     font-weight: 700;
     letter-spacing: .01em;
@@ -584,7 +671,7 @@
    width the same way as .order__grand-actions below it, so the two bars read as one stack.
    Grid (not flex) with an explicit column template, shared with .order__grand-actions below, so
    Izquierda/Derecha in that row line up in width and position with Subir/Bajar in this one. */
-.order__toolbar-actions { display: grid; grid-template-columns: 1.15fr 1fr 1fr 1.15fr; align-items: stretch; width: calc(100% + 1.2rem); margin: 0 -.6rem; }
+.order__toolbar-actions { display: grid; grid-template-columns: 1.15fr 1fr 1fr 1.15fr; align-items: stretch; width: calc(100% + 1.2rem); margin: 0 -.6rem; height: var(--order-toolbar-row-h, auto); }
 
 /* Left/Right (jump to the previous/next order — see OnNavigate in OrderEditor.razor) plus
    Eliminar/Invitación/Cobrar all share this one row. Bleeds past the panel's own
@@ -596,7 +683,7 @@
    .order__toolbar-actions above: Eliminar+Invitación together fill column 1 (matching
    Seleccionar), Izquierda/Derecha fill columns 2/3 (matching Subir/Bajar), Cobrar fills column 4
    (matching Ticket) — see .order__del-invite for how column 1 splits into its two buttons. */
-.order__grand-actions { display: grid; grid-template-columns: 1.15fr 1fr 1fr 1.15fr; align-items: stretch; width: calc(100% + 1.2rem); margin: -.5rem -.6rem 0; border-top: 1px solid var(--border); }
+.order__grand-actions { display: grid; grid-template-columns: 1.15fr 1fr 1fr 1.15fr; align-items: stretch; width: calc(100% + 1.2rem); margin: -.5rem -.6rem 0; border-top: 1px solid var(--border); height: var(--order-toolbar-row-h, auto); }
 .order__del-invite { display: flex; align-items: stretch; }
 
 .orderLine__invited {
