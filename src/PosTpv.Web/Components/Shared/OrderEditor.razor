@@ -87,17 +87,18 @@
                                                     {
                                                         <span class="productCard__extras-empty">@Loc.T("No extras available for this product.")</span>
                                                     }
-                                                    @* Base price stays visible while the preview is open (see .productCard__price,
-                                                       which the actions pair takes over up top) — pinned to the bottom-right of
-                                                       this panel instead of top-right, in flow with the rest of the content so it
-                                                       grows/shrinks with it and never forces a scrollbar. The selected extras'
-                                                       combined price sits next to it, and how many extras are selected sits at
-                                                       the opposite (far left) end of the same row. *@
+                                                    @* Running total (base price + every ticked extra, see GetDisplayPrice) stays
+                                                       visible while the preview is open (see .productCard__price, which the
+                                                       actions pair takes over up top) — pinned to the bottom-right of this panel
+                                                       instead of top-right, in flow with the rest of the content so it
+                                                       grows/shrinks with it and never forces a scrollbar. The extras-only sum
+                                                       sits just left of it, and how many extras are selected sits at the
+                                                       opposite (far left) end of the same row. *@
                                                     <span class="productCard__extras-footer">
                                                         <span class="productCard__extras-selcount">@_pressedSelectedExtraIds.Count @Loc.T("Extras")</span>
                                                         <span class="productCard__extras-total">
                                                             <span class="productCard__extras-count">＋@_pressedExtras.Where(ex => _pressedSelectedExtraIds.Contains(ex.Id)).Sum(ex => ex.Price).ToString("N2")</span>
-                                                            <span class="productCard__extras-price">@p.Price.ToString("N2")</span>
+                                                            <span class="productCard__extras-price">@GetDisplayPrice(p).ToString("N2")</span>
                                                         </span>
                                                     </span>
                                                 </span>
@@ -150,7 +151,7 @@
                                         <span class="productCard__footer">
                                             <span class="productCard__name"><span class="productCard__name-text">@p.Name</span></span>
                                         </span>
-                                        <span class="productCard__price">@p.Price.ToString("N2")</span>
+                                        <span class="productCard__price">@GetDisplayPrice(p).ToString("N2")</span>
                                         @if (!p.IsAvailable) { <span class="productCard__off">@Loc.T("Unavailable")</span> }
                                     </button>
                                 }
@@ -788,6 +789,14 @@
     {
         if (!_pressedSelectedExtraIds.Add(ex.Id)) _pressedSelectedExtraIds.Remove(ex.Id);
     }
+
+    // Bottom-right corner price on the card: while its extras preview is open, reflects the base
+    // price plus whichever extras are currently ticked, so it tracks ConfirmPressedExtras' total
+    // instead of staying frozen at the plain product price.
+    private decimal GetDisplayPrice(ProductDto p)
+        => p.Id == _pressedProductId
+            ? p.Price + _pressedExtras.Where(ex => _pressedSelectedExtraIds.Contains(ex.Id)).Sum(ex => ex.Price)
+            : p.Price;
 
     // Tick button: adds the product with every extra currently ticked (none ticked still adds the
     // plain product), then closes the preview like a cancel would.
