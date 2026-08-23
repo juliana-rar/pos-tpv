@@ -235,6 +235,11 @@
     user-select: none;
     -webkit-touch-callout: none;
     touch-action: manipulation;
+    /* Without this, every press-and-hold (and every tap inside the extras preview afterwards)
+       flashes the browser/OS's own default tap-highlight — a solid blue rectangle over the whole
+       card — since .productCard has no tabindex/focus styling of its own to override. Same fix as
+       .tbl in Tables.razor.css. */
+    -webkit-tap-highlight-color: transparent;
 }
 .productCard:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--text-soft); }
 .productCard:active { transform: translateY(-1px) scale(.99); }
@@ -294,7 +299,7 @@
    panel's height depends on however many extras the product has. */
 .productCard__extras {
     position: absolute;
-    top: 1.7rem; left: 0; right: 0;
+    top: 1.25rem; left: 0; right: 0;
     /* Below .productCard__price (z-index:5) — the panel can grow past the card's own bottom
        edge into where the price pill sits (see .productCard__price), but the price must stay
        visible there always, so it stacks above this panel instead of being painted over. */
@@ -307,7 +312,7 @@
     min-height: 0;
     overflow: hidden;
     display: flex; flex-direction: column; gap: .18rem;
-    padding: .3rem .6rem .6rem;
+    padding: 0 .6rem .6rem;
     background: var(--card);
     border: 1px solid var(--border);
     border-top: none;
@@ -346,19 +351,16 @@
     border-radius: var(--radius-sm);
     background: var(--card-2);
     color: var(--text);
-    font-size: .58rem; font-weight: 600;
+    font-size: .5rem; font-weight: 600;
     line-height: 1.35;
-    transition: background var(--transition), border-color var(--transition);
-    border: 1px solid transparent;
+    /* Same fix as .productCard above — otherwise every tap toggling a row flashes the browser/OS's
+       default blue tap-highlight over it. */
+    -webkit-tap-highlight-color: transparent;
 }
-.productCard__extra-row:hover { background: var(--border); }
 /* Ticked state — a row can be toggled on/off any number of times before the tick button below
-   actually adds the product (see TogglePressedExtra/ConfirmPressedExtras), so this just marks
-   "currently selected", not "already added". */
-.productCard__extra-row--on {
-    background: color-mix(in srgb, var(--primary) 14%, var(--card-2));
-    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
-}
+   actually adds the product (see TogglePressedExtra/ConfirmPressedExtras). The checkbox alone
+   marks "currently selected" (see .productCard__extra-check below) — the row itself never gets
+   a background or border change, only the check. */
 /* Same plain-box checkbox as .orderLine__select-box, just smaller to fit this compact row. */
 .productCard__extra-check {
     flex: none;
@@ -384,21 +386,19 @@
    own offset instead of the card's. */
 .productCard__extras-actions {
     position: absolute;
-    top: .15rem; right: .5rem;
+    inset: 0 0 auto auto;
     z-index: 4;
     display: flex;
-    gap: .3rem;
 }
 .productCard__extras-btn {
     display: grid; place-items: center;
     width: 20px; height: 20px;
-    border-radius: 999px;
     cursor: pointer;
     transition: background var(--transition);
 }
 /* Both cancel and confirm read as the same neutral light-gray chip — not red/green — so
    they match the flat gray tiles used elsewhere (.editor__topbar-extra .btn, .productCard__price). */
-.productCard__extras-btn--cancel, .productCard__extras-btn--confirm { background: var(--border); color: var(--text-soft); }
+.productCard__extras-btn--cancel, .productCard__extras-btn--confirm { background: color-mix(in srgb, var(--border) 85%, white 15%); color: var(--text-soft); }
 .productCard__extras-btn--cancel:hover, .productCard__extras-btn--confirm:hover { background: color-mix(in srgb, var(--text-soft) 20%, var(--border)); }
 
 /* --- Right: current order, same panel as /pos --- */
