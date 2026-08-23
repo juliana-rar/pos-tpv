@@ -260,10 +260,10 @@
 .productCard__name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .productCard__price {
     position: absolute;
-    inset: .5rem .5rem auto auto;
-    /* Above .productCard__extras (z-index:3) — the price stays visible in the top-right corner,
-       level with the title, even while the extras preview is open and its panel grows past the
-       card's own bottom edge, instead of being painted over. */
+    inset: auto .5rem .5rem auto;
+    /* Above .productCard__extras (z-index:3) — the price stays visible in the bottom-right
+       corner even while the extras preview is open and its panel grows past the card's own
+       bottom edge, instead of being painted over. */
     z-index: 5;
     font-size: .42rem; font-weight: 700;
     padding: .06rem .32rem; border-radius: 999px;
@@ -355,8 +355,14 @@
     line-height: 1.35;
     transition: background var(--transition), border-color var(--transition);
     border: 1px solid transparent;
+    /* Otherwise every tap flashes the browser/OS's own default highlight over the row. */
+    -webkit-tap-highlight-color: transparent;
 }
-.productCard__extra-row:hover { background: var(--border); }
+/* Scoped to real pointer devices — on touch, :hover has no "leave" event after a tap, so it
+   would otherwise stick as a shade left over on the row after clicking it. */
+@media (hover: hover) and (pointer: fine) {
+    .productCard__extra-row:hover { background: var(--border); }
+}
 /* Ticked state — a row can be toggled on/off any number of times before the tick button below
    actually adds the product (see TogglePressedExtra/ConfirmPressedExtras). The checkbox alone
    marks "currently selected" (see .productCard__extra-check below) — the row itself keeps no
