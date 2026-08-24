@@ -605,6 +605,11 @@
     color: var(--primary);
     margin-top: .1rem; padding-top: .1rem;
     cursor: pointer; user-select: none;
+    /* role="button" tabindex="0" (see OrderEditor.razor) makes this a real focus target, so a
+       click both flashes the browser/OS's default blue tap highlight and leaves a focus outline
+       behind — same fix as .orderLine/.productCard above. */
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
 }
 .order__group::before, .order__group::after { content: ""; flex: 1 1 auto; height: 1px; background: var(--border); }
 .order__items > .order__group:first-child { margin-top: 0; padding-top: 0; }
