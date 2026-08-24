@@ -107,11 +107,11 @@
                                                   @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true">
                                                 <span class="productCard__extras-btn productCard__extras-btn--cancel" role="button" tabindex="0"
                                                       title="@Loc.T("Cancel")" @onclick="ClosePressedPreview">
-                                                    <LucideIcon Name="x" Size="16" />
+                                                    <LucideIcon Name="x" Size="14" />
                                                 </span>
                                                 <span class="productCard__extras-btn productCard__extras-btn--confirm" role="button" tabindex="0"
                                                       title="@Loc.T("Add")" @onclick="() => ConfirmPressedExtras(p)">
-                                                    <LucideIcon Name="check" Size="16" />
+                                                    <LucideIcon Name="check" Size="14" />
                                                 </span>
                                             </span>
                                         }
@@ -197,14 +197,13 @@
                                Left/right cells are an equal 1fr each (see .order__head's grid-template-columns),
                                so the title in the middle cell sits at the div's true center regardless of how
                                wide the status+confirm cluster on the right ends up being. *@
-                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Close")" @onclick="OnClose" type="button"><LucideIcon Name="x" Size="18" /></button>
+                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Close")" @onclick="OnClose" type="button"><LucideIcon Name="x" Size="14" /></button>
                             <span class="badge badge--primary order__head-title">@Loc.T("Table") @_order.TableName · @_order.Number</span>
                             <div class="order__head-right">
-                                <span class="badge">@OrderStatusLabel(_order.Status)</span>
                                 @* Single confirm tick: sends food to the kitchen (skipped for a drinks-only order) and closes. *@
                                 <button class="btn btn--icon btn--ghost"
                                         title="@(HasKitchenItems ? Loc.T("Send to kitchen and close") : Loc.T("Confirm and close"))"
-                                        disabled="@_busy" @onclick="ConfirmAndClose" type="button"><LucideIcon Name="check" Size="18" /></button>
+                                        disabled="@_busy" @onclick="ConfirmAndClose" type="button"><LucideIcon Name="check" Size="14" /></button>
                             </div>
                         </div>
 
@@ -263,20 +262,43 @@
                                                                     }
                                                                 }
                                                                 <div class="orderLine__title">
-                                                                    <span class="orderLine__name-group">
-                                                                        <span class="orderLine__name">@it.ProductName</span>
-                                                                        @if (it.IsInvited)
+                                                                    @* Name + the Comment/Extra pill stack in their own column so the pill
+                                                                       always sits glued right under the product name — independent of
+                                                                       orderLine__extras-inline (sibling column, right), which can wrap
+                                                                       into several rows without pushing the pill down with it. *@
+                                                                    <div class="orderLine__title-left">
+                                                                        <span class="orderLine__name-group">
+                                                                            <span class="orderLine__name">@it.ProductName</span>
+                                                                            @if (it.IsInvited)
+                                                                            {
+                                                                                <span class="orderLine__invited" title="@Loc.T("Invited — not charged")">@Loc.T("Invitation")</span>
+                                                                            }
+                                                                        </span>
+                                                                        @if (_expandedItemId == it.Id)
                                                                         {
-                                                                            <span class="orderLine__invited" title="@Loc.T("Invited — not charged")">@Loc.T("Invitation")</span>
+                                                                            <div class="orderLine__expand-btns" @onclick:stopPropagation="true">
+                                                                                <button class="orderLine__expand-btn @(_expandedShowComment ? "orderLine__expand-btn--active" : "")" type="button" title="@Loc.T("Comment")" @onclick="() => ToggleLineComment(it)">
+                                                                                    <LucideIcon Name="message-square" Size="10" />
+                                                                                </button>
+                                                                                <button class="orderLine__expand-btn @(_expandedShowExtras ? "orderLine__expand-btn--active" : "")" type="button" title="@Loc.T("Extra")" @onclick="() => ToggleLineExtras(it)">
+                                                                                    <LucideIcon Name="plus" Size="10" />
+                                                                                </button>
+                                                                            </div>
                                                                         }
-                                                                        @if (it.Extras.Count > 0)
-                                                                        {
-                                                                            <span class="orderLine__extra">＋ @it.Extras[0].Name</span>
-                                                                        }
-                                                                    </span>
-                                                                    @foreach (var ex in it.Extras.Skip(1))
+                                                                    </div>
+                                                                    @* Stays put next to the title whether or not the line is expanded — it
+                                                                       used to hide here and reappear next to the comment/extra icons below
+                                                                       (orderLine__expand-actions) instead, which read as the extras jumping
+                                                                       position on every tap. Laid out as a tight 2-per-row grid (see
+                                                                       orderLine__extras-inline in OrderEditor.razor.css) right of the title. *@
+                                                                    @if (it.Extras.Count > 0)
                                                                     {
-                                                                        <span class="orderLine__extra">＋ @ex.Name</span>
+                                                                        <div class="orderLine__extras-inline">
+                                                                            @foreach (var ex in it.Extras)
+                                                                            {
+                                                                                <span class="orderLine__extra">＋ @ex.Name</span>
+                                                                            }
+                                                                        </div>
                                                                     }
                                                                 </div>
                                                                 <span class="spacer"></span>
@@ -296,52 +318,41 @@
                                                                     <button class="btn btn--icon btn--ghost" disabled="@_busy" @onclick="() => ChangeQty(it.Id, 1)">+</button>
                                                                 </div>
                                                             </div>
+                                                            @* Comment toggle (pill) now lives up in orderLine__title-left, glued under the
+                                                               name — this row is just the input itself, once Comment is active. *@
+                                                            @if (_expandedItemId == it.Id && _expandedShowComment)
+                                                            {
+                                                                <div class="orderLine__comment-row" @onclick:stopPropagation="true">
+                                                                    <input class="orderLine__comment-inline input" @bind="_lineCommentText" @bind:event="oninput"
+                                                                           @onblur="() => SaveLineComment(it)" />
+                                                                </div>
+                                                            }
                                                             @if (!string.IsNullOrWhiteSpace(it.Comment))
                                                             {
                                                                 <div class="orderLine__comment">“@it.Comment”</div>
                                                             }
-                                                            @if (_expandedItemId == it.Id)
+                                                            @if (_expandedItemId == it.Id && _expandedShowExtras)
                                                             {
-                                                                @* Replaces the old pencil → modal flow: expanding the line itself reveals
-                                                                   Extra/Comentario toggles, each opening its panel inline right below. *@
-                                                                <div class="orderLine__expand-actions" @onclick:stopPropagation="true">
-                                                                    <div class="orderLine__expand-btns">
-                                                                        <button class="orderLine__expand-btn @(_expandedShowComment ? "orderLine__expand-btn--active" : "")" type="button" title="@Loc.T("Comment")" @onclick="() => ToggleLineComment(it)">
-                                                                            <LucideIcon Name="message-square" Size="10" />
-                                                                        </button>
-                                                                        <button class="orderLine__expand-btn @(_expandedShowExtras ? "orderLine__expand-btn--active" : "")" type="button" title="@Loc.T("Extra")" @onclick="() => ToggleLineExtras(it)">
-                                                                            <LucideIcon Name="plus" Size="10" />
-                                                                        </button>
-                                                                    </div>
-                                                                    @if (_expandedShowComment)
+                                                                <div class="orderLine__extras-panel" @onclick:stopPropagation="true">
+                                                                    @if (_lineExtrasLoading)
                                                                     {
-                                                                        <input class="orderLine__comment-inline input" @bind="_lineCommentText" @bind:event="oninput"
-                                                                               @onblur="() => SaveLineComment(it)" />
+                                                                        <span class="muted">@Loc.T("Loading extras…")</span>
+                                                                    }
+                                                                    else if (_lineExtras.Count == 0)
+                                                                    {
+                                                                        <span class="muted">@Loc.T("No extras available for this product.")</span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        @foreach (var ex in _lineExtras)
+                                                                        {
+                                                                            <div class="orderLine__extra-opt @(_lineSelectedExtraIds.Contains(ex.Id) ? "orderLine__extra-opt--on" : "")" @onclick="() => ToggleLineExtra(it, ex)">
+                                                                                <span>@ex.Name</span>
+                                                                                <span class="orderLine__extra-opt-price">＋@ex.Price.ToString("N2")</span>
+                                                                            </div>
+                                                                        }
                                                                     }
                                                                 </div>
-                                                                @if (_expandedShowExtras)
-                                                                {
-                                                                    <div class="orderLine__extras-panel" @onclick:stopPropagation="true">
-                                                                        @if (_lineExtrasLoading)
-                                                                        {
-                                                                            <span class="muted">@Loc.T("Loading extras…")</span>
-                                                                        }
-                                                                        else if (_lineExtras.Count == 0)
-                                                                        {
-                                                                            <span class="muted">@Loc.T("No extras available for this product.")</span>
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            @foreach (var ex in _lineExtras)
-                                                                            {
-                                                                                <div class="orderLine__extra-opt @(_lineSelectedExtraIds.Contains(ex.Id) ? "orderLine__extra-opt--on" : "")" @onclick="() => ToggleLineExtra(it, ex)">
-                                                                                    <span>@ex.Name</span>
-                                                                                    <span class="orderLine__extra-opt-price">＋@ex.Price.ToString("N2")</span>
-                                                                                </div>
-                                                                            }
-                                                                        }
-                                                                    </div>
-                                                                }
                                                             }
                                                         </div>
                                                     }
@@ -1069,16 +1080,6 @@
             return await Orders.GetByIdAsync(orderId);
         });
     }
-
-    private static string OrderStatusLabel(OrderStatus s) => Loc.T(s switch
-    {
-        OrderStatus.Open => "Open",
-        OrderStatus.Sent => "Sent",
-        OrderStatus.InPreparation => "Cooking",
-        OrderStatus.Ready => "Ready",
-        OrderStatus.Delivered => "Delivered",
-        _ => s.ToString()
-    });
 
     // Same Drinks/First/Second/Desserts grouping as /pos (OrderPresentation.Sections), so
     // editing an order reads the same way instead of one undifferentiated column — but always
