@@ -232,7 +232,7 @@
     display: flex; flex-direction: column; justify-content: flex-start;
     gap: .25rem;
     min-height: 112px;
-    padding: .6rem;
+    padding: .35rem .6rem .6rem;
     border: 1px solid var(--border);
     border-radius: 0;
     background: var(--card);
@@ -267,7 +267,7 @@
    below is expanded or not, since the preview is a sibling inserted before it in markup order
    (see the @if (_pressedProductId == p.Id) block in OrderEditor.razor). */
 .productCard__footer { display: flex; align-items: center; justify-content: space-between; gap: .4rem; order: -1; }
-.productCard__name { display: flex; align-items: center; gap: .3rem; font-weight: 700; font-size: .5rem; line-height: 1.2; min-width: 0; }
+.productCard__name { display: flex; align-items: center; gap: .3rem; font-weight: 700; font-size: .62rem; line-height: 1.2; min-width: 0; }
 .productCard__name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .productCard__price {
     position: absolute;
@@ -276,7 +276,7 @@
        corner even while the extras preview is open and its panel grows past the card's own
        bottom edge, instead of being painted over. */
     z-index: 5;
-    font-size: .42rem; font-weight: 700;
+    font-size: .5rem; font-weight: 700;
     padding: .06rem .32rem; border-radius: 999px;
     background: var(--card-2);
     color: var(--text-soft);
@@ -310,7 +310,7 @@
    panel's height depends on however many extras the product has. */
 .productCard__extras {
     position: absolute;
-    top: 1.25rem; left: 0; right: 0;
+    top: 1.1rem; left: 0; right: 0;
     /* Below .productCard__price (z-index:5) — the panel can grow past the card's own bottom
        edge into where the price pill sits (see .productCard__price), but the price must stay
        visible there always, so it stacks above this panel instead of being painted over. */
@@ -342,13 +342,13 @@
    panel grows to, and never overlaps/gets hidden the way a fixed-position pill anchored to the
    card's own (non-growing) box would — see .productCard__price, which this replaces while the
    preview is open. */
-.productCard__extras-footer { display: flex; align-items: center; justify-content: space-between; gap: .3rem; }
+.productCard__extras-footer { display: flex; align-items: center; justify-content: space-between; gap: .3rem; margin-top: .3rem; }
 .productCard__extras-selcount { font-size: .42rem; font-weight: 700; color: var(--text-soft); }
 /* Extras-only sum stays flush-right with a small gap to the running-total pill next to it. */
-.productCard__extras-total { display: flex; align-items: center; gap: .12rem; }
-.productCard__extras-count { font-size: .42rem; font-weight: 700; color: var(--text-soft); }
+.productCard__extras-total { display: flex; align-items: center; gap: .12rem; margin-left: auto; }
+.productCard__extras-count { font-size: .54rem; font-weight: 700; color: var(--text-soft); }
 .productCard__extras-price {
-    font-size: .42rem; font-weight: 700;
+    font-size: .54rem; font-weight: 700;
     padding: .06rem .32rem; border-radius: 999px;
     background: var(--card-2);
     color: var(--text-soft);

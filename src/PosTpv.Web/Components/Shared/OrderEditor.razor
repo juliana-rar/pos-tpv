@@ -83,10 +83,6 @@
                                                             </span>
                                                         }
                                                     }
-                                                    else
-                                                    {
-                                                        <span class="productCard__extras-empty">@Loc.T("No extras available for this product.")</span>
-                                                    }
                                                     @* Running total (base price + every ticked extra, see GetDisplayPrice) stays
                                                        visible while the preview is open (see .productCard__price, which the
                                                        actions pair takes over up top) — pinned to the bottom-right of this panel
@@ -95,7 +91,10 @@
                                                        sits just left of it, and how many extras are selected sits at the
                                                        opposite (far left) end of the same row. *@
                                                     <span class="productCard__extras-footer">
-                                                        <span class="productCard__extras-selcount">@_pressedSelectedExtraIds.Count @Loc.T("Extras")</span>
+                                                        @if (_pressedSelectedExtraIds.Count > 0)
+                                                        {
+                                                            <span class="productCard__extras-selcount">@_pressedSelectedExtraIds.Count @Loc.T("Extras")</span>
+                                                        }
                                                         <span class="productCard__extras-total">
                                                             <span class="productCard__extras-count">＋@_pressedExtras.Where(ex => _pressedSelectedExtraIds.Contains(ex.Id)).Sum(ex => ex.Price).ToString("N2")</span>
                                                             <span class="productCard__extras-price">@GetDisplayPrice(p).ToString("N2")</span>
@@ -138,10 +137,6 @@
                                                                 <span class="productCard__extra-price">＋@ex.Price.ToString("N2")</span>
                                                             </span>
                                                         }
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="productCard__extras-empty">@Loc.T("No extras available for this product.")</span>
                                                     }
                                                 </span>
                                             </span>
@@ -848,6 +843,7 @@
     private void StartProductPress(ProductDto p)
     {
         _pressCts?.Cancel();
+        if (p.Extras.Count == 0) return;
         var cts = new CancellationTokenSource();
         _pressCts = cts;
         _ = TriggerProductPress(p, cts.Token);
