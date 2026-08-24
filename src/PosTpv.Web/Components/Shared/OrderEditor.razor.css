@@ -609,7 +609,10 @@
 .order__group::before, .order__group::after { content: ""; flex: 1 1 auto; height: 1px; background: var(--border); }
 .order__items > .order__group:first-child { margin-top: 0; padding-top: 0; }
 
-.orderLine { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 .45rem; background: var(--card-2); cursor: pointer; }
+/* Not a <button> — tapping to expand/collapse (see ToggleLineExpanded in OrderEditor.razor)
+   would otherwise flash the browser/OS's own default highlight, a solid blue rectangle, over the
+   whole row (same fix as .productCard and .productCard__extra-row above). */
+.orderLine { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 .45rem; background: var(--card-2); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .orderLine__main { display: flex; align-items: center; gap: .35rem; font-weight: 700; font-size: .58rem; }
 .orderLine__main .btn--icon { flex: none; width: 18px; height: 18px; padding: 0; }
 /* Name-group stays fixed-size on the left; the extras grid (below) fills whatever width is left
