@@ -310,7 +310,7 @@
    panel's height depends on however many extras the product has. */
 .productCard__extras {
     position: absolute;
-    top: 1.1rem; left: 0; right: 0;
+    top: 1.2rem; left: 0; right: 0;
     /* Below .productCard__price (z-index:5) — the panel can grow past the card's own bottom
        edge into where the price pill sits (see .productCard__price), but the price must stay
        visible there always, so it stacks above this panel instead of being painted over. */
@@ -322,8 +322,8 @@
 .productCard__extras-inner {
     min-height: 0;
     overflow: hidden;
-    display: flex; flex-direction: column; gap: .18rem;
-    padding: 0 .6rem .6rem;
+    display: flex; flex-direction: column; gap: .08rem;
+    padding: 0 .6rem .35rem;
     background: var(--card);
     border: 1px solid var(--border);
     border-top: none;
@@ -336,14 +336,12 @@
    pointer-events:none so a stray tap on the fading-out list can't fire OnExtraClick. */
 .productCard__extras--closing { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
 .productCard__extras-empty { font-size: .58rem; color: var(--text-soft); }
-/* Row pinning the running total (base price + ticked extras) at the far right, and how many
-   extras are selected at the far left — in-flow with the rest of .productCard__extras-inner's
-   content (not position:absolute) so it sits at the true bottom of the panel whatever height the
-   panel grows to, and never overlaps/gets hidden the way a fixed-position pill anchored to the
-   card's own (non-growing) box would — see .productCard__price, which this replaces while the
-   preview is open. */
-.productCard__extras-footer { display: flex; align-items: center; justify-content: space-between; gap: .3rem; margin-top: .3rem; }
-.productCard__extras-selcount { font-size: .42rem; font-weight: 700; color: var(--text-soft); }
+/* Row pinning the running total (base price + ticked extras) at the far right — in-flow with the
+   rest of .productCard__extras-inner's content (not position:absolute) so it sits at the true
+   bottom of the panel whatever height the panel grows to, and never overlaps/gets hidden the way
+   a fixed-position pill anchored to the card's own (non-growing) box would — see
+   .productCard__price, which this replaces while the preview is open. */
+.productCard__extras-footer { display: flex; align-items: center; gap: .3rem; margin-top: .05rem; }
 /* Extras-only sum stays flush-right with a small gap to the running-total pill next to it. */
 .productCard__extras-total { display: flex; align-items: center; gap: .12rem; margin-left: auto; }
 .productCard__extras-count { font-size: .54rem; font-weight: 700; color: var(--text-soft); }
@@ -357,7 +355,7 @@
 .productCard__extra-row {
     display: flex; align-items: center; justify-content: space-between;
     gap: .3rem;
-    padding: .22rem .32rem;
+    padding: .28rem .32rem;
     border-radius: var(--radius-sm);
     background: var(--card-2);
     color: var(--text);
@@ -408,7 +406,7 @@
 }
 .productCard__extras-btn {
     display: grid; place-items: center;
-    width: 20px; height: 20px;
+    width: 26px; height: 26px;
     cursor: pointer;
     transition: background var(--transition);
 }
@@ -498,6 +496,11 @@
     font-weight: 700;
     letter-spacing: .01em;
     white-space: nowrap;
+    /* Overrides the flex-start inherited from .order-card__actions-row .btn — Serve drinks
+       and Fire seconds stretch to match each other's width in this stacked column (see
+       .editor__topbar-actions .order-card__actions-row above), so without this their icon+text
+       hugs the left edge with ragged trailing whitespace instead of lining up flush right. */
+    justify-content: flex-end;
 }
 .editor__topbar-actions .btn svg { flex: none; }
 

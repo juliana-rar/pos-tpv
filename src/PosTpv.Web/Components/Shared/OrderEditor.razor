@@ -88,13 +88,8 @@
                                                        actions pair takes over up top) — pinned to the bottom-right of this panel
                                                        instead of top-right, in flow with the rest of the content so it
                                                        grows/shrinks with it and never forces a scrollbar. The extras-only sum
-                                                       sits just left of it, and how many extras are selected sits at the
-                                                       opposite (far left) end of the same row. *@
+                                                       sits just left of it. *@
                                                     <span class="productCard__extras-footer">
-                                                        @if (_pressedSelectedExtraIds.Count > 0)
-                                                        {
-                                                            <span class="productCard__extras-selcount">@_pressedSelectedExtraIds.Count @Loc.T("Extras")</span>
-                                                        }
                                                         <span class="productCard__extras-total">
                                                             <span class="productCard__extras-count">＋@_pressedExtras.Where(ex => _pressedSelectedExtraIds.Contains(ex.Id)).Sum(ex => ex.Price).ToString("N2")</span>
                                                             <span class="productCard__extras-price">@GetDisplayPrice(p).ToString("N2")</span>
@@ -112,11 +107,11 @@
                                                   @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true">
                                                 <span class="productCard__extras-btn productCard__extras-btn--cancel" role="button" tabindex="0"
                                                       title="@Loc.T("Cancel")" @onclick="ClosePressedPreview">
-                                                    <LucideIcon Name="x" Size="13" />
+                                                    <LucideIcon Name="x" Size="16" />
                                                 </span>
                                                 <span class="productCard__extras-btn productCard__extras-btn--confirm" role="button" tabindex="0"
                                                       title="@Loc.T("Add")" @onclick="() => ConfirmPressedExtras(p)">
-                                                    <LucideIcon Name="check" Size="13" />
+                                                    <LucideIcon Name="check" Size="16" />
                                                 </span>
                                             </span>
                                         }
@@ -851,6 +846,13 @@
 
     private async Task TriggerProductPress(ProductDto p, CancellationToken ct)
     {
+        // Fetched in parallel with the hold delay below (not awaited yet) so that, by the time the
+        // panel is actually due to open, the extras have almost always already arrived — the panel
+        // then opens straight at its final height instead of popping open small ("Loading extras…")
+        // and immediately jumping taller once the list arrives a beat later. That two-step jump is
+        // what reads as a flicker, and it's most visible on products with many extras since the jump
+        // is biggest there.
+        var extrasTask = Products.GetExtrasAsync(p.Id);
         try { await Task.Delay(ProductPressDelayMs, ct); }
         catch (TaskCanceledException) { return; }
         if (ct.IsCancellationRequested) return;
@@ -862,12 +864,24 @@
 
         _pressedProductId = p.Id;
         _suppressClickForProductId = p.Id;
-        _pressedExtrasLoading = true;
-        _pressedExtras = new();
         _pressedSelectedExtraIds.Clear();
+
+        // Common case: the prefetch above already landed during the hold delay, so the panel opens
+        // straight at its final, fully-sized list in one render — no "Loading extras…" placeholder
+        // and no follow-up jump once it arrives a beat later.
+        if (extrasTask.IsCompletedSuccessfully)
+        {
+            _pressedExtras = extrasTask.Result;
+            _pressedExtrasLoading = false;
+            StateHasChanged();
+            return;
+        }
+
+        _pressedExtras = new();
+        _pressedExtrasLoading = true;
         StateHasChanged();
 
-        try { _pressedExtras = await Products.GetExtrasAsync(p.Id); }
+        try { _pressedExtras = await extrasTask; }
         catch (Exception ex) { _error = ex.Message; }
         finally { _pressedExtrasLoading = false; }
         StateHasChanged();
