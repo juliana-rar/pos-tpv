@@ -1,7 +1,8 @@
-/* Day picker — its own separate bordered box again (stacked above .resv inside .resv-col),
-   but now scoped to the reservations column's own width instead of spanning the full page
-   width above both columns, so .floor-layout (and the map inside it) can start right at the
-   top of the page instead of being pushed down by a full-width bar. */
+/* Day picker — the first section inside .resv (see Tables.razor: it's the opening child of
+   <aside class="resv card">, right above .resv__head), not a card of its own — the date, the
+   "Reservations" heading and the New-reservation button all read as one panel/div instead of
+   two separately-boxed cards stacked with a shadow seam between them. Only a bottom border
+   (same treatment as .resv__head's own border-bottom right below it) marks where it ends. */
 .tables-datebar {
     display: flex;
     flex-direction: column;
@@ -9,7 +10,11 @@
     gap: .15rem;
     padding: .2rem .8rem;
     flex: none;
+    border-bottom: 1px solid var(--border);
 }
+/* The "Reservations" title and the New-reservation button live inside .resv__day-nav
+   itself — the same row as the date — instead of a separate line/box below it. */
+.tables-datebar .resv__day-nav { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
 /* Narrower than .resv__head-date on purpose — full date-pill width left too much empty
    space around just two icons. Bordered pill, same shape as .resv__stats-actions
    (app.css) on the /reservations dashboard. */
@@ -904,10 +909,12 @@
 
 /* Status reads as a coloured halo standing just off the table's own edge (same colours as the
    Free/Occupied/Reserved legend dots) instead of tinting the table's material itself, so the
-   tabletop gradient above stays consistent across every state. */
-.tbl--available { outline: 2px solid color-mix(in srgb, var(--success) 55%, transparent); outline-offset: 3px; }
-.tbl--occupied { outline: 2px solid var(--warning); outline-offset: 3px; }
-.tbl--reserved { outline: 2px solid var(--secondary); outline-offset: 3px; }
+   tabletop gradient above stays consistent across every state. --status-color also feeds the
+   grouped-table ring below (.tbl--grouped::after), which can't use outline (no per-side control),
+   so both a standalone table's outline and a joined member's ring always agree on colour. */
+.tbl--available { --status-color: color-mix(in srgb, var(--success) 55%, transparent); outline: 2px solid var(--status-color); outline-offset: 3px; }
+.tbl--occupied { --status-color: var(--warning); outline: 2px solid var(--status-color); outline-offset: 3px; }
+.tbl--reserved { --status-color: var(--secondary); outline: 2px solid var(--status-color); outline-offset: 3px; }
 
 .tbl--locked { opacity: .6; }
 
@@ -1071,15 +1078,31 @@
     /* Same lacquered bevel/highlight as a standalone table (inherited from .tbl's box-shadow)
        so a joined segment still reads as real tabletop material instead of going flat/matte
        just because it's part of a group. */
-    /* No status halo on a joined segment — it would break the continuous-surface illusion
-       between members, which is the whole point of squaring their corners together. */
+    /* A standalone table's status halo is a plain `outline`, but outline is one uniform ring —
+       it can't drop just the seam-facing side(s) or round only the outer corners. Swapped for
+       ::after below, which is a real bordered box and so *can* be controlled per side, same as
+       border-color/--ring-left/--ring-right are for the seam already (see [data-seam] below). */
     outline: none;
 }
 .tbl--grouped:hover { box-shadow: var(--shadow-lg); z-index: 4; }
-/* Drops the border and ring on whichever side(s) butt up against a neighbour (data-seam, set in
-   Tables.razor from each member's position in the group) so two joined members read as one
-   uninterrupted tabletop instead of showing a seam where they meet. Attribute selectors outrank
-   the plain-class rules above/.tbl--colored's --ring-color override, so this always wins. */
+/* The status ring for a joined member: same colour/thickness/offset as a standalone table's
+   outline (--status-color, 2px, 3px off the edge — see .tbl--available etc.), but as a bordered
+   ::after box instead, and rounded only on the outer corners (see [data-seam] below zeroing the
+   seam-side corners back to square). Skipped entirely for a table with no status colour set. */
+.tbl--grouped::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    border: 2px solid var(--status-color, transparent);
+    border-radius: 14px;
+    pointer-events: none;
+}
+/* Drops the border/ring/status-ring on whichever side(s) butt up against a neighbour (data-seam,
+   set in Tables.razor from each member's position in the group) so two joined members read as one
+   uninterrupted tabletop instead of showing a seam where they meet — and squares off the ::after
+   ring's corners on that same side, so the rounding above only ever shows on the union's own
+   outer edges, never poking into the middle of the joined row. Attribute selectors outrank the
+   plain-class rules above/.tbl--colored's --ring-color override, so this always wins. */
 .tbl--grouped[data-seam="left"], .tbl--grouped[data-seam="both"] {
     border-left-color: transparent;
     --ring-left: transparent;
@@ -1087,6 +1110,23 @@
 .tbl--grouped[data-seam="right"], .tbl--grouped[data-seam="both"] {
     border-right-color: transparent;
     --ring-right: transparent;
+}
+/* The tabletop's own outer corners round off too (matching a standalone square/rectangular
+   table's 10px — see .tbl--square/.tbl--rectangular), not just the status ring above — a rounded
+   ring sitting outside a perfectly square tabletop corner read as mismatched/floating. Only the
+   corners on the union's outer edge round; whichever corner(s) sit at a seam stay square (0, the
+   .tbl--grouped default above) so two members still butt up flush with no visible gap. */
+.tbl--grouped[data-seam="left"] { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
+.tbl--grouped[data-seam="right"] { border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
+.tbl--grouped[data-seam="left"]::after, .tbl--grouped[data-seam="both"]::after {
+    border-left-color: transparent;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+.tbl--grouped[data-seam="right"]::after, .tbl--grouped[data-seam="both"]::after {
+    border-right-color: transparent;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
 }
 /* Custom per-table accent (e.g. flag a VIP table, or paint-mode) — retints the whole tabletop
    surface in the chosen colour, same sheen/gradient shape as the neutral .tbl background so it
@@ -1283,8 +1323,8 @@
 }
 
 /* Side drawer */
-/* Left column: the date-picker box and the reservations list box, stacked as two separate
-   bordered cards sharing this column's width, instead of one merged box. */
+/* Left column: holds the single .resv card (date picker + reservations list, see .tables-datebar
+   above) that fills its whole width/height. */
 .resv-col {
     flex: 0 0 380px;
     display: flex;
@@ -1293,12 +1333,6 @@
     height: calc(100vh - 160px);
     min-height: 420px;
 }
-/* Squares the touching edges between the date bar and the reservations panel below it (no gap
-   now — see .resv-col) so the two cards read as one continuous shape instead of two separately-
-   rounded boxes stacked with a sliver of background between them. Same corner-squaring trick as
-   the map toolbar/gear-dropdown pairing above. */
-.resv-col > .tables-datebar { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-.resv-col > .resv { border-top-left-radius: 0; border-top-right-radius: 0; border-top: none; }
 .resv {
     flex: 1 1 auto;
     min-height: 0;
@@ -1312,18 +1346,32 @@
     container-name: resv;
 }
 .resv__head { display: flex; align-items: center; gap: .5rem; padding: .35rem .75rem; border-bottom: 1px solid var(--border); }
-.resv__head h2 {
+.resv__head h2, .resv__day-nav h2 {
     display: flex; align-items: center; gap: .35rem;
     margin: 0;
     font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
     color: var(--text-soft);
     white-space: nowrap;
 }
+.resv__day-nav h2 { font-size: .58rem; }
+.resv__head-date-icon { display: none; }
+/* Three-track grid (title/policy | prev-date-next | new-btn) instead of a single flex row.
+   The side tracks stay content-sized (no forced even split — this bar is only ~350px wide and
+   the title text needs more room than the "+" button, so forcing them equal would clip the
+   title); the middle track's own leftover 1fr share is what pulls the date cluster toward the
+   row's centre instead of it landing flush against whichever side has less content. */
+.resv__day-nav { display: grid; grid-template-columns: 1fr auto 1fr; }
+.resv__day-nav-side { display: flex; align-items: center; gap: .3rem; }
+.resv__day-nav-side--end { justify-content: flex-end; }
+.resv__day-nav-center { display: flex; align-items: center; gap: .3rem; justify-self: center; }
 /* Compact Lunch/Dinner toggle, nested inside .resv__day-nav to its left — click the
    active one again to clear the filter, so no separate "All" option is needed. */
 .resv__head-periods { margin: 0; padding: 2px; flex: none; }
 .resv__head-periods .tabs__opt { padding: .18rem .3rem; }
-.resv__new-btn { flex: none; box-shadow: var(--shadow-sm); }
+/* Restores its normal .btn--icon size (38px) — it now sits inside .resv__day-nav, whose
+   `.resv__day-nav .btn--icon` rule (app.css) shrinks the prev/next arrows to 21px and would
+   otherwise shrink this button too. */
+.resv__day-nav .resv__new-btn { flex: none; box-shadow: var(--shadow-sm); width: 38px; height: 38px; border-radius: var(--radius-sm); }
 
 /* Day nav (.resv__day-nav / .resv__head-date) and the small icon actions under it
    (.resv__stats-btn) now live in app.css — shared with the reservations dashboard. */

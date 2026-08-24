@@ -381,31 +381,73 @@
     </div>
 
         <div class="resv-col">
-        <div class="tables-datebar card">
+        <aside class="resv card">
+        <div class="tables-datebar">
             <div class="resv__day-nav">
-                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Previous day")" @onclick="() => ShiftDay(-1)"><LucideIcon Name="arrow-left" Size="11" /></button>
-                <div class="resv__head-date-wrap">
-                    <div class="tabs resv__head-periods">
-                        <button class="tabs__opt @(_periodFilter == ServicePeriod.Lunch ? "tabs__opt--on" : "")" title="@Loc.T("Lunch")"
-                                @onclick="() => _periodFilter = _periodFilter == ServicePeriod.Lunch ? null : ServicePeriod.Lunch">
-                            <LucideIcon Name="sun" Size="10" />
-                        </button>
-                        <button class="tabs__opt @(_periodFilter == ServicePeriod.Dinner ? "tabs__opt--on" : "")" title="@Loc.T("Dinner")"
-                                @onclick="() => _periodFilter = _periodFilter == ServicePeriod.Dinner ? null : ServicePeriod.Dinner">
-                            <LucideIcon Name="moon" Size="10" />
-                        </button>
-                    </div>
-                    <input @ref="_dateInputEl" type="date" class="input resv__head-date" @bind="_reserveDate" @bind:after="LoadReservations" />
-                    <button type="button" class="resv__head-date-icon" title="@Loc.T("Pick a date")" @onclick="OpenDatePicker"><LucideIcon Name="calendar" Size="11" /></button>
+                <div class="resv__day-nav-side">
+                    @if (_resForm is null)
+                    {
+                        <h2>@Loc.T("Reservations")</h2>
+                        <div class="resv-policy">
+                            @* Replaces the old gear-icon trigger: the dot itself already shows the current
+                               policy at a glance (colour-coded, see PolicyDotColor), still opens the same
+                               picker menu on click. *@
+                            <button type="button" class="resv-policy-dot" style="--dot:@PolicyDotColor(Branding.Current.ReservationPolicy)" title="@Loc.T(PolicyLabel(Branding.Current.ReservationPolicy))" @onclick="TogglePolicyMenu"></button>
+                            @if (_policyMenuOpen)
+                            {
+                                <div class="resv-policy__backdrop" @onclick="ClosePolicyMenu"></div>
+                                <div class="resv-policy__menu" @onclick:stopPropagation="true">
+                                    <div class="resv-policy__title">@Loc.T("Taking reservations")</div>
+                                    @foreach (var opt in ReservationPolicies)
+                                    {
+                                        <button type="button" class="resv-policy__opt @(Branding.Current.ReservationPolicy == opt.Value ? "resv-policy__opt--on" : "")"
+                                                disabled="@opt.ComingSoon" @onclick="() => SetReservationPolicy(opt.Value)">
+                                            <span>@Loc.T(opt.Label)</span>
+                                            @if (opt.ComingSoon)
+                                            {
+                                                <span class="badge">@Loc.T("Coming soon")</span>
+                                            }
+                                            else if (Branding.Current.ReservationPolicy == opt.Value)
+                                            {
+                                                <LucideIcon Name="check" Size="14" />
+                                            }
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
                 </div>
-                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Next day")" @onclick="() => ShiftDay(1)"><LucideIcon Name="arrow-right" Size="11" /></button>
+                <div class="resv__day-nav-center">
+                    <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Previous day")" @onclick="() => ShiftDay(-1)"><LucideIcon Name="arrow-left" Size="11" /></button>
+                    <div class="resv__head-date-wrap">
+                        <div class="tabs resv__head-periods">
+                            <button class="tabs__opt @(_periodFilter == ServicePeriod.Lunch ? "tabs__opt--on" : "")" title="@Loc.T("Lunch")"
+                                    @onclick="() => _periodFilter = _periodFilter == ServicePeriod.Lunch ? null : ServicePeriod.Lunch">
+                                <LucideIcon Name="sun" Size="10" />
+                            </button>
+                            <button class="tabs__opt @(_periodFilter == ServicePeriod.Dinner ? "tabs__opt--on" : "")" title="@Loc.T("Dinner")"
+                                    @onclick="() => _periodFilter = _periodFilter == ServicePeriod.Dinner ? null : ServicePeriod.Dinner">
+                                <LucideIcon Name="moon" Size="10" />
+                            </button>
+                        </div>
+                        <input @ref="_dateInputEl" type="date" class="input resv__head-date" @bind="_reserveDate" @bind:after="LoadReservations" />
+                        <button type="button" class="resv__head-date-icon" title="@Loc.T("Pick a date")" @onclick="OpenDatePicker"><LucideIcon Name="calendar" Size="11" /></button>
+                    </div>
+                    <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Next day")" @onclick="() => ShiftDay(1)"><LucideIcon Name="arrow-right" Size="11" /></button>
+                </div>
+                <div class="resv__day-nav-side resv__day-nav-side--end">
+                    @if (_resForm is null)
+                    {
+                        <button class="btn btn--primary btn--icon resv__new-btn" title="@Loc.T("New reservation")" @onclick="() => OpenResForm(null)"><LucideIcon Name="plus" Size="15" /></button>
+                    }
+                </div>
             </div>
             <div class="tables-datebar__actions">
                 <button class="resv__stats-btn resv__stats-btn--on" title="@Loc.T("Tables")" @onclick="GoToTables"><LucideIcon Name="calendar" Size="10" /></button>
                 <button class="resv__stats-btn" title="@Loc.T("Reservations")" @onclick="OpenDashboard"><LucideIcon Name="bar-chart-3" Size="10" /></button>
             </div>
         </div>
-        <aside class="resv card">
         @if (_resForm is not null)
         {
             <div class="resv__head">
@@ -555,40 +597,6 @@
         }
         else
         {
-            <div class="resv__head">
-                <h2>@Loc.T("Reservations")</h2>
-                <div class="resv-policy">
-                    @* Replaces the old gear-icon trigger: the dot itself already shows the current
-                       policy at a glance (colour-coded, see PolicyDotColor), still opens the same
-                       picker menu on click. *@
-                    <button type="button" class="resv-policy-dot" style="--dot:@PolicyDotColor(Branding.Current.ReservationPolicy)" title="@Loc.T(PolicyLabel(Branding.Current.ReservationPolicy))" @onclick="TogglePolicyMenu"></button>
-                    @if (_policyMenuOpen)
-                    {
-                        <div class="resv-policy__backdrop" @onclick="ClosePolicyMenu"></div>
-                        <div class="resv-policy__menu" @onclick:stopPropagation="true">
-                            <div class="resv-policy__title">@Loc.T("Taking reservations")</div>
-                            @foreach (var opt in ReservationPolicies)
-                            {
-                                <button type="button" class="resv-policy__opt @(Branding.Current.ReservationPolicy == opt.Value ? "resv-policy__opt--on" : "")"
-                                        disabled="@opt.ComingSoon" @onclick="() => SetReservationPolicy(opt.Value)">
-                                    <span>@Loc.T(opt.Label)</span>
-                                    @if (opt.ComingSoon)
-                                    {
-                                        <span class="badge">@Loc.T("Coming soon")</span>
-                                    }
-                                    else if (Branding.Current.ReservationPolicy == opt.Value)
-                                    {
-                                        <LucideIcon Name="check" Size="14" />
-                                    }
-                                </button>
-                            }
-                        </div>
-                    }
-                </div>
-                <span class="spacer"></span>
-                <button class="btn btn--primary btn--icon resv__new-btn" title="@Loc.T("New reservation")" @onclick="() => OpenResForm(null)"><LucideIcon Name="plus" Size="15" /></button>
-            </div>
-
             <div class="resv__list">
                 @foreach (var r in FilteredReservations)
                 {
