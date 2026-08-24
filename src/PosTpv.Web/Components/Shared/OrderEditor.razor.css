@@ -615,10 +615,20 @@
 /* Name-group stays fixed-size on the left; the extras grid (below) fills whatever width is left
    next to it, so the two never wrap into each other's space. */
 .orderLine__title { flex: 1 1 auto; min-width: 0; display: flex; align-items: flex-start; gap: .3rem; }
+/* Reserves the vertical room the pill (positioned out-of-flow below, see orderLine__expand-btns)
+   would otherwise have taken from the flow, so orderLine__main still grows tall enough when a line
+   is expanded and nothing below (comment box / extras panel) overlaps it. */
+.orderLine__title:has(.orderLine__expand-btns) { padding-bottom: calc(17px + .15rem); }
 /* Name + the Comment/Extra pill (see orderLine__expand-btns) stack vertically here, tight against
    each other — kept out of orderLine__extras-inline's flow so a line with several extras (which
-   wraps the chips into more rows) never pushes the pill down away from the name. */
-.orderLine__title-left { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: .15rem; }
+   wraps the chips into more rows) never pushes the pill down away from the name. position:relative
+   is the anchor for the pill's absolute positioning below — the pill must never be a normal-flow
+   child of this column, because orderLine__title-left is flex:none/shrink-to-fit and the pill (a
+   button pair) is often wider than a short product name; letting it join the flow widened this
+   column on expand and shoved orderLine__extras-inline (a flex sibling) sideways — the exact
+   "extras change position on tap" bug. Taking the pill out of flow keeps this column's width
+   locked to the name alone, in every state. */
+.orderLine__title-left { flex: none; position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: .15rem; }
 .orderLine__name-group { flex: none; display: flex; align-items: baseline; gap: .3rem; flex-wrap: nowrap; }
 .orderLine__name { flex: none; white-space: nowrap; }
 .orderLine__price { flex: none; font-size: .62rem; font-weight: 600; color: color-mix(in srgb, var(--text-soft) 65%, transparent); }
@@ -645,7 +655,12 @@
     justify-content: start;
     column-gap: .35rem;
     row-gap: .02rem;
-    align-self: center;
+    /* Pinned to the title's top edge — level with the name on row 1 — instead of align-self:
+       center. Centering measured against .orderLine__title-left, which grows a second row (the
+       Comment/Extra pill, see orderLine__expand-btns) once the line is expanded/an icon is
+       pressed; re-centering against that taller column read as these chips jumping position on
+       every tap. flex-start keeps them locked to row 1 no matter what title-left does below it. */
+    align-self: flex-start;
     /* Nudge right, past the title's own gap to the name-group, so the chips read as a distinct
        group instead of crowding the name — and so the Comment/Extra icon pair below (which starts
        at the line's left edge, see .orderLine__expand-actions) reads as sitting under the title
@@ -656,11 +671,18 @@
 
 /* --- Tap-to-expand per-line editing (replaces the old pencil → modal flow) ---
    Comment/Extra are icon-only toggles grouped in one pill (Comment on the left, Extra on the
-   right); the active one fills with --primary. Lives in orderLine__title-left now, directly under
-   the name, instead of below the whole title row — see orderLine__title-left above. Opening
-   Comment drops the textbox on its own full-width row below (orderLine__comment-row) rather than
-   inline beside the pill, since the pill's column is only as wide as the product name. */
+   right); the active one fills with --primary. Sits directly under the name — see
+   orderLine__title-left above — but positioned absolute (not in normal flow), anchored to
+   orderLine__title-left's top-left corner and nudged down past the name by top/margin-top, so its
+   own width never widens the title-left column it visually sits under (see the :has() rule on
+   orderLine__title above, which reserves the flow space this takes up instead). Opening Comment
+   drops the textbox on its own full-width row below (orderLine__comment-row) rather than inline
+   beside the pill. */
 .orderLine__expand-btns {
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: .15rem;
     display: inline-flex;
     flex: none;
     gap: 2px;
