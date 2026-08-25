@@ -219,6 +219,10 @@
     color: var(--text);
     cursor: pointer;
     transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition), background var(--transition);
+    /* Otherwise every tap flashes the browser/OS's own default highlight — a solid blue
+       rectangle — over the whole button (same fix as .productCard/.orderLine above). */
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
 }
 /* Collapses each button's top border into the previous one's bottom border, so the stack reads
    as a single 1px line between rows instead of a doubled-up 2px seam. */
@@ -500,6 +504,10 @@
     background: transparent;
     color: var(--text);
     transition: background 120ms ease, transform 80ms ease;
+    /* .btn (app.css) has no tap-highlight override, so without this the close X and confirm
+       tick flash the browser/OS's own default blue highlight on every tap. */
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
 }
 .order__head .btn--icon:hover:not(:disabled) { background: var(--border); }
 .order__head .btn--icon:active:not(:disabled) { background: var(--border); transform: scale(.98); transition-duration: 40ms; }
