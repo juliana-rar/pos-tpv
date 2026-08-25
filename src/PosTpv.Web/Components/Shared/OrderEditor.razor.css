@@ -451,10 +451,12 @@
    so they don't add width) match the separators between .btn--select/.btn--nav-up/etc below. */
 .order__head .badge { flex: none; font-size: .5rem; padding: .05rem .3rem; background: transparent; box-shadow: inset 1px 0 0 var(--border), inset -1px 0 0 var(--border); }
 .order__head .badge--primary { color: var(--primary); }
-/* Smaller and shorter than a section title — just enough to read as a heading, not compete
-   with it. Vertically centered via .order__head's own align-items:center, same as the
-   close/confirm buttons either side. */
-.order__head-title { justify-self: center; text-align: center; font-size: .62rem; font-weight: 800; padding: .06rem .32rem; }
+/* Vertically centered via .order__head's own align-items:center, same as the close/confirm
+   buttons either side. Bumped up from a small badge-sized label to read as the panel's actual
+   heading (Mesa T4 · 000033) — plain --text (not --primary/badge tint) so it reads as neutral
+   title text, not a status chip; same specificity as .order__head .badge--primary above so this,
+   coming later in the file, wins the color instead of needing !important. */
+.order__head .order__head-title { justify-self: center; text-align: center; font-size: .68rem; font-weight: 800; padding: .06rem .32rem; color: var(--text); }
 /* Status pill + confirm tick grouped together, pinned to the column's right edge. */
 .order__head-right { justify-self: end; display: flex; align-items: center; gap: .35rem; }
 /* Hairline dividers on the close X's right edge and the confirm tick's left edge (box-shadow,
@@ -653,7 +655,10 @@
 .orderLine__title-left { flex: none; position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: .15rem; }
 .orderLine__name-group { flex: none; display: flex; align-items: baseline; gap: .3rem; flex-wrap: nowrap; }
 .orderLine__name { flex: none; white-space: nowrap; }
-.orderLine__price { flex: none; font-size: .62rem; font-weight: 600; color: color-mix(in srgb, var(--text-soft) 65%, transparent); }
+/* Sits left of orderLine__ctrl (the −/+ box) — align-self: flex-start for the same reason as
+   that rule below: pinned to row 1, level with the product name, instead of drifting to mid-row
+   once the line grows tall (wrapped extras / expanded comment pill). */
+.orderLine__price { flex: none; align-self: flex-start; margin-right: .3rem; font-size: .62rem; font-weight: 600; color: color-mix(in srgb, var(--text-soft) 65%, transparent); }
 /* align-self: flex-start for the same reason as .orderLine__extras-inline above — .orderLine__main
    centers its children by default, which is fine for a 1-line row but drags the −/+ box down to
    mid-row once title-left grows tall (several extras wrapping to 2-3 chip rows plus the expanded
@@ -734,7 +739,10 @@
 .orderLine__expand-btn:active { transform: scale(.9); }
 .orderLine__expand-btn--active { background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow-sm); }
 .orderLine__expand-btn--active:hover { background: var(--primary-strong); }
-.orderLine__comment-row { margin: .15rem 0 .1rem; }
+/* No top margin: orderLine__title's own min-height (see the :has() rule above) already reserves
+   exactly the icon pill's height below the name, so this row starts right where the pill ends —
+   any margin here just pushed the textbox further from the icons than necessary. */
+.orderLine__comment-row { margin: 0 0 .1rem; }
 .orderLine__comment-inline {
     width: 100%;
     box-sizing: border-box;

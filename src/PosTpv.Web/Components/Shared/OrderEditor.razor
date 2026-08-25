@@ -306,6 +306,7 @@
                                                                     }
                                                                 </div>
                                                                 <span class="spacer"></span>
+                                                                <span class="orderLine__price">@it.LineTotal.ToString("N2")</span>
                                                                 <div class="orderLine__ctrl" @onclick:stopPropagation="true">
                                                                     @* Invitación armed: a checkbox per line, so already-added items can be marked/unmarked
                                                                        as comped too — not just new taps from the product grid. *@
