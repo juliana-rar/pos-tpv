@@ -237,7 +237,11 @@
                                             <div class="order__time-group">
                                                 <span class="order__time-group-time"><span class="order__time-group-time-pin">@timeGroup.Time.ToLocalTime().ToString("HH:mm")</span></span>
                                                 <div class="order__time-group-items">
-                                                    @foreach (var it in timeGroup.Items)
+                                                    @* Select mode iterates the real, unmerged rows — its checkbox/stepper/
+                                                       delete/move-course all act on a single OrderItem's own Quantity field,
+                                                       so a merged virtual line here would let the stepper claim more units
+                                                       than the underlying row actually has (see MergeLinesForDisplay). *@
+                                                    @foreach (var it in _selectMode ? timeGroup.Items : MergeLinesForDisplay(timeGroup.Items))
                                                     {
                                                         <div class="orderLine" id="orderline-@it.Id" @onclick="() => ToggleLineExpanded(it)">
                                                             <div class="orderLine__main">
@@ -1108,4 +1112,10 @@
     // here reads the same way (shared timestamp + connecting bracket instead of repeating it per line).
     private static List<OrderPresentation.TimeGroup> GroupByOrderTime(List<OrderItemDto> items) =>
         OrderPresentation.GroupByOrderTime(items);
+
+    // Same same-product collapsing as OrderCard.razor's read-only board (two Greek Salads tapped
+    // in the same minute read as one "2x Greek Salad" line here too), skipped while Select is
+    // armed — see the @foreach above for why.
+    private static List<OrderItemDto> MergeLinesForDisplay(List<OrderItemDto> items) =>
+        OrderPresentation.MergeSameProduct(items);
 }

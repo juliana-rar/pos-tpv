@@ -626,10 +626,21 @@
 /* Reserves the vertical room the pill (positioned out-of-flow below, see orderLine__expand-btns)
    would otherwise have taken from the flow, so orderLine__main still grows tall enough when a line
    is expanded and nothing below (comment box / extras panel) overlaps it. 23px = the pill's own
-   height (17px icon button + 2px padding + 1px border on each side), not just the button — a line
-   with no extras chips (orderLine__extras-inline) has nothing else keeping the row tall, so
-   undercounting this let the pill poke out past the card's bottom edge. */
-.orderLine__title:has(.orderLine__expand-btns) { padding-bottom: calc(23px + .15rem); }
+   height (17px icon button + 2px padding + 1px border on each side); 14px ≈ orderLine__name-group's
+   own single-line height (measured ~13.9px), i.e. the room title-left takes up before the pill,
+   which the pill's top:100% is anchored against (see orderLine__expand-btns) — a line with no
+   extras chips (orderLine__extras-inline) has nothing else keeping the row tall, so undercounting
+   this let the pill poke out past the card's bottom edge.
+   min-height (not padding-bottom) on the row, and on orderLine__title (not orderLine__title-left) —
+   the row's natural height is already max(title-left, extras-inline), so this only grows the row
+   when that max is shorter than what the pill needs; it never adds on top of it. Padding-bottom
+   here would always add flat on top of the row's existing height regardless of how tall the chips
+   already are, making a line with several extras (already 2-3 rows of chips, taller than the pill
+   needs) balloon even taller than necessary. Padding-bottom on title-left specifically is wrong for
+   a different reason: it would grow title-left's own box, and the pill's top:100% is relative to
+   that box — so the pill would render starting after the padding (i.e. below the card) instead of
+   right under the name where the padding is meant to make room for it. */
+.orderLine__title:has(.orderLine__expand-btns) { min-height: calc(23px + .15rem + 14px); }
 /* Name + the Comment/Extra pill (see orderLine__expand-btns) stack vertically here, tight against
    each other — kept out of orderLine__extras-inline's flow so a line with several extras (which
    wraps the chips into more rows) never pushes the pill down away from the name. position:relative
@@ -643,7 +654,12 @@
 .orderLine__name-group { flex: none; display: flex; align-items: baseline; gap: .3rem; flex-wrap: nowrap; }
 .orderLine__name { flex: none; white-space: nowrap; }
 .orderLine__price { flex: none; font-size: .62rem; font-weight: 600; color: color-mix(in srgb, var(--text-soft) 65%, transparent); }
-.orderLine__ctrl { flex: none; display: flex; align-items: center; gap: 0; }
+/* align-self: flex-start for the same reason as .orderLine__extras-inline above — .orderLine__main
+   centers its children by default, which is fine for a 1-line row but drags the −/+ box down to
+   mid-row once title-left grows tall (several extras wrapping to 2-3 chip rows plus the expanded
+   Comment/Extra pill below the name); pinning to the top keeps it level with the product name on
+   row 1 no matter how tall the rest of the line gets. */
+.orderLine__ctrl { flex: none; display: flex; align-items: center; align-self: flex-start; gap: 0; }
 .orderLine__ctrl .btn--icon { width: 18px; height: 18px; padding: 0; margin-left: .2rem; }
 .orderLine__ctrl .btn--icon:first-child { margin-left: 0; }
 .orderLine__qty { margin-left: .2rem; min-width: 1.1rem; text-align: center; font-weight: 700; font-size: .66rem; }
