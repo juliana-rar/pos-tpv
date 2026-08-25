@@ -50,13 +50,17 @@
     grid-column: 1 / 3;
     grid-row: 2;
     width: calc(100% + 20px + .1rem);
-    /* Floor of two rows of the order panel's own bottom icon toolbar (see --order-toolbar-row-h
-       on .editor__pos above), so this strip and that toolbar read as the same height instead of
-       just "roughly" matching. min-height (not height) so taller content — e.g. the 4-icon
-       .editor__topbar-extra tiles — can still grow the strip instead of being clipped.
-       box-sizing:border-box (global reset) folds this div's own padding+border into that height
-       instead of adding on top of it. */
-    min-height: calc(var(--order-toolbar-row-h) * 2 + 1px);
+    /* Exactly two rows of the order panel's own bottom icon toolbar (see --order-toolbar-row-h
+       on .editor__pos above), so this strip and that toolbar read as the same height, not just
+       "roughly" matching. Fixed height (not min-height): the 4-icon .editor__topbar-extra tiles
+       and the stacked Serve/Fire buttons (.editor__topbar-actions) both stretch/divide to fit
+       this instead of setting their own height, so the strip never grows past it — see both
+       rules below. box-sizing:border-box (global reset) folds this div's own padding+border into
+       that height instead of adding on top of it. overflow:hidden is a safety net for the rare
+       moment all three Serve/Fire actions stack at once and the divided share gets tighter than
+       their icon size — clips instead of pushing the strip taller. */
+    height: calc(var(--order-toolbar-row-h) * 2 + 1px);
+    overflow: hidden;
     /* flex-start (not space-between): Serve drinks/Seconds prepared sit right next to the table
        meta on the left instead of pushed out to the strip's far right edge. */
     display: flex; align-items: center; justify-content: flex-start; gap: .9rem;
@@ -79,14 +83,23 @@
 .editor__topbar-sep { opacity: .5; font-size: .58rem; }
 /* Party size and open time side by side on this smaller line below the title, not stacked. */
 .editor__topbar-stack { display: flex; align-items: center; justify-content: center; gap: .3rem; }
-.editor__topbar-actions { display: flex; gap: .3rem; flex: none; }
+/* align-self: stretch (overriding .editor__topbar's own align-items:center) so this column
+   always spans the strip's full fixed height, whether it holds 1, 2 or 3 stacked buttons — see
+   the row below, which then divides that fixed height evenly by count instead of each button
+   claiming its own natural size and pushing the strip taller. Negative top/bottom margin cancels
+   .editor__topbar's own .15rem vertical padding for this child specifically — for a stretched
+   flex item, a negative margin is subtracted from (i.e. adds to) the stretched size, so the
+   buttons reach all the way to the strip's top/bottom border instead of stopping .15rem short of
+   it inside the padded area. */
+.editor__topbar-actions { display: flex; gap: .3rem; flex: none; align-self: stretch; margin: -.15rem 0; }
 /* Stacked (Serve drinks above Fire seconds above Serve firsts) instead of side by side, only
    in this large-screen topbar — the inline mobile copy (.order-card__actions--inline further
-   down) keeps its own horizontal row. Tighter gap than that shared .order-card__actions-row
-   default (.3rem) so two stacked buttons come out roughly as tall as the order panel's own
-   bottom icon toolbar (.order__toolbar-actions + .order__grand-actions) below, not taller. */
-.editor__topbar-actions .order-card__actions-row { flex-direction: column; gap: .15rem; }
-.editor__topbar-actions .order-card__actions-row .btn { flex: none; }
+   down) keeps its own horizontal row. height:100% + flex:1 on each button (below) divides
+   .editor__topbar's fixed height evenly across however many of the three are showing, instead
+   of each button keeping its natural size — one button fills the strip, three compress to a
+   third each. */
+.editor__topbar-actions .order-card__actions-row { flex-direction: column; gap: .15rem; height: 100%; }
+.editor__topbar-actions .order-card__actions-row .btn { flex: 1 1 0; min-height: 0; padding-top: 0; padding-bottom: 0; }
 
 /* Placeholder action buttons pinned to the topbar's extreme right — margin-left:auto pushes
    them past .editor__topbar-meta/.editor__topbar-actions regardless of whether the latter
@@ -100,18 +113,29 @@
    logic for the extra row/column edge. */
 /* margin-right cancels .editor__topbar's own right padding (.7rem) so this block sits flush
    against the strip's right border instead of floating inside the padded content area. */
+/* align-self: stretch (overriding .editor__topbar's own align-items:center) so this 2x2 grid
+   always spans the strip's full fixed height — its two grid-template-rows (1fr each, above)
+   then divide that height evenly between the tiles instead of each tile keeping its own
+   28px-tall natural size and pushing the strip past its fixed height. Negative top/bottom margin
+   cancels .editor__topbar's own .15rem vertical padding the same way .editor__topbar-actions
+   does above, so the tiles reach the strip's top/bottom border instead of stopping short inside
+   the padded area. */
 .editor__topbar-extra {
     display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr);
     gap: 1px;
-    flex: none; margin-left: auto; margin-right: -.7rem;
+    flex: none; align-self: stretch; margin: -.15rem -.7rem -.15rem auto;
     border: 1px solid var(--border);
     background: var(--border);
 }
+/* No fixed height any more — the grid row (above) sizes each tile to its even share of the
+   strip's fixed height instead; a CSS grid item stretches to fill its cell by default. Vertical
+   padding dropped for the same reason as .editor__topbar-actions' buttons above: an explicit
+   value could exceed the tile's now-variable share of the height. */
 .editor__topbar-extra .btn {
     display: flex; align-items: center; justify-content: flex-start;
     gap: .4rem;
-    width: 122px; height: 28px;
-    padding: .3rem .55rem;
+    width: 122px;
+    padding: 0 .55rem;
     border: none;
     border-radius: 0;
     background: var(--card-2);
