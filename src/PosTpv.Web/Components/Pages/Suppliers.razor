@@ -1,0 +1,411 @@
+@page "/suppliers"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using FluentValidation
+@using Microsoft.AspNetCore.Components.Forms
+@inject ISupplierService SupplierService
+@inject IPurchaseService PurchaseService
+@inject IStockService StockService
+@inject IProductService ProductService
+@inject IValidator<SupplierFormDto> SupplierValidator
+@inject IValidator<PurchaseFormDto> PurchaseValidator
+@inject IValidator<StockAdjustFormDto> StockValidator
+@inject IWebHostEnvironment Env
+@inject AppSettingsCache Branding
+
+<PageTitle>@Loc.T("Suppliers") · @Branding.Current.Title</PageTitle>
+
+<div class="toolbar">
+    <h1>@Loc.T("Suppliers")</h1>
+</div>
+<p class="muted settings__intro">@Loc.T("Manage suppliers, purchases and product stock levels.")</p>
+
+<div class="tabs" role="tablist">
+    <button class="tabs__opt @(_tab == "suppliers" ? "tabs__opt--on" : "")" @onclick='() => _tab = "suppliers"'><LucideIcon Name="truck" Size="16" /> @Loc.T("Suppliers")</button>
+    <button class="tabs__opt @(_tab == "purchases" ? "tabs__opt--on" : "")" @onclick='SelectPurchases'><LucideIcon Name="receipt" Size="16" /> @Loc.T("Purchases")</button>
+    <button class="tabs__opt @(_tab == "stock" ? "tabs__opt--on" : "")" @onclick='SelectStock'><LucideIcon Name="boxes" Size="16" /> @Loc.T("Stock")</button>
+</div>
+
+@if (_tab == "suppliers")
+{
+    <div class="toolbar">
+        <span class="spacer"></span>
+        <button class="btn btn--primary" @onclick="() => OpenSupplierForm(null)"><LucideIcon Name="plus" Size="16" /> @Loc.T("New supplier")</button>
+    </div>
+    @if (_listError is not null) { <div class="field-error">@_listError</div> }
+    <div class="grid-cards">
+        @foreach (var s in _suppliers)
+        {
+            <div class="card mgmt-card">
+                <div class="mgmt-card__head">
+                    <strong>@s.Name</strong>
+                    <span class="spacer"></span>
+                    @if (!s.IsActive) { <span class="badge badge--danger">@Loc.T("Inactive")</span> }
+                </div>
+                @if (!string.IsNullOrWhiteSpace(s.ContactName)) { <div class="mgmt-card__meta muted">@s.ContactName</div> }
+                @if (!string.IsNullOrWhiteSpace(s.Phone) || !string.IsNullOrWhiteSpace(s.Email))
+                {
+                    <div class="mgmt-card__meta muted">@s.Phone @(!string.IsNullOrWhiteSpace(s.Phone) && !string.IsNullOrWhiteSpace(s.Email) ? "·" : "") @s.Email</div>
+                }
+                <div class="mgmt-card__meta">
+                    <span class="badge">@s.DocumentCount @Loc.T("documents")</span>
+                    <span class="badge">@s.PurchaseCount @Loc.T("purchases")</span>
+                </div>
+                <div class="mgmt-card__actions">
+                    <button class="btn btn--ghost btn--sm" @onclick="() => OpenSupplierForm(s.Id)">@Loc.T("Edit")</button>
+                    <span class="spacer"></span>
+                    <button class="btn btn--danger btn--sm" @onclick="() => DeleteSupplier(s.Id)">@Loc.T("Delete")</button>
+                </div>
+            </div>
+        }
+        @if (_suppliers.Count == 0) { <p class="empty">@Loc.T("No suppliers yet.")</p> }
+    </div>
+}
+else if (_tab == "purchases")
+{
+    <div class="toolbar">
+        <span class="spacer"></span>
+        <button class="btn btn--primary" @onclick="OpenPurchaseForm" disabled="@(_suppliers.Count == 0)"><LucideIcon Name="plus" Size="16" /> @Loc.T("New purchase")</button>
+    </div>
+    <div class="card" style="padding:1rem 1.2rem">
+        @if (_purchases.Count == 0)
+        {
+            <p class="empty">@Loc.T("No purchases recorded yet.")</p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr><th>@Loc.T("Date")</th><th>@Loc.T("Supplier")</th><th>@Loc.T("Reference")</th><th>@Loc.T("Lines")</th><th class="ta-r">@Loc.T("Total")</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in _purchases)
+                    {
+                        <tr>
+                            <td>@p.Date.ToString("dd/MM/yyyy")</td>
+                            <td>@p.SupplierName</td>
+                            <td>@p.Reference</td>
+                            <td>@p.Lines.Count</td>
+                            <td class="ta-r"><strong>@p.Total.ToString("N2")</strong></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+else if (_tab == "stock")
+{
+    <div class="toolbar">
+        <div class="toolbar__search">
+            <LucideIcon Name="search" Size="15" />
+            <input class="input search" placeholder="@Loc.T("Search…")" @bind="_stockSearch" @bind:event="oninput" />
+        </div>
+    </div>
+    <div class="card" style="padding:1rem 1.2rem">
+        @if (FilteredStock.Count == 0)
+        {
+            <p class="empty">@Loc.T("No products found.")</p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr><th>@Loc.T("Product")</th><th>@Loc.T("Category")</th><th class="ta-r">@Loc.T("Stock")</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in FilteredStock)
+                    {
+                        <tr>
+                            <td>@item.ProductName</td>
+                            <td>@item.CategoryName</td>
+                            <td class="ta-r"><strong>@item.StockQuantity.ToString("N2")</strong></td>
+                            <td class="ta-r"><button class="btn btn--ghost btn--sm" @onclick="() => OpenStockAdjust(item)">@Loc.T("Adjust")</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+
+@* ---- Supplier form + documents ------------------------------------------- *@
+<Modal Visible="_supplierForm is not null" Title="@(_supplierForm?.Id > 0 ? Loc.T("Edit supplier") : Loc.T("New supplier"))" OnClose="CloseSupplierForm">
+    <ChildContent>
+        @if (_supplierForm is not null)
+        {
+            <div class="field"><label>@Loc.T("Name")</label><input class="input" @bind="_supplierForm.Name" /></div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Contact person")</label><input class="input" @bind="_supplierForm.ContactName" /></div>
+                <div class="field"><label>@Loc.T("Phone")</label><input class="input" @bind="_supplierForm.Phone" /></div>
+            </div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Email")</label><input class="input" @bind="_supplierForm.Email" /></div>
+                <div class="field"><label>@Loc.T("Tax ID")</label><input class="input" @bind="_supplierForm.TaxId" /></div>
+            </div>
+            <div class="field"><label>@Loc.T("Address")</label><input class="input" @bind="_supplierForm.Address" /></div>
+            <div class="field"><label>@Loc.T("Notes")</label><textarea class="input" rows="2" @bind="_supplierForm.Notes"></textarea></div>
+            <label class="switch"><input type="checkbox" @bind="_supplierForm.IsActive" /> @Loc.T("Active")</label>
+            @if (_supplierError is not null) { <div class="field-error">@_supplierError</div> }
+
+            @if (_supplierForm.Id > 0)
+            {
+                <div class="modal-section">@Loc.T("Documents")</div>
+                @foreach (var doc in _supplierDocs)
+                {
+                    <div class="mgmt-card__actions" style="justify-content:space-between">
+                        <a href="@doc.FileUrl" target="_blank"><LucideIcon Name="file-text" Size="15" /> @doc.FileName</a>
+                        <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")" @onclick="() => DeleteDocument(doc.Id)"><LucideIcon Name="trash-2" Size="15" /></button>
+                    </div>
+                }
+                @if (_supplierDocs.Count == 0) { <p class="muted">@Loc.T("No documents attached.")</p> }
+                <label class="btn btn--ghost btn--sm docpick" style="margin-top:.5rem">
+                    @Loc.T("Attach document")
+                    <InputFile OnChange="OnDocumentSelected" class="docpick__input" accept=".pdf,.doc,.docx,.xls,.xlsx,image/png,image/jpeg,image/webp" />
+                </label>
+                @if (_docError is not null) { <div class="field-error">@_docError</div> }
+            }
+        }
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="CloseSupplierForm">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="SaveSupplier">@Loc.T("Save")</button>
+    </Footer>
+</Modal>
+
+@* ---- Purchase form --------------------------------------------------------- *@
+<Modal Visible="_purchaseForm is not null" Title="@Loc.T("New purchase")" OnClose="ClosePurchaseForm" Wide="true">
+    <ChildContent>
+        @if (_purchaseForm is not null)
+        {
+            <div class="row-2">
+                <div class="field">
+                    <label>@Loc.T("Supplier")</label>
+                    <select class="select" @bind="_purchaseForm.SupplierId">
+                        <option value="0">@Loc.T("Select…")</option>
+                        @foreach (var s in _suppliers)
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="field"><label>@Loc.T("Date")</label><input type="date" class="input" value="@_purchaseForm.Date.ToString("yyyy-MM-dd")" @onchange="OnPurchaseDateChanged" /></div>
+            </div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Reference")</label><input class="input" @bind="_purchaseForm.Reference" /></div>
+                <div class="field"><label>@Loc.T("Notes")</label><input class="input" @bind="_purchaseForm.Notes" /></div>
+            </div>
+
+            <div class="modal-section">@Loc.T("Lines")</div>
+            @foreach (var (line, i) in _purchaseForm.Lines.Select((l, i) => (l, i)))
+            {
+                <div class="row-2" style="grid-template-columns: 2fr 1fr 1fr auto; align-items:end; gap:.5rem">
+                    <div class="field">
+                        <label>@Loc.T("Product")</label>
+                        <select class="select" @bind="line.ProductId">
+                            <option value="0">@Loc.T("Select…")</option>
+                            @foreach (var p in _products)
+                            {
+                                <option value="@p.Id">@p.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field"><label>@Loc.T("Qty")</label><input type="number" min="0" step="0.01" class="input" @bind="line.Quantity" /></div>
+                    <div class="field"><label>@Loc.T("Unit cost")</label><input type="number" min="0" step="0.01" class="input" @bind="line.UnitCost" /></div>
+                    <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Remove")" @onclick="() => _purchaseForm.Lines.RemoveAt(i)"><LucideIcon Name="trash-2" Size="15" /></button>
+                </div>
+            }
+            <button class="btn btn--ghost btn--sm" @onclick="() => _purchaseForm.Lines.Add(new PurchaseLineFormDto())"><LucideIcon Name="plus" Size="14" /> @Loc.T("Add line")</button>
+
+            <p class="ta-r" style="margin-top:.8rem"><strong>@Loc.T("Total"): @_purchaseForm.Lines.Sum(l => l.Quantity * l.UnitCost).ToString("N2")</strong></p>
+            @if (_purchaseError is not null) { <div class="field-error">@_purchaseError</div> }
+        }
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="ClosePurchaseForm">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="SavePurchase">@Loc.T("Save")</button>
+    </Footer>
+</Modal>
+
+@* ---- Stock adjustment ------------------------------------------------------ *@
+<Modal Visible="_stockForm is not null" Title="@Loc.T("Adjust stock")" OnClose="CloseStockForm">
+    <ChildContent>
+        @if (_stockForm is not null)
+        {
+            <p><strong>@_stockAdjustProductName</strong></p>
+            <div class="field"><label>@Loc.T("New quantity")</label><input type="number" min="0" step="0.01" class="input" @bind="_stockForm.NewQuantity" /></div>
+            <div class="field"><label>@Loc.T("Note")</label><input class="input" @bind="_stockForm.Note" placeholder="@Loc.T("e.g. inventory count")" /></div>
+            @if (_stockError is not null) { <div class="field-error">@_stockError</div> }
+        }
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="CloseStockForm">@Loc.T("Cancel")</button>
+        <button class="btn btn--primary" @onclick="SaveStockAdjust">@Loc.T("Save")</button>
+    </Footer>
+</Modal>
+
+@code {
+    private const long MaxDocBytes = 10 * 1024 * 1024;
+
+    private string _tab = "suppliers";
+
+    private List<SupplierDto> _suppliers = new();
+    private List<PurchaseDto> _purchases = new();
+    private List<StockItemDto> _stock = new();
+    private List<ProductDto> _products = new();
+    private string _stockSearch = "";
+
+    private SupplierFormDto? _supplierForm;
+    private List<SupplierDocumentDto> _supplierDocs = new();
+    private string? _supplierError;
+    private string? _docError;
+    private string? _listError;
+
+    private PurchaseFormDto? _purchaseForm;
+    private string? _purchaseError;
+
+    private StockAdjustFormDto? _stockForm;
+    private string _stockAdjustProductName = "";
+    private string? _stockError;
+
+    private List<StockItemDto> FilteredStock =>
+        string.IsNullOrWhiteSpace(_stockSearch)
+            ? _stock
+            : _stock.Where(s => s.ProductName.Contains(_stockSearch, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _suppliers = await SupplierService.GetAllAsync();
+        _products = await ProductService.GetAllAsync();
+    }
+
+    private async Task SelectPurchases()
+    {
+        _tab = "purchases";
+        _purchases = await PurchaseService.GetAllAsync();
+    }
+
+    private async Task SelectStock()
+    {
+        _tab = "stock";
+        _stock = await StockService.GetAllAsync();
+    }
+
+    // ---- Suppliers ----------------------------------------------------------
+
+    private void OpenSupplierForm(int? id) => _ = OpenSupplierFormAsync(id);
+
+    private async Task OpenSupplierFormAsync(int? id)
+    {
+        _supplierError = null;
+        _docError = null;
+        _supplierForm = id is null ? new SupplierFormDto() : await SupplierService.GetForEditAsync(id.Value) ?? new SupplierFormDto();
+        _supplierDocs = _supplierForm.Id > 0 ? await SupplierService.GetDocumentsAsync(_supplierForm.Id) : new();
+    }
+
+    private void CloseSupplierForm() => _supplierForm = null;
+
+    private async Task SaveSupplier()
+    {
+        if (_supplierForm is null) return;
+        var result = await SupplierValidator.ValidateAsync(_supplierForm);
+        if (!result.IsValid) { _supplierError = result.Errors[0].ErrorMessage; return; }
+
+        if (_supplierForm.Id > 0) await SupplierService.UpdateAsync(_supplierForm);
+        else await SupplierService.CreateAsync(_supplierForm);
+
+        _supplierForm = null;
+        _suppliers = await SupplierService.GetAllAsync();
+    }
+
+    private async Task DeleteSupplier(int id)
+    {
+        _listError = null;
+        try { await SupplierService.DeleteAsync(id); }
+        catch (InvalidOperationException ex) { _listError = ex.Message; return; }
+        _suppliers = await SupplierService.GetAllAsync();
+    }
+
+    private async Task OnDocumentSelected(InputFileChangeEventArgs e)
+    {
+        if (_supplierForm is null) return;
+        _docError = null;
+        var file = e.File;
+
+        if (file.Size > MaxDocBytes) { _docError = Loc.T("File is too large (max 10 MB)."); return; }
+
+        var ext = Path.GetExtension(file.Name);
+        var dir = Path.Combine(Env.WebRootPath, "uploads", "suppliers", _supplierForm.Id.ToString());
+        Directory.CreateDirectory(dir);
+        var storedName = $"{Guid.NewGuid():N}{ext.ToLowerInvariant()}";
+
+        await using (var output = File.Create(Path.Combine(dir, storedName)))
+        await using (var input = file.OpenReadStream(MaxDocBytes))
+        {
+            await input.CopyToAsync(output);
+        }
+
+        var url = $"/uploads/suppliers/{_supplierForm.Id}/{storedName}";
+        await SupplierService.AddDocumentAsync(_supplierForm.Id, file.Name, url, file.ContentType, file.Size);
+        _supplierDocs = await SupplierService.GetDocumentsAsync(_supplierForm.Id);
+        _suppliers = await SupplierService.GetAllAsync();
+    }
+
+    private async Task DeleteDocument(int documentId)
+    {
+        if (_supplierForm is null) return;
+        await SupplierService.DeleteDocumentAsync(documentId);
+        _supplierDocs = await SupplierService.GetDocumentsAsync(_supplierForm.Id);
+        _suppliers = await SupplierService.GetAllAsync();
+    }
+
+    // ---- Purchases ------------------------------------------------------------
+
+    private void OpenPurchaseForm()
+    {
+        _purchaseError = null;
+        _purchaseForm = new PurchaseFormDto();
+        _purchaseForm.Lines.Add(new PurchaseLineFormDto());
+    }
+
+    private void ClosePurchaseForm() => _purchaseForm = null;
+
+    private void OnPurchaseDateChanged(ChangeEventArgs e)
+    {
+        if (_purchaseForm is null) return;
+        if (DateTime.TryParse(e.Value?.ToString(), out var date)) _purchaseForm.Date = date;
+    }
+
+    private async Task SavePurchase()
+    {
+        if (_purchaseForm is null) return;
+        var result = await PurchaseValidator.ValidateAsync(_purchaseForm);
+        if (!result.IsValid) { _purchaseError = result.Errors[0].ErrorMessage; return; }
+
+        await PurchaseService.CreateAsync(_purchaseForm);
+        _purchaseForm = null;
+        _purchases = await PurchaseService.GetAllAsync();
+    }
+
+    // ---- Stock ------------------------------------------------------------
+
+    private void OpenStockAdjust(StockItemDto item)
+    {
+        _stockError = null;
+        _stockAdjustProductName = item.ProductName;
+        _stockForm = new StockAdjustFormDto { ProductId = item.ProductId, NewQuantity = item.StockQuantity };
+    }
+
+    private void CloseStockForm() => _stockForm = null;
+
+    private async Task SaveStockAdjust()
+    {
+        if (_stockForm is null) return;
+        var result = await StockValidator.ValidateAsync(_stockForm);
+        if (!result.IsValid) { _stockError = result.Errors[0].ErrorMessage; return; }
+
+        await StockService.AdjustAsync(_stockForm);
+        _stockForm = null;
+        _stock = await StockService.GetAllAsync();
+    }
+}

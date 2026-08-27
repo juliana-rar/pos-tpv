@@ -4,6 +4,7 @@
 @using System.Globalization
 @inject IBillingService BillingSvc
 @inject AppSettingsCache Branding
+@inject IJSRuntime JS
 
 <PageTitle>Billing · @Branding.Current.Title</PageTitle>
 
@@ -208,10 +209,22 @@ else
                     }
                 </div>
             </div>
+
+            @* Rendered off-screen; only shown by the @media print rule in app.css when Print is
+               clicked, so the reprint matches exactly what was handed to the customer at checkout. *@
+            <div class="print-only">
+                <SalesReceipt Invoice="_detail" BrandTitle="Branding.Current.Title" LegalName="Branding.Current.ReceiptLegalName"
+                              TaxId="Branding.Current.ReceiptTaxId" Address="Branding.Current.ReceiptAddress" Footer="Branding.Current.ReceiptFooter"
+                              ShowTaxBreakdown="Branding.Current.ReceiptShowTaxBreakdown" PaperWidth="Branding.Current.ReceiptPaperWidth" />
+            </div>
         }
     </ChildContent>
     <Footer>
         <button class="btn btn--ghost" @onclick="CloseDetail">@Loc.T("Close")</button>
+        @if (_detail is not null)
+        {
+            <button class="btn btn--primary" @onclick='() => JS.InvokeVoidAsync("print")'><LucideIcon Name="printer" Size="16" /> @Loc.T("Print")</button>
+        }
     </Footer>
 </Modal>
 

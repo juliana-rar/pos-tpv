@@ -30,6 +30,9 @@ public static class DependencyInjection
         services.AddScoped<IBillingService, BillingService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ISettingsService, SettingsService>();
+        services.AddScoped<ISupplierService, SupplierService>();
+        services.AddScoped<IPurchaseService, PurchaseService>();
+        services.AddScoped<IStockService, StockService>();
         services.AddSingleton<AppSettingsCache>();
 
         return services;

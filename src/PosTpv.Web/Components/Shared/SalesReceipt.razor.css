@@ -1,0 +1,30 @@
+.receipt {
+    width: var(--receipt-w, 80mm);
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 1rem .9rem;
+    background: #fff;
+    color: #111;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: .8rem;
+    line-height: 1.35;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+
+.receipt__head { text-align: center; margin-bottom: .5rem; }
+.receipt__head strong { display: block; font-size: .95rem; }
+
+.receipt__rule { border-top: 1px dashed #888; margin: .5rem 0; }
+
+.receipt__meta div { display: flex; justify-content: space-between; gap: .5rem; }
+
+.receipt__line { display: flex; justify-content: space-between; gap: .5rem; }
+.receipt__line-name { flex: 1; }
+.receipt__line-extra { padding-left: .8rem; color: #555; font-size: .74rem; }
+
+.receipt__totrow { display: flex; justify-content: space-between; gap: .5rem; }
+.receipt__totrow--grand { font-weight: 700; font-size: .9rem; margin-top: .2rem; }
+
+.receipt__footer { margin-top: .6rem; text-align: center; white-space: pre-wrap; }
+.receipt__thanks { margin-top: .3rem; text-align: center; font-weight: 700; }

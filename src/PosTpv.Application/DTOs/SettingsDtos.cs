@@ -1,6 +1,10 @@
 namespace PosTpv.Application.DTOs;
 
-public record AppSettingsDto(string Title, TimeOnly LunchStart, TimeOnly LunchEnd, TimeOnly DinnerStart, TimeOnly DinnerEnd, string FloorTexture, string ReservationPolicy, string PrimaryColor);
+public record AppSettingsDto(
+    string Title, TimeOnly LunchStart, TimeOnly LunchEnd, TimeOnly DinnerStart, TimeOnly DinnerEnd,
+    string FloorTexture, string ReservationPolicy, string PrimaryColor,
+    string? ReceiptLegalName, string? ReceiptTaxId, string? ReceiptAddress, string? ReceiptFooter,
+    bool ReceiptShowTaxBreakdown, string ReceiptPaperWidth);
 
 public class AppSettingsFormDto
 {
@@ -12,6 +16,12 @@ public class AppSettingsFormDto
     public string FloorTexture { get; set; } = "grid";
     public string ReservationPolicy { get; set; } = "open";
     public string PrimaryColor { get; set; } = "#6366f1";
+    public string? ReceiptLegalName { get; set; }
+    public string? ReceiptTaxId { get; set; }
+    public string? ReceiptAddress { get; set; }
+    public string? ReceiptFooter { get; set; }
+    public bool ReceiptShowTaxBreakdown { get; set; } = true;
+    public string ReceiptPaperWidth { get; set; } = "80";
 }
 
 /// <summary>Current-service-period lookup shared by the dashboard badge and the reservation

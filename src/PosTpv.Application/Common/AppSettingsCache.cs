@@ -15,7 +15,8 @@ public class AppSettingsCache
     // calls from two admins saving settings at once.
     private readonly object _lock = new();
     private AppSettingsDto _current =
-        new("PosTPV", new TimeOnly(13, 0), new TimeOnly(16, 0), new TimeOnly(20, 0), new TimeOnly(23, 30), "grid", "open", "#6366f1");
+        new("PosTPV", new TimeOnly(13, 0), new TimeOnly(16, 0), new TimeOnly(20, 0), new TimeOnly(23, 30), "grid", "open", "#6366f1",
+            null, null, null, null, true, "80");
 
     public AppSettingsDto Current { get { lock (_lock) return _current; } }
 

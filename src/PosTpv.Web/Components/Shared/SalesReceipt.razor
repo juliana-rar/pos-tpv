@@ -1,0 +1,72 @@
+@* Printable customer receipt. Rendered both as a live preview (Settings' Ticket tab) and as the
+   real thing (checkout on /pos, reprint on /billing). The @media print rule in app.css hides
+   everything else on the page and shows only the element with the "receipt" class, so this
+   component doesn't need to know whether it's sitting inside a Modal or a settings panel. *@
+
+<div class="receipt" style="--receipt-w: @(PaperWidth == "58" ? "58mm" : "80mm")">
+    <div class="receipt__head">
+        <strong>@(string.IsNullOrWhiteSpace(LegalName) ? BrandTitle : LegalName)</strong>
+        @if (!string.IsNullOrWhiteSpace(Address)) { <div>@Address</div> }
+        @if (!string.IsNullOrWhiteSpace(TaxId)) { <div>@Loc.T("Tax ID"): @TaxId</div> }
+    </div>
+
+    <div class="receipt__rule"></div>
+
+    <div class="receipt__meta">
+        <div><span>@Invoice.Number</span><span>@Invoice.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div>
+        <div><span>@Loc.T("Table") @Invoice.TableName</span><span>@Invoice.WaiterName</span></div>
+    </div>
+
+    <div class="receipt__rule"></div>
+
+    <div class="receipt__lines">
+        @foreach (var line in Invoice.Lines)
+        {
+            <div class="receipt__line">
+                <div class="receipt__line-name">@line.Quantity× @line.ProductName</div>
+                <div class="receipt__line-total">@line.LineTotal.ToString("N2")</div>
+            </div>
+            @if (line.Extras.Count > 0)
+            {
+                <div class="receipt__line-extra">＋ @string.Join(", ", line.Extras)</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(line.Comment))
+            {
+                <div class="receipt__line-extra">“@line.Comment”</div>
+            }
+        }
+    </div>
+
+    <div class="receipt__rule"></div>
+
+    @if (ShowTaxBreakdown)
+    {
+        <div class="receipt__totrow"><span>@Loc.T("Subtotal")</span><span>@Invoice.Subtotal.ToString("N2")</span></div>
+        <div class="receipt__totrow"><span>@Loc.T("Tax")</span><span>@Invoice.VatTotal.ToString("N2")</span></div>
+    }
+    <div class="receipt__totrow receipt__totrow--grand"><span>@Loc.T("Total")</span><span>@Invoice.Total.ToString("N2")</span></div>
+
+    <div class="receipt__rule"></div>
+
+    @foreach (var payment in Invoice.Payments)
+    {
+        <div class="receipt__totrow"><span>@Loc.T(payment.Method.ToString())</span><span>@payment.Amount.ToString("N2")</span></div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Footer))
+    {
+        <div class="receipt__footer">@Footer</div>
+    }
+    <div class="receipt__thanks">@Loc.T("Thank you!")</div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public InvoiceDetailDto Invoice { get; set; } = null!;
+    [Parameter] public string BrandTitle { get; set; } = "";
+    [Parameter] public string? LegalName { get; set; }
+    [Parameter] public string? TaxId { get; set; }
+    [Parameter] public string? Address { get; set; }
+    [Parameter] public string? Footer { get; set; }
+    [Parameter] public bool ShowTaxBreakdown { get; set; } = true;
+    [Parameter] public string PaperWidth { get; set; } = "80";
+}

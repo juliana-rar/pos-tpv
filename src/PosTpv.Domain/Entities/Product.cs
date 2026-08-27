@@ -16,6 +16,7 @@ public class Product : BaseEntity, IOrderable
     public bool IsAvailable { get; set; } = true;
     public int PreparationMinutes { get; set; }
     public string? Ingredients { get; set; }
+    public decimal StockQuantity { get; set; }
 
     public int CategoryId { get; set; }
     public Category Category { get; set; } = null!;

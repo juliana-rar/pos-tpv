@@ -18,6 +18,7 @@
 <div class="tabs" role="tablist">
     <button class="tabs__opt @(_tab == "general" ? "tabs__opt--on" : "")" @onclick='() => _tab = "general"'><LucideIcon Name="settings" Size="16" /> @Loc.T("General")</button>
     <button class="tabs__opt @(_tab == "schedule" ? "tabs__opt--on" : "")" @onclick='() => _tab = "schedule"'><LucideIcon Name="calendar" Size="16" /> @Loc.T("Schedule")</button>
+    <button class="tabs__opt @(_tab == "ticket" ? "tabs__opt--on" : "")" @onclick='() => _tab = "ticket"'><LucideIcon Name="receipt" Size="16" /> @Loc.T("Ticket")</button>
     <button class="tabs__opt @(_tab == "users" ? "tabs__opt--on" : "")" @onclick='() => _tab = "users"'><LucideIcon Name="users" Size="16" /> @Loc.T("Users")</button>
 </div>
 
@@ -68,6 +69,47 @@ else if (_tab == "schedule")
         </div>
 
         <p class="muted settings__hint">@Loc.T("Service hours affect the dashboard's current-service badge and flag reservations booked outside them.")</p>
+        @if (_settingsError is not null) { <div class="field-error">@_settingsError</div> }
+        <div class="settings__save">
+            <button class="btn btn--primary" @onclick="SaveSettings">@Loc.T("Save")</button>
+            @if (_settingsSaved) { <span class="badge badge--success"><LucideIcon Name="check" Size="14" /> @Loc.T("Saved")</span> }
+        </div>
+    </div>
+}
+else if (_tab == "ticket")
+{
+    <div class="card settings__panel">
+        <div class="field">
+            <label>@Loc.T("Legal / fiscal name")</label>
+            <input class="input" @bind="_settings.ReceiptLegalName" maxlength="120" placeholder="@_settings.Title" />
+            <span class="muted settings__hint">@Loc.T("Printed as the receipt header. Leave blank to reuse the app title.")</span>
+        </div>
+        <div class="field">
+            <label>@Loc.T("Tax ID")</label>
+            <input class="input" @bind="_settings.ReceiptTaxId" maxlength="40" />
+        </div>
+        <div class="field">
+            <label>@Loc.T("Address")</label>
+            <input class="input" @bind="_settings.ReceiptAddress" maxlength="250" />
+        </div>
+        <div class="field">
+            <label>@Loc.T("Footer message")</label>
+            <textarea class="input" rows="2" maxlength="300" @bind="_settings.ReceiptFooter" placeholder="@Loc.T("e.g. Thank you for your visit!")"></textarea>
+        </div>
+        <div class="field">
+            <label>@Loc.T("Paper width")</label>
+            <div class="tabs" role="tablist">
+                <button type="button" class="tabs__opt @(_settings.ReceiptPaperWidth == "58" ? "tabs__opt--on" : "")" @onclick='() => _settings.ReceiptPaperWidth = "58"'>58 mm</button>
+                <button type="button" class="tabs__opt @(_settings.ReceiptPaperWidth == "80" ? "tabs__opt--on" : "")" @onclick='() => _settings.ReceiptPaperWidth = "80"'>80 mm</button>
+            </div>
+        </div>
+        <label class="switch"><input type="checkbox" @bind="_settings.ReceiptShowTaxBreakdown" /> @Loc.T("Show tax breakdown")</label>
+
+        <div class="modal-section">@Loc.T("Preview")</div>
+        <SalesReceipt Invoice="_previewInvoice" BrandTitle="_settings.Title" LegalName="_settings.ReceiptLegalName"
+                      TaxId="_settings.ReceiptTaxId" Address="_settings.ReceiptAddress" Footer="_settings.ReceiptFooter"
+                      ShowTaxBreakdown="_settings.ReceiptShowTaxBreakdown" PaperWidth="_settings.ReceiptPaperWidth" />
+
         @if (_settingsError is not null) { <div class="field-error">@_settingsError</div> }
         <div class="settings__save">
             <button class="btn btn--primary" @onclick="SaveSettings">@Loc.T("Save")</button>
@@ -153,6 +195,18 @@ else if (_tab == "users")
     private AppSettingsFormDto? _settings;
     private string? _settingsError;
     private bool _settingsSaved;
+
+    // Static sample data for the live receipt preview on the Ticket tab — never persisted, just
+    // lets an admin see the effect of the fields above without ringing up a real sale first.
+    private static readonly InvoiceDetailDto _previewInvoice = new(
+        0, "INV-000001", "O-00001", "5", "Alex Waiter",
+        18.36m, 1.84m, 20.20m, PaymentMethod.Cash, DateTime.Now,
+        new List<InvoiceLineDto>
+        {
+            new("Margherita", 2, 8.50m, 17.00m, Array.Empty<string>(), null),
+            new("Beer", 1, 3.20m, 3.20m, Array.Empty<string>(), null),
+        },
+        new List<InvoicePaymentDto> { new(PaymentMethod.Cash, 20.20m) });
 
     private List<UserDto> _users = new();
     private UserFormDto? _userForm;

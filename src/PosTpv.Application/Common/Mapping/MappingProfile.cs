@@ -62,6 +62,23 @@ public class MappingProfile : Profile
             .ForMember(d => d.CreatedAt, o => o.Ignore())
             .ForMember(d => d.UpdatedAt, o => o.Ignore());
 
+        CreateMap<SupplierDocument, SupplierDocumentDto>();
+
+        CreateMap<Supplier, SupplierDto>()
+            .ForCtorParam(nameof(SupplierDto.DocumentCount), o => o.MapFrom(s => s.Documents.Count))
+            .ForCtorParam(nameof(SupplierDto.PurchaseCount), o => o.MapFrom(s => s.Purchases.Count));
+        CreateMap<Supplier, SupplierFormDto>();
+        CreateMap<SupplierFormDto, Supplier>()
+            .ForMember(d => d.Documents, o => o.Ignore())
+            .ForMember(d => d.Purchases, o => o.Ignore())
+            .ForMember(d => d.CreatedAt, o => o.Ignore())
+            .ForMember(d => d.UpdatedAt, o => o.Ignore());
+
+        CreateMap<PurchaseLine, PurchaseLineDto>()
+            .ForCtorParam(nameof(PurchaseLineDto.ProductName), o => o.MapFrom(s => s.Product.Name));
+        CreateMap<Purchase, PurchaseDto>()
+            .ForCtorParam(nameof(PurchaseDto.SupplierName), o => o.MapFrom(s => s.Supplier.Name));
+
         CreateMap<Reservation, ReservationDto>()
             .ForCtorParam(nameof(ReservationDto.TableIds), o => o.MapFrom(s => s.Tables.Select(t => t.Id)))
             .ForCtorParam(nameof(ReservationDto.TableNames), o => o.MapFrom(s => s.Tables.Select(t => t.Name)));

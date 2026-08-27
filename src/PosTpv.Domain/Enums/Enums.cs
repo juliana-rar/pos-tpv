@@ -90,6 +90,14 @@ public enum PaymentMethod
     Other = 2
 }
 
+/// <summary>Why a product's stock quantity changed.</summary>
+public enum StockMovementReason
+{
+    Purchase = 0,
+    Sale = 1,
+    Adjustment = 2
+}
+
 /// <summary>
 /// Non-table decoration/architecture element placed on the floor map — either a decorative plant
 /// or an interior-design element (wall, door, bar, column, window) used to sketch the room's real

@@ -26,4 +26,15 @@ public class AppSetting : BaseEntity
     /// <summary>How new reservations are currently being taken ("open", "phone_only", "closed",
     /// "web" — the last one reserved for when online booking exists).</summary>
     public string ReservationPolicy { get; set; } = "open";
+
+    /// <summary>Legal/fiscal business name printed on the sales receipt. Falls back to
+    /// <see cref="Title"/> when blank, since most small businesses trade under the same name.</summary>
+    public string? ReceiptLegalName { get; set; }
+    public string? ReceiptTaxId { get; set; }
+    public string? ReceiptAddress { get; set; }
+    public string? ReceiptFooter { get; set; }
+    public bool ReceiptShowTaxBreakdown { get; set; } = true;
+
+    /// <summary>Thermal paper width in millimetres for the printed receipt ("58" or "80").</summary>
+    public string ReceiptPaperWidth { get; set; } = "80";
 }

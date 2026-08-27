@@ -1,0 +1,17 @@
+.settings__intro { margin: -.6rem 0 1.2rem; }
+
+.toolbar__search { position: relative; display: flex; align-items: center; }
+.toolbar__search svg { position: absolute; left: .85rem; color: var(--text-soft); pointer-events: none; }
+.toolbar__search .input {
+    padding-left: 2.3rem;
+    width: 220px;
+}
+.toolbar__search .input:hover { border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); box-shadow: var(--shadow); }
+.toolbar__search:focus-within svg { color: var(--primary); }
+
+.docpick { position: relative; overflow: hidden; cursor: pointer; }
+.docpick__input {
+    position: absolute; inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}

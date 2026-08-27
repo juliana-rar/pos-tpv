@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PosTpv.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using PosTpv.Infrastructure.Persistence;
 namespace PosTpv.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(PosDbContext))]
-    partial class PosDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260827000410_AddSuppliersPurchasesStock")]
+    partial class AddSuppliersPurchasesStock
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -113,30 +116,6 @@ namespace PosTpv.Infrastructure.Persistence.Migrations
                     b.Property<string>("PrimaryColor")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ReceiptAddress")
-                        .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)");
-
-                    b.Property<string>("ReceiptFooter")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
-                    b.Property<string>("ReceiptLegalName")
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
-
-                    b.Property<string>("ReceiptPaperWidth")
-                        .IsRequired()
-                        .HasMaxLength(4)
-                        .HasColumnType("nvarchar(4)");
-
-                    b.Property<bool>("ReceiptShowTaxBreakdown")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("ReceiptTaxId")
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
 
                     b.Property<string>("ReservationPolicy")
                         .IsRequired()

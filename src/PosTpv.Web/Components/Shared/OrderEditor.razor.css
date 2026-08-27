@@ -656,7 +656,11 @@
 .orderLine__main .btn--icon { flex: none; width: 18px; height: 18px; padding: 0; }
 /* Name-group stays fixed-size on the left; the extras grid (below) fills whatever width is left
    next to it, so the two never wrap into each other's space. */
-.orderLine__title { flex: 1 1 auto; min-width: 0; display: flex; align-items: flex-start; gap: .3rem; }
+/* transition on min-height (not height, which this row never sets explicitly — its box is
+   always content-driven) so tapping a line to reveal the Comment/Extra pill below the name
+   (see the :has() rule right below) grows the card downward smoothly instead of snapping
+   straight to its taller size. */
+.orderLine__title { flex: 1 1 auto; min-width: 0; display: flex; align-items: flex-start; gap: .3rem; transition: min-height 180ms ease; }
 /* Reserves the vertical room the pill (positioned out-of-flow below, see orderLine__expand-btns)
    would otherwise have taken from the flow, so orderLine__main still grows tall enough when a line
    is expanded and nothing below (comment box / extras panel) overlaps it. 23px = the pill's own
@@ -674,7 +678,7 @@
    a different reason: it would grow title-left's own box, and the pill's top:100% is relative to
    that box — so the pill would render starting after the padding (i.e. below the card) instead of
    right under the name where the padding is meant to make room for it. */
-.orderLine__title:has(.orderLine__expand-btns) { min-height: calc(23px + .15rem + 14px); }
+.orderLine__title:has(.orderLine__expand-btns) { min-height: calc(23px + 14px); }
 /* Name + the Comment/Extra pill (see orderLine__expand-btns) stack vertically here, tight against
    each other — kept out of orderLine__extras-inline's flow so a line with several extras (which
    wraps the chips into more rows) never pushes the pill down away from the name. position:relative
@@ -744,9 +748,12 @@
    beside the pill. */
 .orderLine__expand-btns {
     position: absolute;
-    left: 0;
+    /* Flush with the card's own left border, not the product name's left edge (that would be
+       left: 0 here) — pulls the pill left by orderLine's own inline padding (see .orderLine)
+       so the icons hug the row's edge instead of sitting inset with the text above them. */
+    left: -.45rem;
     top: 100%;
-    margin-top: .15rem;
+    margin-top: 0;
     display: inline-flex;
     flex: none;
     gap: 2px;

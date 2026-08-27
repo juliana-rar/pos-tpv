@@ -387,7 +387,6 @@
                 <div class="resv__day-nav-side">
                     @if (_resForm is null)
                     {
-                        <h2>@Loc.T("Reservations")</h2>
                         <div class="resv-policy">
                             @* Replaces the old gear-icon trigger: the dot itself already shows the current
                                policy at a glance (colour-coded, see PolicyDotColor), still opens the same
@@ -416,6 +415,7 @@
                                 </div>
                             }
                         </div>
+                        <h2>@Loc.T("Reservations")</h2>
                     }
                 </div>
                 <div class="resv__day-nav-center">
@@ -432,34 +432,35 @@
                             </button>
                         </div>
                         <input @ref="_dateInputEl" type="date" class="input resv__head-date" @bind="_reserveDate" @bind:after="LoadReservations" />
-                        <button type="button" class="resv__head-date-icon" title="@Loc.T("Pick a date")" @onclick="OpenDatePicker"><LucideIcon Name="calendar" Size="11" /></button>
+                        <button type="button" class="resv__head-date-icon" title="@Loc.T("Pick a date")" @onclick="OpenDatePicker"><LucideIcon Name="calendar" Size="14" /></button>
                     </div>
                     <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Next day")" @onclick="() => ShiftDay(1)"><LucideIcon Name="arrow-right" Size="11" /></button>
                 </div>
                 <div class="resv__day-nav-side resv__day-nav-side--end">
                     @if (_resForm is null)
                     {
-                        <button class="btn btn--primary btn--icon resv__new-btn" title="@Loc.T("New reservation")" @onclick="() => OpenResForm(null)"><LucideIcon Name="plus" Size="15" /></button>
+                        <button class="btn btn--primary btn--icon resv__new-btn" title="@Loc.T("New reservation")" @onclick="() => OpenResForm(null)"><LucideIcon Name="plus" Size="13" /></button>
+                    }
+                    else
+                    {
+                        @if (_resForm.Id > 0)
+                        {
+                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Delete")" @onclick="() => DeleteRes(_resForm.Id)" type="button"><LucideIcon Name="trash-2" Size="13" /></button>
+                        }
+                        <button class="btn btn--icon btn--ghost" title="@Loc.T("Close")" @onclick="CloseResForm" type="button"><LucideIcon Name="x" Size="13" /></button>
+                        <button class="btn btn--icon btn--primary" title="@Loc.T("Save")" disabled="@_savingRes" @onclick="SaveRes" type="button"><LucideIcon Name="check" Size="13" /></button>
                     }
                 </div>
-            </div>
-            <div class="tables-datebar__actions">
-                <button class="resv__stats-btn resv__stats-btn--on" title="@Loc.T("Tables")" @onclick="GoToTables"><LucideIcon Name="calendar" Size="10" /></button>
-                <button class="resv__stats-btn" title="@Loc.T("Reservations")" @onclick="OpenDashboard"><LucideIcon Name="bar-chart-3" Size="10" /></button>
             </div>
         </div>
         @if (_resForm is not null)
         {
-            <div class="resv__head">
-                <h2>@(_resForm.Id > 0 ? Loc.T("Edit reservation") : Loc.T("New reservation"))</h2>
-                <span class="spacer"></span>
-                @if (_resForm.Id > 0)
-                {
-                    <button class="btn btn--icon btn--ghost" title="@Loc.T("Delete")" @onclick="() => DeleteRes(_resForm.Id)" type="button"><LucideIcon Name="trash-2" Size="16" /></button>
-                }
-                <button class="btn btn--icon btn--ghost" title="@Loc.T("Close")" @onclick="CloseResForm" type="button"><LucideIcon Name="x" Size="16" /></button>
-                <button class="btn btn--icon btn--primary" title="@Loc.T("Save")" disabled="@_savingRes" @onclick="SaveRes" type="button"><LucideIcon Name="check" Size="16" /></button>
-            </div>
+            @if (_resForm.Id > 0)
+            {
+                <div class="resv__head">
+                    <h2>@Loc.T("Edit reservation")</h2>
+                </div>
+            }
             <div class="resv-wizard">
                 @if (_saveSuccess)
                 {
@@ -1732,9 +1733,6 @@
     }
 
     // ---- Reservations panel ----
-    private void OpenDashboard() => Nav.NavigateTo("/reservations");
-    private void GoToTables() => Nav.NavigateTo("/tables");
-
     private Task ShiftDay(int days)
     {
         _reserveDate = _reserveDate.AddDays(days);

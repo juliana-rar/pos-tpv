@@ -815,6 +815,20 @@ public class OrderService : IOrderService
         order.ClosedAt = DateTime.UtcNow;
         _uow.Repository<Order>().Update(order);
 
+        // Payment is the only point a sale is final (lines can still be removed before then), so
+        // stock is decremented here rather than as items are added to the order.
+        foreach (var item in order.Items)
+        {
+            item.Product.StockQuantity -= item.Quantity;
+            await _uow.Repository<StockMovement>().AddAsync(new StockMovement
+            {
+                ProductId = item.ProductId,
+                QuantityChange = -item.Quantity,
+                Reason = StockMovementReason.Sale,
+                Note = order.Number
+            }, ct);
+        }
+
         // Full payment is the only trigger that frees a table (including reserved ones).
         // Joined tables are all freed together.
         var primary = await _uow.Repository<RestaurantTable>().GetByIdAsync(order.TableId, ct);

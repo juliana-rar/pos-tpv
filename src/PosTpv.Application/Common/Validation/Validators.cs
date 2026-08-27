@@ -85,6 +85,57 @@ public class AppSettingsFormValidator : AbstractValidator<AppSettingsFormDto>
         RuleFor(x => x.LunchEnd).GreaterThan(x => x.LunchStart).WithMessage("Lunch end must be after lunch start.");
         RuleFor(x => x.DinnerEnd).GreaterThan(x => x.DinnerStart).WithMessage("Dinner end must be after dinner start.");
         RuleFor(x => x.PrimaryColor).Matches("^#[0-9a-fA-F]{6}$").WithMessage("Primary colour must be a hex value like #6366f1.");
+        RuleFor(x => x.ReceiptLegalName).MaximumLength(120);
+        RuleFor(x => x.ReceiptTaxId).MaximumLength(40);
+        RuleFor(x => x.ReceiptAddress).MaximumLength(250);
+        RuleFor(x => x.ReceiptFooter).MaximumLength(300);
+        RuleFor(x => x.ReceiptPaperWidth).Must(w => w is "58" or "80").WithMessage("Paper width must be 58 or 80 mm.");
+    }
+}
+
+public class SupplierFormValidator : AbstractValidator<SupplierFormDto>
+{
+    public SupplierFormValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(120);
+        RuleFor(x => x.ContactName).MaximumLength(120);
+        RuleFor(x => x.Phone).MaximumLength(30);
+        RuleFor(x => x.Email).MaximumLength(160).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.Email));
+        RuleFor(x => x.TaxId).MaximumLength(40);
+        RuleFor(x => x.Address).MaximumLength(250);
+        RuleFor(x => x.Notes).MaximumLength(500);
+    }
+}
+
+public class PurchaseLineFormValidator : AbstractValidator<PurchaseLineFormDto>
+{
+    public PurchaseLineFormValidator()
+    {
+        RuleFor(x => x.ProductId).GreaterThan(0);
+        RuleFor(x => x.Quantity).GreaterThan(0);
+        RuleFor(x => x.UnitCost).GreaterThanOrEqualTo(0);
+    }
+}
+
+public class PurchaseFormValidator : AbstractValidator<PurchaseFormDto>
+{
+    public PurchaseFormValidator()
+    {
+        RuleFor(x => x.SupplierId).GreaterThan(0).WithMessage("A supplier is required.");
+        RuleFor(x => x.Reference).MaximumLength(60);
+        RuleFor(x => x.Notes).MaximumLength(500);
+        RuleFor(x => x.Lines).NotEmpty().WithMessage("Add at least one line.");
+        RuleForEach(x => x.Lines).SetValidator(new PurchaseLineFormValidator());
+    }
+}
+
+public class StockAdjustFormValidator : AbstractValidator<StockAdjustFormDto>
+{
+    public StockAdjustFormValidator()
+    {
+        RuleFor(x => x.ProductId).GreaterThan(0);
+        RuleFor(x => x.NewQuantity).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Note).MaximumLength(300);
     }
 }
 

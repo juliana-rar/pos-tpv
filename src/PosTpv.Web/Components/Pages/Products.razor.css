@@ -137,47 +137,50 @@
 }
 .toolbar__search .input:hover { border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); box-shadow: var(--shadow); }
 .toolbar__search:focus-within svg { color: var(--primary); }
-/* align-items:stretch (overriding the base .grid-cards' align-items:start) so every card in a
-   row fills that row's full height instead of shrinking to its own content — combined with
-   .mgmt-card's flex column + .mgmt-card__actions' margin-top:auto below, this is what makes
-   every card in the grid come out the same size regardless of name length/photo/allergen count. */
-.catalog__products .grid-cards { grid-template-columns: repeat(4, 1fr); overflow-y: auto; padding: .2rem; align-content: start; align-items: stretch; gap: 0; }
+/* Auto-fill instead of a fixed 4-up grid so cards keep a sane minimum width at any viewport
+   (mobile-first minmax(), no hardcoded breakpoint math) — and a real gutter between cards
+   instead of gap:0, so each one reads as its own bordered surface rather than a flush cell in
+   a spreadsheet. align-items:stretch (overriding the base .grid-cards' align-items:start) still
+   makes every card in a row match the tallest sibling — combined with .mgmt-card's flex column
+   and .mgmt-card__actions' margin-top:auto below, that's what keeps row heights even regardless
+   of name length/photo/allergen count. */
+.catalog__products .grid-cards { grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); overflow-y: auto; padding: .2rem; align-content: start; align-items: stretch; gap: .5rem; }
 
-/* A quieter, more "premium" tile than the default .mgmt-card: bigger radius, no resting border/
-   shadow so the grid reads as a clean catalogue, and a soft lift + shadow bloom on hover instead
-   of the flat hover state elsewhere — the price reads as a pill instead of plain text, and the
-   VAT/order-index line that used to sit under the title is gone entirely (still editable in the
-   form, just not printed on every tile). */
+/* An enterprise-catalogue tile: a real, always-visible border and card surface (not the flush,
+   borderless tiles this used to be) with generous internal padding, so the grid reads as a set
+   of distinct data cards — think Stripe/Shopify product lists — rather than a dense photo wall.
+   Hover lift is small and the shadow bloom modest, keeping the resting state calm/corporate. */
 .mgmt-card {
     position: relative;
-    padding: .65rem .65rem .55rem;
-    gap: .35rem;
-    border-color: transparent;
-    border-radius: var(--radius);
+    padding: .55rem .6rem .5rem;
+    gap: .3rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
     background: var(--card);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+    box-shadow: var(--shadow-sm);
     overflow: hidden;
     cursor: pointer;
     transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
 .mgmt-card:hover {
-    transform: translateY(-3px);
-    border-color: var(--border);
-    box-shadow: 0 12px 28px -12px rgba(0, 0, 0, .22), 0 2px 6px rgba(0, 0, 0, .06);
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
+    box-shadow: var(--shadow);
 }
 .mgmt-card[data-off] { opacity: .55; filter: grayscale(.4); }
-.mgmt-card[data-off]:hover { transform: none; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+.mgmt-card[data-off]:hover { transform: none; box-shadow: var(--shadow-sm); }
 /* A small avatar-style tile next to the name instead of a full-width banner photo — same
    compact, icon-forward pattern as .catRow__thumb/.allergenRow__thumb elsewhere in this
    catalogue, so a product row reads as a dense professional list item rather than a photo
-   card, and the image itself is genuinely small instead of just cropped shorter. */
+   card. Rounded-square (not a full pill) and a hairline inset ring so it reads as a proper
+   avatar tile, matching the squared-off, businesslike tone of the rest of the card. */
 .mgmt-card__thumb {
     flex: none;
-    width: 32px; height: 32px;
-    border-radius: calc(var(--radius) - 10px);
+    width: 28px; height: 28px;
+    border-radius: calc(var(--radius-sm) - 3px);
     overflow: hidden;
     background: linear-gradient(155deg, var(--card-2), color-mix(in srgb, var(--card-2) 70%, black 6%));
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .05);
+    box-shadow: inset 0 0 0 1px var(--border);
 }
 .mgmt-card__thumb img { width: 100%; height: 100%; object-fit: cover; transition: transform 220ms ease; }
 .mgmt-card:hover .mgmt-card__thumb img { transform: scale(1.08); }
@@ -191,10 +194,10 @@
         var(--card-2);
 }
 .mgmt-card__thumb--empty span {
-    width: 8px; height: 8px;
+    width: 6px; height: 6px;
     border-radius: 50%;
     background: var(--prod, var(--primary));
-    box-shadow: 0 0 0 5px color-mix(in srgb, var(--prod, var(--primary)) 16%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--prod, var(--primary)) 16%, transparent);
 }
 .mgmt-card__head { min-width: 0; align-items: flex-start; }
 .mgmt-card__head strong {
@@ -203,24 +206,29 @@
     overflow: hidden; text-overflow: ellipsis;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     white-space: normal; line-height: 1.2;
-    font-size: .78rem; font-weight: 700; letter-spacing: -.01em;
+    font-size: .74rem; font-weight: 700; letter-spacing: -.01em;
 }
+/* A plain bordered figure instead of a bright primary-tinted pill — reads like a price column
+   in a business ledger/spreadsheet rather than a promotional badge, in keeping with the rest of
+   the card's restrained, bordered-surface treatment. */
 .mgmt-card__price {
     flex: none;
-    padding: .16rem .45rem;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--primary) 12%, transparent);
-    color: var(--primary);
-    font-size: .68rem; font-weight: 800; letter-spacing: -.01em;
+    padding: .1rem .35rem;
+    border-radius: 6px;
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: .64rem; font-weight: 800; letter-spacing: -.01em;
     font-variant-numeric: tabular-nums;
 }
-/* Tight enough that the switch + all six action icons stay on one row instead of the last
-   one wrapping onto an orphan line below. A hairline separates the destructive delete button
-   from the rest so it doesn't read as just another peer action. margin-top:auto pins this row
-   to the card's bottom edge — combined with .grid-cards' align-items:stretch above, that's what
-   soaks up the extra height on a card stretched to match a taller sibling in the same row. */
+/* The switch (primary state control) stays visible at rest; the six edit/move/delete icons only
+   reveal on hover/focus — a hover-actions toolbar, the same pattern enterprise data grids
+   (Linear, Airtable, Notion tables) use to keep the resting card calm and let the actions show
+   up only when the user is actually interacting with that card. Gated to mouse-capable devices
+   so touch/tablet users (this page also targets tablet per the product's PC/tablet requirement)
+   always see the actions, since there's no hover on touch. */
 .mgmt-card__actions { gap: 0; margin-top: auto; padding-top: .2rem; border-top: 1px solid var(--border); flex-wrap: nowrap; }
-.mgmt-card__actions .btn--icon { width: 18px; height: 18px; padding: 0; border-radius: 999px; flex: none; }
+.mgmt-card__actions .btn--icon { width: 17px; height: 17px; padding: 0; border-radius: 999px; flex: none; }
 .mgmt-card__actions .btn--ghost { color: var(--text-soft); background: transparent; border-color: transparent; box-shadow: none; }
 .mgmt-card__actions .btn--ghost:hover { color: var(--text); background: var(--card-2); }
 .mgmt-card__actions .btn--danger {
@@ -230,36 +238,46 @@
 }
 .mgmt-card__actions .btn--danger:hover { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
 /* Shrunk from the base .switch (app.css) so it doesn't push the six icon buttons next to it
-   onto a second line at the card's narrower 4-per-row width. */
-.mgmt-card__actions .switch input { width: 1.5rem; height: .9rem; background-size: .7rem .7rem; }
+   onto a second line at the card's narrower width. */
+.mgmt-card__actions .switch input { width: 1.3rem; height: .8rem; background-size: .6rem .6rem; }
+@media (hover: hover) and (pointer: fine) {
+    .mgmt-card__actions > .btn--icon { opacity: 0; transition: opacity var(--transition); }
+    .mgmt-card:hover .mgmt-card__actions > .btn--icon,
+    .mgmt-card:focus-within .mgmt-card__actions > .btn--icon { opacity: 1; }
+}
 
 /* --- Allergen tags on a product card --- */
 /* Always rendered now (even with zero tags) so it reserves one row's height on every card,
    whether or not that product actually has allergens — see .mgmt-card__actions above for how
    the remaining slack then gets absorbed at the bottom instead. */
-.mgmt-card__allergens { display: flex; flex-wrap: wrap; align-content: flex-start; gap: .25rem; min-height: 1.3rem; }
+.mgmt-card__allergens { display: flex; flex-wrap: wrap; align-content: flex-start; gap: .2rem; min-height: 1.1rem; }
+/* Outlined instead of solid-fill — a row of same-colour solid pills reads as a sticker sheet;
+   a thin tinted border with a transparent fill is the calmer, "business label" version of the
+   same semantic colour, matching the bordered-surface language used across this card now. */
 .allergen-tag {
-    display: inline-flex; align-items: center; gap: .2rem;
-    padding: .1rem .4rem;
+    display: inline-flex; align-items: center; gap: .15rem;
+    padding: .04rem .3rem;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--warning) 10%, transparent);
+    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--warning) 40%, var(--border));
     color: color-mix(in srgb, var(--warning) 85%, var(--text));
-    font-size: .58rem; font-weight: 700;
+    font-size: .52rem; font-weight: 700;
 }
-.allergen-tag img { width: 12px; height: 12px; border-radius: 50%; object-fit: cover; }
+.allergen-tag img { width: 10px; height: 10px; border-radius: 50%; object-fit: cover; }
 
 /* --- Extra tags on a product card --- */
 /* Unlike .mgmt-card__allergens above, this row only renders when the product actually has
    extras (see the @if in Products.razor) — extras aren't safety info, so cards without any
    don't need a reserved empty slot. */
-.mgmt-card__extras { display: flex; flex-wrap: wrap; gap: .25rem; }
+.mgmt-card__extras { display: flex; flex-wrap: wrap; gap: .2rem; }
 .extra-tag {
-    display: inline-flex; align-items: center; gap: .2rem;
-    padding: .1rem .4rem;
+    display: inline-flex; align-items: center; gap: .15rem;
+    padding: .04rem .3rem;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--secondary) 10%, transparent);
+    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--secondary) 40%, var(--border));
     color: color-mix(in srgb, var(--secondary) 85%, var(--text));
-    font-size: .58rem; font-weight: 700;
+    font-size: .52rem; font-weight: 700;
 }
 .extra-tag b { font-weight: 800; }
 

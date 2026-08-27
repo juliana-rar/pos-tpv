@@ -9,6 +9,7 @@
 @inject IProductService Products
 @inject ITableService Tables
 @inject IOrderService Orders
+@inject IBillingService BillingSvc
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject AppSettingsCache Branding
@@ -326,6 +327,20 @@
     </Footer>
 </Modal>
 
+<Modal Visible="_receiptInvoice is not null" Title="@Loc.T("Receipt")" OnClose="() => _receiptInvoice = null" Narrow="true">
+    <ChildContent>
+        @if (_receiptInvoice is not null)
+        {
+            <SalesReceipt Invoice="_receiptInvoice" BrandTitle="Branding.Current.Title" LegalName="Branding.Current.ReceiptLegalName"
+                          TaxId="Branding.Current.ReceiptTaxId" Address="Branding.Current.ReceiptAddress" Footer="Branding.Current.ReceiptFooter"
+                          ShowTaxBreakdown="Branding.Current.ReceiptShowTaxBreakdown" PaperWidth="Branding.Current.ReceiptPaperWidth" />
+        }
+    </ChildContent>
+    <Footer>
+        <button class="btn btn--ghost" @onclick="() => _receiptInvoice = null">@Loc.T("Close")</button>
+        <button class="btn btn--primary" @onclick="PrintReceipt"><LucideIcon Name="printer" Size="16" /> @Loc.T("Print")</button>
+    </Footer>
+</Modal>
 
 @code {
     private List<CategoryCommentDto> _commentPresets = new();
@@ -351,6 +366,9 @@
     private string? _error;
 
     private bool _paying;
+    private InvoiceDetailDto? _receiptInvoice;
+
+    private Task PrintReceipt() => JS.InvokeVoidAsync("print").AsTask();
     private bool _payMenuOpen;
     private readonly List<PaymentInput> _payments = new();
     private decimal _payAmount;
@@ -642,9 +660,10 @@
         var orderId = _order.Id;
         return RunAsync(async () =>
         {
-            await Orders.CheckoutAsync(orderId, method);
+            var invoiceId = await Orders.CheckoutAsync(orderId, method);
             _order = null;
             await LoadTables();
+            _receiptInvoice = await BillingSvc.GetInvoiceDetailAsync(invoiceId);
         });
     }
 
@@ -712,10 +731,11 @@
         var payments = _payments.ToList();
         return RunAsync(async () =>
         {
-            await Orders.CheckoutAsync(orderId, payments);
+            var invoiceId = await Orders.CheckoutAsync(orderId, payments);
             _paying = false;
             _order = null;
             await LoadTables();
+            _receiptInvoice = await BillingSvc.GetInvoiceDetailAsync(invoiceId);
         });
     }
 

@@ -8,7 +8,7 @@
     flex-direction: column;
     align-items: center;
     gap: .15rem;
-    padding: .2rem .8rem;
+    padding: .45rem .8rem;
     flex: none;
     border-bottom: 1px solid var(--border);
 }
@@ -73,7 +73,11 @@
     flex-direction: column;
     flex: 1 1 auto;
     min-width: 0;
-    height: calc(100vh - 160px);
+    /* Only the fixed bottom navbar (--topbar-h) and .shell__content's own bottom padding are
+       actually reserved below the map — its top padding is cancelled by .floor-layout--split's
+       negative margin-top above. A flat 160px used to be carved out here, leaving ~90px of
+       unused space under the map on every screen. */
+    height: calc(100vh - var(--topbar-h) - env(safe-area-inset-bottom, 0px) - 1.4rem);
     min-height: 420px;
     padding: .5rem .6rem;
     gap: .4rem;
@@ -1330,7 +1334,7 @@
     display: flex;
     flex-direction: column;
     gap: 0;
-    height: calc(100vh - 160px);
+    height: calc(100vh - var(--topbar-h) - env(safe-area-inset-bottom, 0px) - 1.4rem);
     min-height: 420px;
 }
 .resv {
@@ -1363,15 +1367,15 @@
 .resv__day-nav { display: grid; grid-template-columns: 1fr auto 1fr; }
 .resv__day-nav-side { display: flex; align-items: center; gap: .3rem; }
 .resv__day-nav-side--end { justify-content: flex-end; }
-.resv__day-nav-center { display: flex; align-items: center; gap: .3rem; justify-self: center; }
+.resv__day-nav-center { display: flex; align-items: center; gap: .05rem; justify-self: center; }
 /* Compact Lunch/Dinner toggle, nested inside .resv__day-nav to its left — click the
    active one again to clear the filter, so no separate "All" option is needed. */
 .resv__head-periods { margin: 0; padding: 2px; flex: none; }
-.resv__head-periods .tabs__opt { padding: .18rem .3rem; }
+.resv__head-periods .tabs__opt { padding: .12rem .18rem; }
 /* Restores its normal .btn--icon size (38px) — it now sits inside .resv__day-nav, whose
    `.resv__day-nav .btn--icon` rule (app.css) shrinks the prev/next arrows to 21px and would
    otherwise shrink this button too. */
-.resv__day-nav .resv__new-btn { flex: none; box-shadow: var(--shadow-sm); width: 38px; height: 38px; border-radius: var(--radius-sm); }
+.resv__day-nav .resv__new-btn { flex: none; box-shadow: var(--shadow-sm); width: 28px; height: 28px; border-radius: var(--radius-sm); }
 
 /* Day nav (.resv__day-nav / .resv__head-date) and the small icon actions under it
    (.resv__stats-btn) now live in app.css — shared with the reservations dashboard. */

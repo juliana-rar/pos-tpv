@@ -46,6 +46,10 @@
             <NavLink class="nav__link" href="/products" title="@Loc.T("Products")" @onclick="CloseMobile"><LucideIcon Name="utensils-crossed" Size="18" /></NavLink>
         </AuthorizeView>
 
+        <AuthorizeView Roles="Admin" Context="a">
+            <NavLink class="nav__link" href="/suppliers" title="@Loc.T("Suppliers")" @onclick="CloseMobile"><LucideIcon Name="truck" Size="18" /></NavLink>
+        </AuthorizeView>
+
         <NavLink class="nav__link" href="/dashboard" title="@Loc.T("Dashboard")" @onclick="CloseMobile">
             <LucideIcon Name="layout-dashboard" Size="18" />
         </NavLink>

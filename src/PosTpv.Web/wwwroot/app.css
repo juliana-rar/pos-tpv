@@ -311,8 +311,8 @@ a { color: var(--primary); text-decoration: none; }
 .resv__head-date-wrap {
     display: flex;
     align-items: center;
-    gap: .2rem;
-    padding: .2rem .45rem;
+    gap: 0;
+    padding: .12rem 0;
     border-radius: 999px;
     box-shadow: var(--shadow-sm);
 }
@@ -323,7 +323,7 @@ a { color: var(--primary); text-decoration: none; }
    own layout is already left-aligned and sized tightly to its content. */
 .resv__head-date {
     padding: 0;
-    font-size: .68rem;
+    font-size: .8rem;
     font-weight: 600;
     border: none;
     box-shadow: none;
@@ -519,3 +519,18 @@ a { color: var(--primary); text-decoration: none; }
     padding-right: .5rem;
 }
 .order-card__time-group-items, .order__time-group-items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .02rem; }
+
+/* Printing a sales receipt: hide the whole app chrome (topbar, modal overlay, buttons...) and
+   show only the .receipt element, full width on the printed page. The classic "isolate one
+   element" trick — works regardless of what wraps the receipt (Modal, settings panel, ...). */
+.print-only { display: none; }
+@media print {
+    body * { visibility: hidden; }
+    .print-only { display: block; }
+    .receipt, .receipt * { visibility: visible; }
+    .receipt {
+        position: absolute; left: 0; top: 0;
+        width: var(--receipt-w, 80mm);
+        border: none; box-shadow: none; margin: 0;
+    }
+}

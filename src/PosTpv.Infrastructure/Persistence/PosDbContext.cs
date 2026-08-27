@@ -29,6 +29,11 @@ public class PosDbContext : DbContext
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<SupplierDocument> SupplierDocuments => Set<SupplierDocument>();
+    public DbSet<Purchase> Purchases => Set<Purchase>();
+    public DbSet<PurchaseLine> PurchaseLines => Set<PurchaseLine>();
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -179,6 +184,64 @@ public class PosDbContext : DbContext
             e.Property(x => x.Title).HasMaxLength(80).IsRequired();
             e.Property(x => x.FloorTexture).HasMaxLength(20).IsRequired();
             e.Property(x => x.ReservationPolicy).HasMaxLength(20).IsRequired();
+            e.Property(x => x.ReceiptLegalName).HasMaxLength(120);
+            e.Property(x => x.ReceiptTaxId).HasMaxLength(40);
+            e.Property(x => x.ReceiptAddress).HasMaxLength(250);
+            e.Property(x => x.ReceiptFooter).HasMaxLength(300);
+            e.Property(x => x.ReceiptPaperWidth).HasMaxLength(4).IsRequired();
+        });
+
+        b.Entity<Product>(e => e.Property(x => x.StockQuantity).HasPrecision(10, 2));
+
+        b.Entity<Supplier>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            e.Property(x => x.ContactName).HasMaxLength(120);
+            e.Property(x => x.Phone).HasMaxLength(30);
+            e.Property(x => x.Email).HasMaxLength(160);
+            e.Property(x => x.TaxId).HasMaxLength(40);
+            e.Property(x => x.Address).HasMaxLength(250);
+            e.Property(x => x.Notes).HasMaxLength(500);
+        });
+
+        b.Entity<SupplierDocument>(e =>
+        {
+            e.Property(x => x.FileName).HasMaxLength(200).IsRequired();
+            e.Property(x => x.FileUrl).HasMaxLength(300).IsRequired();
+            e.Property(x => x.ContentType).HasMaxLength(100);
+            e.HasOne(x => x.Supplier).WithMany(s => s.Documents)
+                .HasForeignKey(x => x.SupplierId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.SupplierId);
+        });
+
+        b.Entity<Purchase>(e =>
+        {
+            e.Property(x => x.Reference).HasMaxLength(60);
+            e.Property(x => x.Notes).HasMaxLength(500);
+            e.HasOne(x => x.Supplier).WithMany(s => s.Purchases)
+                .HasForeignKey(x => x.SupplierId).OnDelete(DeleteBehavior.Restrict);
+            e.Ignore(x => x.Total);
+            e.HasIndex(x => x.Date);
+        });
+
+        b.Entity<PurchaseLine>(e =>
+        {
+            e.Property(x => x.Quantity).HasPrecision(10, 2);
+            e.Property(x => x.UnitCost).HasPrecision(10, 2);
+            e.HasOne(x => x.Purchase).WithMany(p => p.Lines)
+                .HasForeignKey(x => x.PurchaseId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Product).WithMany()
+                .HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            e.Ignore(x => x.LineTotal);
+        });
+
+        b.Entity<StockMovement>(e =>
+        {
+            e.Property(x => x.QuantityChange).HasPrecision(10, 2);
+            e.Property(x => x.Note).HasMaxLength(300);
+            e.HasOne(x => x.Product).WithMany()
+                .HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.ProductId);
         });
     }
 
