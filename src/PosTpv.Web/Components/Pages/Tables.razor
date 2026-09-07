@@ -385,38 +385,37 @@
         <div class="tables-datebar">
             <div class="resv__day-nav">
                 <div class="resv__day-nav-side">
-                    @if (_resForm is null)
-                    {
-                        <div class="resv-policy">
-                            @* Replaces the old gear-icon trigger: the dot itself already shows the current
-                               policy at a glance (colour-coded, see PolicyDotColor), still opens the same
-                               picker menu on click. *@
-                            <button type="button" class="resv-policy-dot" style="--dot:@PolicyDotColor(Branding.Current.ReservationPolicy)" title="@Loc.T(PolicyLabel(Branding.Current.ReservationPolicy))" @onclick="TogglePolicyMenu"></button>
-                            @if (_policyMenuOpen)
-                            {
-                                <div class="resv-policy__backdrop" @onclick="ClosePolicyMenu"></div>
-                                <div class="resv-policy__menu" @onclick:stopPropagation="true">
-                                    <div class="resv-policy__title">@Loc.T("Taking reservations")</div>
-                                    @foreach (var opt in ReservationPolicies)
-                                    {
-                                        <button type="button" class="resv-policy__opt @(Branding.Current.ReservationPolicy == opt.Value ? "resv-policy__opt--on" : "")"
-                                                disabled="@opt.ComingSoon" @onclick="() => SetReservationPolicy(opt.Value)">
-                                            <span>@Loc.T(opt.Label)</span>
-                                            @if (opt.ComingSoon)
-                                            {
-                                                <span class="badge">@Loc.T("Coming soon")</span>
-                                            }
-                                            else if (Branding.Current.ReservationPolicy == opt.Value)
-                                            {
-                                                <LucideIcon Name="check" Size="14" />
-                                            }
-                                        </button>
-                                    }
-                                </div>
-                            }
-                        </div>
-                        <h2>@Loc.T("Reservations")</h2>
-                    }
+                    <div class="resv-policy">
+                        @* Replaces the old gear-icon trigger: the dot itself already shows the current
+                           policy at a glance (colour-coded, see PolicyDotColor), still opens the same
+                           picker menu on click. Stays visible even while a reservation is being
+                           created/edited, since it's the "are we taking reservations" indicator, not
+                           part of the form. *@
+                        <button type="button" class="resv-policy-dot" style="--dot:@PolicyDotColor(Branding.Current.ReservationPolicy)" title="@Loc.T(PolicyLabel(Branding.Current.ReservationPolicy))" @onclick="TogglePolicyMenu"></button>
+                        @if (_policyMenuOpen)
+                        {
+                            <div class="resv-policy__backdrop" @onclick="ClosePolicyMenu"></div>
+                            <div class="resv-policy__menu" @onclick:stopPropagation="true">
+                                <div class="resv-policy__title">@Loc.T("Taking reservations")</div>
+                                @foreach (var opt in ReservationPolicies)
+                                {
+                                    <button type="button" class="resv-policy__opt @(Branding.Current.ReservationPolicy == opt.Value ? "resv-policy__opt--on" : "")"
+                                            disabled="@opt.ComingSoon" @onclick="() => SetReservationPolicy(opt.Value)">
+                                        <span>@Loc.T(opt.Label)</span>
+                                        @if (opt.ComingSoon)
+                                        {
+                                            <span class="badge">@Loc.T("Coming soon")</span>
+                                        }
+                                        else if (Branding.Current.ReservationPolicy == opt.Value)
+                                        {
+                                            <LucideIcon Name="check" Size="14" />
+                                        }
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <h2>@Loc.T("Reservations")</h2>
                 </div>
                 <div class="resv__day-nav-center">
                     <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Previous day")" @onclick="() => ShiftDay(-1)"><LucideIcon Name="arrow-left" Size="11" /></button>
