@@ -12,6 +12,7 @@ using PosTpv.Infrastructure;
 using PosTpv.Web.Components;
 using PosTpv.Web.Hubs;
 using PosTpv.Web.Localization;
+using PosTpv.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +31,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // Real-time transport.
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IKitchenNotifier, SignalRKitchenNotifier>();
+builder.Services.AddScoped<ISupplierNotifier, SignalRSupplierNotifier>();
+builder.Services.AddSingleton<AlbaranScanBackgroundRunner>();
 builder.Services.AddScoped<PosTpv.Web.Components.Layout.NavMoreState>();
 
 // Authentication & authorization (cookie + roles).
@@ -111,6 +114,7 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.MapHub<KitchenHub>(KitchenHub.Path);
+app.MapHub<SuppliersHub>(SuppliersHub.Path);
 
 // Cookie sign-out endpoint (posted from the top bar).
 app.MapPost("/account/logout", async (HttpContext http) =>
@@ -190,6 +194,15 @@ app.MapGet("/export/billing", async (DateTime? from, DateTime? to, string? forma
     var file = exporter.ExportBilling(report, f, t, fmt);
     return Results.File(file.Content, file.ContentType, file.FileName);
 }).RequireAuthorization(policy => policy.RequireRole("Admin", "Cashier"));
+
+// Stock report download (Excel — levels + movement history).
+app.MapGet("/export/stock", async (IStockService stock, IReportExporter exporter) =>
+{
+    var items = await stock.GetAllAsync();
+    var movements = await stock.GetAllMovementsAsync();
+    var file = exporter.ExportStock(items, movements);
+    return Results.File(file.Content, file.ContentType, file.FileName);
+}).RequireAuthorization(policy => policy.RequireRole("Admin"));
 
 // Apply migrations and seed the demo catalogue on startup.
 using (var scope = app.Services.CreateScope())

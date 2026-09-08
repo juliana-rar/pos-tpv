@@ -11,4 +11,5 @@ public record ExportFile(byte[] Content, string ContentType, string FileName);
 public interface IReportExporter
 {
     ExportFile ExportBilling(BillingReportDto report, DateTime from, DateTime to, ExportFormat format);
+    ExportFile ExportStock(IReadOnlyList<StockItemDto> items, IReadOnlyList<StockMovementDto> movements);
 }

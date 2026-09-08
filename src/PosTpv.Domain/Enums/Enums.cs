@@ -98,6 +98,19 @@ public enum StockMovementReason
     Adjustment = 2
 }
 
+/// <summary>Lifecycle state of a supplier delivery-note (albarán) scanned via the vision model.</summary>
+public enum AlbaranScanStatus
+{
+    /// <summary>Image saved, waiting for/running the vision model call.</summary>
+    Processing = 0,
+    /// <summary>Extraction succeeded; a person still needs to confirm/correct it.</summary>
+    NeedsReview = 1,
+    /// <summary>Confirmed by a person and turned into a real Purchase.</summary>
+    Validated = 2,
+    /// <summary>The vision model didn't respond or returned something unparseable.</summary>
+    Failed = 3
+}
+
 /// <summary>
 /// Non-table decoration/architecture element placed on the floor map — either a decorative plant
 /// or an interior-design element (wall, door, bar, column, window) used to sketch the room's real

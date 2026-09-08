@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<ISupplierService, SupplierService>();
         services.AddScoped<IPurchaseService, PurchaseService>();
         services.AddScoped<IStockService, StockService>();
+        services.AddScoped<IAlbaranScanService, AlbaranScanService>();
         services.AddSingleton<AppSettingsCache>();
 
         return services;

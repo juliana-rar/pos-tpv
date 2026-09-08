@@ -31,7 +31,17 @@ public class PurchaseService : IPurchaseService
             .Include(p => p.Lines).ThenInclude(l => l.Product)
             .OrderByDescending(p => p.Date)
             .ToListAsync(ct);
-        return _mapper.Map<List<PurchaseDto>>(list);
+
+        var purchaseIds = list.Select(p => p.Id).ToList();
+        var scanByPurchaseId = await _uow.Repository<AlbaranScan>().QueryNoTracking()
+            .Where(a => a.PurchaseId != null && purchaseIds.Contains(a.PurchaseId.Value))
+            .ToDictionaryAsync(a => a.PurchaseId!.Value, ct);
+
+        return _mapper.Map<List<PurchaseDto>>(list)
+            .Select(dto => scanByPurchaseId.TryGetValue(dto.Id, out var scan)
+                ? dto with { AlbaranScanId = scan.Id, AlbaranImageUrl = scan.ImageUrl, AlbaranNumber = scan.AlbaranNumber, AlbaranDate = scan.AlbaranDate }
+                : dto)
+            .ToList();
     }
 
     /// <summary>Records a purchase and immediately restocks every line's product, logging a

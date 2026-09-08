@@ -129,6 +129,30 @@ public class PurchaseFormValidator : AbstractValidator<PurchaseFormDto>
     }
 }
 
+public class AlbaranScanLineEditValidator : AbstractValidator<AlbaranScanLineEditDto>
+{
+    public AlbaranScanLineEditValidator()
+    {
+        RuleFor(x => x.Description).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.Quantity).GreaterThan(0);
+        RuleFor(x => x.UnitPrice).GreaterThanOrEqualTo(0);
+    }
+}
+
+/// <summary>
+/// Structural validation only (required fields, positive quantities). The stricter rule that
+/// every line must have a ProductId before a Purchase can be created only applies to the
+/// "validate" action, not to saving a draft, so it's enforced in AlbaranScanService instead.
+/// </summary>
+public class AlbaranScanEditValidator : AbstractValidator<AlbaranScanEditDto>
+{
+    public AlbaranScanEditValidator()
+    {
+        RuleFor(x => x.AlbaranNumber).MaximumLength(60);
+        RuleForEach(x => x.Lines).SetValidator(new AlbaranScanLineEditValidator());
+    }
+}
+
 public class StockAdjustFormValidator : AbstractValidator<StockAdjustFormDto>
 {
     public StockAdjustFormValidator()

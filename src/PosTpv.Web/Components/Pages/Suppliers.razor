@@ -1,29 +1,36 @@
 @page "/suppliers"
 @rendermode InteractiveServer
 @attribute [Authorize(Roles = "Admin")]
+@implements IAsyncDisposable
 @using FluentValidation
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.SignalR.Client
+@using PosTpv.Domain.Enums
+@using PosTpv.Web.Hubs
+@using PosTpv.Web.Services
 @inject ISupplierService SupplierService
 @inject IPurchaseService PurchaseService
 @inject IStockService StockService
 @inject IProductService ProductService
+@inject IAlbaranScanService AlbaranScanService
+@inject AlbaranScanBackgroundRunner ScanRunner
 @inject IValidator<SupplierFormDto> SupplierValidator
 @inject IValidator<PurchaseFormDto> PurchaseValidator
 @inject IValidator<StockAdjustFormDto> StockValidator
+@inject IValidator<AlbaranScanEditDto> AlbaranScanValidator
 @inject IWebHostEnvironment Env
+@inject NavigationManager Nav
 @inject AppSettingsCache Branding
 
 <PageTitle>@Loc.T("Suppliers") · @Branding.Current.Title</PageTitle>
 
-<div class="toolbar">
-    <h1>@Loc.T("Suppliers")</h1>
-</div>
-<p class="muted settings__intro">@Loc.T("Manage suppliers, purchases and product stock levels.")</p>
-
-<div class="tabs" role="tablist">
-    <button class="tabs__opt @(_tab == "suppliers" ? "tabs__opt--on" : "")" @onclick='() => _tab = "suppliers"'><LucideIcon Name="truck" Size="16" /> @Loc.T("Suppliers")</button>
-    <button class="tabs__opt @(_tab == "purchases" ? "tabs__opt--on" : "")" @onclick='SelectPurchases'><LucideIcon Name="receipt" Size="16" /> @Loc.T("Purchases")</button>
-    <button class="tabs__opt @(_tab == "stock" ? "tabs__opt--on" : "")" @onclick='SelectStock'><LucideIcon Name="boxes" Size="16" /> @Loc.T("Stock")</button>
+<div class="sup-hero">
+    <h1><LucideIcon Name="truck" Size="20" /> @Loc.T("Suppliers")</h1>
+    <div class="tabs" role="tablist">
+        <button class="tabs__opt @(_tab == "suppliers" ? "tabs__opt--on" : "")" @onclick='() => _tab = "suppliers"'><LucideIcon Name="truck" Size="16" /> @Loc.T("Suppliers")</button>
+        <button class="tabs__opt @(_tab == "purchases" ? "tabs__opt--on" : "")" @onclick='SelectPurchases'><LucideIcon Name="receipt" Size="16" /> @Loc.T("Purchases")</button>
+        <button class="tabs__opt @(_tab == "stock" ? "tabs__opt--on" : "")" @onclick='SelectStock'><LucideIcon Name="clipboard-list" Size="16" /> @Loc.T("Stock")</button>
+    </div>
 </div>
 
 @if (_tab == "suppliers")
@@ -36,25 +43,30 @@
     <div class="grid-cards">
         @foreach (var s in _suppliers)
         {
-            <div class="card mgmt-card">
-                <div class="mgmt-card__head">
-                    <strong>@s.Name</strong>
-                    <span class="spacer"></span>
-                    @if (!s.IsActive) { <span class="badge badge--danger">@Loc.T("Inactive")</span> }
+            <div class="card mgmt-card sup-card" data-status="@(s.IsActive ? "active" : "inactive")">
+                <div class="sup-card__head">
+                    <div class="sup-card__avatar">@Initials(s.Name)</div>
+                    <div class="sup-card__title">
+                        <strong title="@s.Name">@s.Name</strong>
+                        @if (!string.IsNullOrWhiteSpace(s.ContactName)) { <span class="muted">@s.ContactName</span> }
+                    </div>
+                    <span class="sup-card__dot" title="@(s.IsActive ? Loc.T("Active") : Loc.T("Inactive"))"></span>
                 </div>
-                @if (!string.IsNullOrWhiteSpace(s.ContactName)) { <div class="mgmt-card__meta muted">@s.ContactName</div> }
                 @if (!string.IsNullOrWhiteSpace(s.Phone) || !string.IsNullOrWhiteSpace(s.Email))
                 {
-                    <div class="mgmt-card__meta muted">@s.Phone @(!string.IsNullOrWhiteSpace(s.Phone) && !string.IsNullOrWhiteSpace(s.Email) ? "·" : "") @s.Email</div>
+                    <div class="sup-card__contact">
+                        @if (!string.IsNullOrWhiteSpace(s.Phone)) { <span><LucideIcon Name="phone" Size="12" /> @s.Phone</span> }
+                        @if (!string.IsNullOrWhiteSpace(s.Email)) { <span><LucideIcon Name="mail" Size="12" /> @s.Email</span> }
+                    </div>
                 }
-                <div class="mgmt-card__meta">
-                    <span class="badge">@s.DocumentCount @Loc.T("documents")</span>
-                    <span class="badge">@s.PurchaseCount @Loc.T("purchases")</span>
+                <div class="sup-card__stats">
+                    <div><strong>@s.DocumentCount</strong><span>@Loc.T("documents")</span></div>
+                    <div><strong>@s.PurchaseCount</strong><span>@Loc.T("purchases")</span></div>
                 </div>
                 <div class="mgmt-card__actions">
-                    <button class="btn btn--ghost btn--sm" @onclick="() => OpenSupplierForm(s.Id)">@Loc.T("Edit")</button>
                     <span class="spacer"></span>
-                    <button class="btn btn--danger btn--sm" @onclick="() => DeleteSupplier(s.Id)">@Loc.T("Delete")</button>
+                    <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")" @onclick="() => OpenSupplierForm(s.Id)"><LucideIcon Name="pencil" Size="13" /></button>
+                    <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")" @onclick="() => DeleteSupplier(s.Id)"><LucideIcon Name="trash-2" Size="13" /></button>
                 </div>
             </div>
         }
@@ -65,42 +77,239 @@ else if (_tab == "purchases")
 {
     <div class="toolbar">
         <span class="spacer"></span>
+        <div class="toolbar__search">
+            <LucideIcon Name="search" Size="15" />
+            <input class="input search" placeholder="@Loc.T("Search…")" @bind="_purchasesSearch" @bind:event="oninput" />
+        </div>
+        <div class="albaran-scan-menu">
+            <button class="btn btn--ghost" @onclick="ToggleAlbaranUploadMenu"><LucideIcon Name="camera" Size="16" /> @Loc.T("Scan delivery note") <LucideIcon Name="chevron-down" Size="14" /></button>
+            @if (_albaranUploadMenuOpen)
+            {
+                <div class="albaran-scan-menu__backdrop" @onclick="CloseAlbaranUploadMenu"></div>
+                <div class="albaran-scan-menu__panel" @onclick:stopPropagation="true">
+                    <label class="albaran-scan-menu__item docpick">
+                        <LucideIcon Name="camera" Size="16" /> @Loc.T("Take photo")
+                        <InputFile OnChange="OnAlbaranPhotoSelected" class="docpick__input" accept="image/*" capture="environment" />
+                    </label>
+                    <label class="albaran-scan-menu__item docpick">
+                        <LucideIcon Name="upload" Size="16" /> @Loc.T("Choose file")
+                        <InputFile OnChange="OnAlbaranPhotoSelected" class="docpick__input" accept="image/*" />
+                    </label>
+                    <p class="muted albaran-scan-menu__hint">@Loc.T("On mobile, \"Choose file\" also lets you pick from Google Drive, Photos or other apps installed on the device.")</p>
+                    @if (_albaranUploadError is not null) { <div class="field-error">@_albaranUploadError</div> }
+                </div>
+            }
+        </div>
         <button class="btn btn--primary" @onclick="OpenPurchaseForm" disabled="@(_suppliers.Count == 0)"><LucideIcon Name="plus" Size="16" /> @Loc.T("New purchase")</button>
     </div>
+
+    @if (_albaranDetail is not null && _albaranEditForm is not null)
+    {
+        <div class="card albaran-editor">
+            <div class="row-2 sup-albaran-detail">
+                <div class="sup-albaran-image">
+                    <img src="@_albaranDetail.ImageUrl" alt="@Loc.T("Delivery note")" />
+                    @if (_albaranDetail.Status == AlbaranScanStatus.Processing)
+                    {
+                        <p class="muted"><LucideIcon Name="clock" Size="14" /> @Loc.T("Processing… this can take a few minutes.")</p>
+                    }
+                    @if (_albaranDetail.Status == AlbaranScanStatus.Failed)
+                    {
+                        <div class="field-error">@_albaranDetail.ErrorMessage</div>
+                    }
+                </div>
+                <div>
+                    <div class="albaran-editor__head">
+                        <h2>@Loc.T("Delivery note")</h2>
+                        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Close")" @onclick="CloseAlbaranDetail"><LucideIcon Name="x" Size="16" /></button>
+                    </div>
+                    <div class="row-2">
+                        <div class="field">
+                            <label>@Loc.T("Supplier")</label>
+                            <select class="select" @bind="_albaranEditForm.SupplierId">
+                                <option value="0">@Loc.T("Select…")</option>
+                                @foreach (var s in _suppliers)
+                                {
+                                    <option value="@s.Id">@s.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>@Loc.T("Date")</label>
+                            <input type="date" class="input" value="@(_albaranEditForm.AlbaranDate?.ToString("yyyy-MM-dd"))" @onchange="OnAlbaranDateChanged" />
+                        </div>
+                    </div>
+                    <div class="field"><label>@Loc.T("Number")</label><input class="input" @bind="_albaranEditForm.AlbaranNumber" /></div>
+
+                    <div class="modal-section">@Loc.T("Lines")</div>
+                    @foreach (var (line, i) in _albaranEditForm.Lines.Select((l, i) => (l, i)))
+                    {
+                        <div class="row-2 sup-albaran-line">
+                            <div class="field"><label>@Loc.T("Description")</label><input class="input" @bind="line.Description" /></div>
+                            <div class="field"><label>@Loc.T("Qty")</label><input type="number" min="0" step="0.01" class="input" @bind="line.Quantity" /></div>
+                            <div class="field"><label>@Loc.T("Unit price")</label><input type="number" min="0" step="0.01" class="input" @bind="line.UnitPrice" /></div>
+                            <div class="field">
+                                <label>@Loc.T("Product")</label>
+                                <select class="select" @bind="line.ProductId">
+                                    <option value="0">@Loc.T("Select…")</option>
+                                    @foreach (var p in _products)
+                                    {
+                                        <option value="@p.Id">@p.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Remove")" @onclick="() => _albaranEditForm.Lines.RemoveAt(i)"><LucideIcon Name="trash-2" Size="15" /></button>
+                        </div>
+                    }
+                    <button class="btn btn--ghost btn--sm" @onclick="() => _albaranEditForm.Lines.Add(new AlbaranScanLineEditDto())"><LucideIcon Name="plus" Size="14" /> @Loc.T("Add line")</button>
+
+                    <p class="ta-r" style="margin-top:.8rem"><strong>@Loc.T("Total"): @_albaranEditForm.Lines.Sum(l => l.Quantity * l.UnitPrice).ToString("N2")</strong></p>
+                    @if (_albaranDetailError is not null) { <div class="field-error">@_albaranDetailError</div> }
+
+                    <div class="albaran-editor__actions">
+                        @if (_albaranDetail.Status == AlbaranScanStatus.Failed)
+                        {
+                            <button class="btn btn--ghost" @onclick="RetryAlbaran"><LucideIcon Name="rotate-cw" Size="14" /> @Loc.T("Retry")</button>
+                        }
+                        @if (_albaranDetail.Status is AlbaranScanStatus.NeedsReview or AlbaranScanStatus.Failed)
+                        {
+                            <button class="btn btn--ghost" @onclick="SaveAlbaranDraft">@Loc.T("Save draft")</button>
+                            <button class="btn btn--primary" @onclick="ValidateAlbaran"
+                                    disabled="@(!CanValidateAlbaran)" title="@(CanValidateAlbaran ? "" : Loc.T("Select a supplier and a product for every line."))">
+                                @Loc.T("Validate and create purchase")
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (PendingAlbaranScans.Count > 0)
+    {
+        <div class="modal-section">@Loc.T("Pending delivery notes")</div>
+        <div class="grid-cards sup-pending-scans">
+            @foreach (var scan in PendingAlbaranScans)
+            {
+                <div class="card mgmt-card albaran-card" data-status="@StatusAttr(scan.Status)">
+                    <div class="albaran-card__thumb">
+                        <img src="@scan.ImageUrl" alt="" loading="lazy" />
+                        <span class="badge @StatusBadgeClass(scan.Status) albaran-card__badge"><LucideIcon Name="@StatusIcon(scan.Status)" Size="12" /> @StatusLabel(scan.Status)</span>
+                    </div>
+                    <strong class="albaran-card__supplier">@(scan.SupplierName ?? scan.SupplierNameRaw ?? Loc.T("Unknown"))</strong>
+                    <span class="muted albaran-card__meta">
+                        @(scan.AlbaranDate?.ToString("dd MMM yyyy") ?? scan.CreatedAt.ToString("dd MMM yyyy"))
+                        @if (!string.IsNullOrWhiteSpace(scan.AlbaranNumber)) { <text> · @scan.AlbaranNumber</text> }
+                    </span>
+                    <div class="mgmt-card__actions">
+                        <strong class="albaran-card__total">@(scan.TotalAmount?.ToString("N2") ?? "—")</strong>
+                        <span class="spacer"></span>
+                        <button class="btn btn--ghost btn--sm" @onclick="() => OpenAlbaranDetail(scan.Id)"><LucideIcon Name="eye" Size="13" /> @Loc.T("View")</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
     <div class="card" style="padding:1rem 1.2rem">
-        @if (_purchases.Count == 0)
+        @if (FilteredPurchases.Count == 0)
         {
             <p class="empty">@Loc.T("No purchases recorded yet.")</p>
         }
         else
         {
-            <table class="table">
+            <table class="table sup-purchases">
                 <thead>
-                    <tr><th>@Loc.T("Date")</th><th>@Loc.T("Supplier")</th><th>@Loc.T("Reference")</th><th>@Loc.T("Lines")</th><th class="ta-r">@Loc.T("Total")</th></tr>
+                    <tr><th>@Loc.T("Date")</th><th>@Loc.T("Supplier")</th><th>@Loc.T("Reference")</th><th>@Loc.T("Delivery note")</th><th class="ta-r">@Loc.T("Lines")</th><th class="ta-r">@Loc.T("Total")</th></tr>
                 </thead>
                 <tbody>
-                    @foreach (var p in _purchases)
+                    @foreach (var p in FilteredPurchases)
                     {
                         <tr>
-                            <td>@p.Date.ToString("dd/MM/yyyy")</td>
+                            <td>@p.Date.ToString("dd MMM yyyy")</td>
                             <td>@p.SupplierName</td>
-                            <td>@p.Reference</td>
-                            <td>@p.Lines.Count</td>
+                            <td>
+                                @if (string.IsNullOrWhiteSpace(p.Reference)) { <span class="muted">—</span> }
+                                else { <span class="badge">@p.Reference</span> }
+                            </td>
+                            <td>
+                                @if (p.AlbaranImageUrl is not null)
+                                {
+                                    <a class="sup-purchases__scan-thumb" href="@p.AlbaranImageUrl" target="_blank" rel="noopener"
+                                       title="@(p.AlbaranDate?.ToString("dd MMM yyyy") ?? "")">
+                                        <img src="@p.AlbaranImageUrl" alt="" loading="lazy" />
+                                    </a>
+                                }
+                                else { <span class="muted">—</span> }
+                            </td>
+                            <td class="ta-r">@p.Lines.Count</td>
                             <td class="ta-r"><strong>@p.Total.ToString("N2")</strong></td>
                         </tr>
                     }
                 </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5" class="ta-r">@Loc.T("Total")</td>
+                        <td class="ta-r"><strong>@FilteredPurchases.Sum(p => p.Total).ToString("N2")</strong></td>
+                    </tr>
+                </tfoot>
             </table>
         }
     </div>
 }
 else if (_tab == "stock")
 {
+    <div class="dash__metrics sup-metrics">
+        <div class="metric card"><span class="metric__label">@Loc.T("Products tracked")</span><span class="metric__value">@_stock.Count</span></div>
+        <div class="metric card"><span class="metric__label">@Loc.T("Units in stock")</span><span class="metric__value">@_stock.Sum(s => s.StockQuantity).ToString("N0")</span></div>
+        <div class="metric card" data-status="@(OutOfStockCount > 0 ? "alert" : "ok")"><span class="metric__label">@Loc.T("Out of stock")</span><span class="metric__value">@OutOfStockCount</span></div>
+        <div class="metric card"><span class="metric__label">@Loc.T("Categories")</span><span class="metric__value">@StockCategories.Count</span></div>
+        <div class="metric card"><span class="metric__label">@Loc.T("Inventory value")</span><span class="metric__value">@TotalStockValue.ToString("N2")</span></div>
+    </div>
+
+    @if (StockValueByCategory.Count > 1)
+    {
+        <div class="card sup-stock-cats">
+            <h2 class="sup-stock-cats__title"><LucideIcon Name="bar-chart-3" Size="16" /> @Loc.T("Stock by category")</h2>
+            <div class="sup-stock-cats__list">
+                @foreach (var c in StockValueByCategory)
+                {
+                    <div class="sup-stock-cats__row">
+                        <span class="sup-stock-cats__name">@c.Name</span>
+                        <span class="sup-stock-cats__bar"><span style="--pct:@(c.Pct)%"></span></span>
+                        <span class="sup-stock-cats__units">@c.Units.ToString("N0") @Loc.T("units")</span>
+                        <span class="sup-stock-cats__value">@c.Value.ToString("N2")</span>
+                        <span class="sup-stock-cats__pct">@c.Pct%</span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
     <div class="toolbar">
+        <div class="sup-dd">
+            <button type="button" class="sup-dd__trigger" @onclick="() => _stockCategoryDropdownOpen = !_stockCategoryDropdownOpen">
+                <span>@(_stockCategoryFilter == 0 ? Loc.T("All categories") : StockCategories.First(c => c.Id == _stockCategoryFilter).Name)</span>
+                <LucideIcon Name="chevron-down" Size="13" />
+            </button>
+            @if (_stockCategoryDropdownOpen)
+            {
+                <div class="sup-dd__backdrop" @onclick="() => _stockCategoryDropdownOpen = false"></div>
+                <div class="sup-dd__menu">
+                    <button type="button" class="sup-dd__opt @(_stockCategoryFilter == 0 ? "sup-dd__opt--on" : "")" @onclick="() => SelectStockCategory(0)">@Loc.T("All categories")</button>
+                    @foreach (var c in StockCategories)
+                    {
+                        <button type="button" class="sup-dd__opt @(_stockCategoryFilter == c.Id ? "sup-dd__opt--on" : "")" @onclick="() => SelectStockCategory(c.Id)">@c.Name</button>
+                    }
+                </div>
+            }
+        </div>
+        <span class="spacer"></span>
         <div class="toolbar__search">
             <LucideIcon Name="search" Size="15" />
             <input class="input search" placeholder="@Loc.T("Search…")" @bind="_stockSearch" @bind:event="oninput" />
         </div>
+        <a class="btn btn--ghost" href="/export/stock" target="_blank" rel="noopener"><LucideIcon Name="download" Size="16" /> @Loc.T("Export")</a>
     </div>
     <div class="card" style="padding:1rem 1.2rem">
         @if (FilteredStock.Count == 0)
@@ -109,18 +318,112 @@ else if (_tab == "stock")
         }
         else
         {
-            <table class="table">
+            <table class="table sup-stock">
                 <thead>
-                    <tr><th>@Loc.T("Product")</th><th>@Loc.T("Category")</th><th class="ta-r">@Loc.T("Stock")</th><th></th></tr>
+                    <tr>
+                        <th><button type="button" class="sup-stock__sort" @onclick='() => SortStockBy("product")'>@Loc.T("Product") @StockSortIconMarkup("product")</button></th>
+                        <th><button type="button" class="sup-stock__sort" @onclick='() => SortStockBy("category")'>@Loc.T("Category") @StockSortIconMarkup("category")</button></th>
+                        <th class="ta-r"><button type="button" class="sup-stock__sort sup-stock__sort--r" @onclick='() => SortStockBy("stock")'>@Loc.T("Stock") @StockSortIconMarkup("stock")</button></th>
+                        <th class="ta-r"><button type="button" class="sup-stock__sort sup-stock__sort--r" @onclick='() => SortStockBy("value")'>@Loc.T("Value") @StockSortIconMarkup("value")</button></th>
+                        <th><button type="button" class="sup-stock__sort" @onclick='() => SortStockBy("updated")'>@Loc.T("Last updated") @StockSortIconMarkup("updated")</button></th>
+                        <th></th>
+                    </tr>
                 </thead>
                 <tbody>
                     @foreach (var item in FilteredStock)
                     {
+                        @if (_stockForm is not null && _stockForm.ProductId == item.ProductId)
+                        {
+                            <tr class="sup-stock__row--edit" data-status="@(item.StockQuantity <= 0 ? "out" : "ok")">
+                                <td><strong>@item.ProductName</strong></td>
+                                <td><span class="badge">@item.CategoryName</span></td>
+                                <td class="ta-r">
+                                    <input type="number" min="0" step="0.01" class="input sup-stock__edit-input sup-stock__edit-input--r"
+                                           @bind="_stockForm.NewQuantity" @bind:event="oninput" />
+                                </td>
+                                <td class="ta-r muted">@((_stockForm.NewQuantity * item.UnitPrice).ToString("N2"))</td>
+                                <td>
+                                    <input class="input sup-stock__edit-input" @bind="_stockForm.Note" placeholder="@Loc.T("e.g. inventory count")" />
+                                </td>
+                                <td class="ta-r sup-stock__edit-actions">
+                                    <button class="btn btn--ghost btn--sm" @onclick="CloseStockForm" title="@Loc.T("Cancel")"><LucideIcon Name="x" Size="14" /></button>
+                                    <button class="btn btn--primary btn--sm" @onclick="SaveStockAdjust" title="@Loc.T("Save")"><LucideIcon Name="check" Size="14" /></button>
+                                </td>
+                            </tr>
+                            @if (_stockError is not null)
+                            {
+                                <tr class="sup-stock__row--error"><td colspan="6"><div class="field-error">@_stockError</div></td></tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr data-status="@(item.StockQuantity <= 0 ? "out" : "ok")">
+                                <td><button type="button" class="sup-stock__product-link" title="@Loc.T("View movement history")" @onclick="() => FilterStockMovesByProduct(item.ProductId)">@item.ProductName</button></td>
+                                <td><span class="badge">@item.CategoryName</span></td>
+                                <td class="ta-r">
+                                    <div class="sup-stock__qty">
+                                        <span class="sup-stock__bar" style="--pct:@(StockPct(item))%"></span>
+                                        <strong>@item.StockQuantity.ToString("N2")</strong>
+                                        @if (item.StockQuantity <= 0) { <span class="badge badge--danger">@Loc.T("Out of stock")</span> }
+                                    </div>
+                                </td>
+                                <td class="ta-r muted">@StockValue(item).ToString("N2")</td>
+                                <td class="muted">@(item.LastUpdatedAt is null ? Loc.T("Never") : item.LastUpdatedAt.Value.ToString("dd MMM yyyy HH:mm"))</td>
+                                <td class="ta-r"><button class="btn btn--ghost btn--sm" @onclick="() => OpenStockAdjust(item)"><LucideIcon Name="pencil" Size="13" /> @Loc.T("Adjust")</button></td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" class="ta-r">@Loc.T("Total")</td>
+                        <td class="ta-r"><strong>@FilteredStock.Sum(StockValue).ToString("N2")</strong></td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        }
+    </div>
+
+    <div class="toolbar sup-stock-moves__head">
+        <h2 class="sup-stock-moves__title"><LucideIcon Name="history" Size="17" /> @Loc.T("Movement history")</h2>
+        @if (_stockMoveProductFilter is not null)
+        {
+            <button type="button" class="badge badge--primary sup-stock-moves__chip" @onclick="() => _stockMoveProductFilter = null">
+                @_stockMoveProductName <LucideIcon Name="x" Size="12" />
+            </button>
+        }
+        <span class="spacer"></span>
+        <label class="muted">@Loc.T("From")</label>
+        <input type="date" class="input" style="max-width:150px" @bind="_stockMoveDateFrom" />
+        <label class="muted">@Loc.T("To")</label>
+        <input type="date" class="input" style="max-width:150px" @bind="_stockMoveDateTo" />
+        @if (_stockMoveDateFrom is not null || _stockMoveDateTo is not null || _stockMoveProductFilter is not null)
+        {
+            <button class="btn btn--ghost btn--sm" @onclick="ClearStockMoveDates"><LucideIcon Name="x" Size="13" /> @Loc.T("Clear filters")</button>
+        }
+    </div>
+    <div class="card" style="padding:1rem 1.2rem">
+        @if (FilteredStockMovements.Count == 0)
+        {
+            <p class="empty">@Loc.T("No stock movements found.")</p>
+        }
+        else
+        {
+            <table class="table sup-stock-moves">
+                <thead>
+                    <tr><th>@Loc.T("Date")</th><th>@Loc.T("Product")</th><th>@Loc.T("Category")</th><th>@Loc.T("Reason")</th><th class="ta-r">@Loc.T("Change")</th><th>@Loc.T("Note")</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in FilteredStockMovements)
+                    {
                         <tr>
-                            <td>@item.ProductName</td>
-                            <td>@item.CategoryName</td>
-                            <td class="ta-r"><strong>@item.StockQuantity.ToString("N2")</strong></td>
-                            <td class="ta-r"><button class="btn btn--ghost btn--sm" @onclick="() => OpenStockAdjust(item)">@Loc.T("Adjust")</button></td>
+                            <td>@m.Date.ToString("dd MMM yyyy HH:mm")</td>
+                            <td>@m.ProductName</td>
+                            <td><span class="badge">@m.CategoryName</span></td>
+                            <td><span class="sup-stock-moves__reason" data-reason="@m.Reason.ToString().ToLowerInvariant()">@MovementReasonLabel(m.Reason)</span></td>
+                            <td class="ta-r sup-stock-moves__qty" data-sign="@(m.QuantityChange >= 0 ? "pos" : "neg")">@(m.QuantityChange >= 0 ? "+" : "")@m.QuantityChange.ToString("N2")</td>
+                            <td class="muted">@(string.IsNullOrWhiteSpace(m.Note) ? "—" : m.Note)</td>
                         </tr>
                     }
                 </tbody>
@@ -128,7 +431,6 @@ else if (_tab == "stock")
         }
     </div>
 }
-
 @* ---- Supplier form + documents ------------------------------------------- *@
 <Modal Visible="_supplierForm is not null" Title="@(_supplierForm?.Id > 0 ? Loc.T("Edit supplier") : Loc.T("New supplier"))" OnClose="CloseSupplierForm">
     <ChildContent>
@@ -153,7 +455,7 @@ else if (_tab == "stock")
                 <div class="modal-section">@Loc.T("Documents")</div>
                 @foreach (var doc in _supplierDocs)
                 {
-                    <div class="mgmt-card__actions" style="justify-content:space-between">
+                    <div class="sup-doc-row">
                         <a href="@doc.FileUrl" target="_blank"><LucideIcon Name="file-text" Size="15" /> @doc.FileName</a>
                         <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")" @onclick="() => DeleteDocument(doc.Id)"><LucideIcon Name="trash-2" Size="15" /></button>
                     </div>
@@ -227,23 +529,6 @@ else if (_tab == "stock")
     </Footer>
 </Modal>
 
-@* ---- Stock adjustment ------------------------------------------------------ *@
-<Modal Visible="_stockForm is not null" Title="@Loc.T("Adjust stock")" OnClose="CloseStockForm">
-    <ChildContent>
-        @if (_stockForm is not null)
-        {
-            <p><strong>@_stockAdjustProductName</strong></p>
-            <div class="field"><label>@Loc.T("New quantity")</label><input type="number" min="0" step="0.01" class="input" @bind="_stockForm.NewQuantity" /></div>
-            <div class="field"><label>@Loc.T("Note")</label><input class="input" @bind="_stockForm.Note" placeholder="@Loc.T("e.g. inventory count")" /></div>
-            @if (_stockError is not null) { <div class="field-error">@_stockError</div> }
-        }
-    </ChildContent>
-    <Footer>
-        <button class="btn btn--ghost" @onclick="CloseStockForm">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" @onclick="SaveStockAdjust">@Loc.T("Save")</button>
-    </Footer>
-</Modal>
-
 @code {
     private const long MaxDocBytes = 10 * 1024 * 1024;
 
@@ -252,8 +537,23 @@ else if (_tab == "stock")
     private List<SupplierDto> _suppliers = new();
     private List<PurchaseDto> _purchases = new();
     private List<StockItemDto> _stock = new();
+    private List<StockMovementDto> _stockMovements = new();
     private List<ProductDto> _products = new();
     private string _stockSearch = "";
+    private int _stockCategoryFilter;
+    private bool _stockCategoryDropdownOpen;
+    private void SelectStockCategory(int id) { _stockCategoryFilter = id; _stockCategoryDropdownOpen = false; }
+    private string _purchasesSearch = "";
+    private DateTime? _stockMoveDateFrom;
+    private DateTime? _stockMoveDateTo;
+    private int? _stockMoveProductFilter;
+    private string _stockMoveProductName = "";
+
+    private void FilterStockMovesByProduct(int productId)
+    {
+        _stockMoveProductFilter = productId;
+        _stockMoveProductName = _stock.FirstOrDefault(s => s.ProductId == productId)?.ProductName ?? "";
+    }
 
     private SupplierFormDto? _supplierForm;
     private List<SupplierDocumentDto> _supplierDocs = new();
@@ -265,30 +565,205 @@ else if (_tab == "stock")
     private string? _purchaseError;
 
     private StockAdjustFormDto? _stockForm;
-    private string _stockAdjustProductName = "";
     private string? _stockError;
 
-    private List<StockItemDto> FilteredStock =>
-        string.IsNullOrWhiteSpace(_stockSearch)
-            ? _stock
-            : _stock.Where(s => s.ProductName.Contains(_stockSearch, StringComparison.OrdinalIgnoreCase)).ToList();
+    private const long MaxAlbaranBytes = 10 * 1024 * 1024;
+    private List<AlbaranScanSummaryDto> _albaranScans = new();
+    private bool _albaranUploadMenuOpen;
+    private string? _albaranUploadError;
+    private AlbaranScanDetailDto? _albaranDetail;
+    private AlbaranScanEditDto? _albaranEditForm;
+    private string? _albaranDetailError;
+    private HubConnection? _suppliersHub;
+
+    private List<AlbaranScanSummaryDto> PendingAlbaranScans =>
+        _albaranScans.Where(s => s.Status != AlbaranScanStatus.Validated).ToList();
+
+    private bool CanValidateAlbaran =>
+        _albaranEditForm is { SupplierId: > 0 } form && form.Lines.Count > 0 && form.Lines.All(l => l.ProductId > 0);
+
+    private static string StatusAttr(AlbaranScanStatus status) => status switch
+    {
+        AlbaranScanStatus.Processing => "processing",
+        AlbaranScanStatus.NeedsReview => "needs-review",
+        AlbaranScanStatus.Validated => "validated",
+        AlbaranScanStatus.Failed => "failed",
+        _ => "processing"
+    };
+
+    private string StatusLabel(AlbaranScanStatus status) => status switch
+    {
+        AlbaranScanStatus.Processing => Loc.T("Processing"),
+        AlbaranScanStatus.NeedsReview => Loc.T("Needs review"),
+        AlbaranScanStatus.Validated => Loc.T("Validated"),
+        AlbaranScanStatus.Failed => Loc.T("Failed"),
+        _ => ""
+    };
+
+    private static string StatusIcon(AlbaranScanStatus status) => status switch
+    {
+        AlbaranScanStatus.Processing => "clock",
+        AlbaranScanStatus.NeedsReview => "eye",
+        AlbaranScanStatus.Validated => "check",
+        AlbaranScanStatus.Failed => "triangle-alert",
+        _ => "clock"
+    };
+
+    private static string StatusBadgeClass(AlbaranScanStatus status) => status switch
+    {
+        AlbaranScanStatus.NeedsReview => "badge--warning",
+        AlbaranScanStatus.Validated => "badge--success",
+        AlbaranScanStatus.Failed => "badge--danger",
+        _ => ""
+    };
+
+    private List<PurchaseDto> FilteredPurchases =>
+        _purchases.Where(p =>
+            string.IsNullOrWhiteSpace(_purchasesSearch) ||
+            p.SupplierName.Contains(_purchasesSearch, StringComparison.OrdinalIgnoreCase) ||
+            (p.Reference?.Contains(_purchasesSearch, StringComparison.OrdinalIgnoreCase) ?? false))
+        .ToList();
+
+    private List<StockItemDto> FilteredStock
+    {
+        get
+        {
+            var q = _stock.Where(s =>
+                (string.IsNullOrWhiteSpace(_stockSearch) || s.ProductName.Contains(_stockSearch, StringComparison.OrdinalIgnoreCase)) &&
+                (_stockCategoryFilter == 0 || s.CategoryId == _stockCategoryFilter));
+
+            IEnumerable<StockItemDto> sorted = _stockSortField switch
+            {
+                "category" => q.OrderBy(s => s.CategoryName).ThenBy(s => s.ProductName),
+                "stock" => q.OrderBy(s => s.StockQuantity),
+                "value" => q.OrderBy(s => StockValue(s)),
+                "updated" => q.OrderBy(s => s.LastUpdatedAt),
+                _ => q.OrderBy(s => s.ProductName),
+            };
+            return (_stockSortDesc ? sorted.Reverse() : sorted).ToList();
+        }
+    }
+
+    private string _stockSortField = "product";
+    private bool _stockSortDesc;
+
+    private void SortStockBy(string field)
+    {
+        if (_stockSortField == field) { _stockSortDesc = !_stockSortDesc; }
+        else { _stockSortField = field; _stockSortDesc = false; }
+    }
+
+    private RenderFragment StockSortIconMarkup(string field) => builder =>
+    {
+        if (field != _stockSortField) return;
+        builder.OpenComponent<LucideIcon>(0);
+        builder.AddAttribute(1, "Name", _stockSortDesc ? "chevron-down" : "chevron-up");
+        builder.AddAttribute(2, "Size", 12);
+        builder.CloseComponent();
+    };
+
+    private List<(int Id, string Name)> StockCategories =>
+        _products.Select(p => (Id: p.CategoryId, Name: p.CategoryName)).Distinct().OrderBy(c => c.Name).ToList();
+
+    private int OutOfStockCount => _stock.Count(s => s.StockQuantity <= 0);
+
+    private decimal StockValue(StockItemDto item) => item.StockQuantity * item.UnitPrice;
+    private decimal TotalStockValue => _stock.Sum(StockValue);
+
+    private List<(string Name, decimal Units, decimal Value, int Pct)> StockValueByCategory
+    {
+        get
+        {
+            var total = TotalStockValue;
+            return _stock
+                .GroupBy(s => s.CategoryName)
+                .Select(g => (Name: g.Key, Units: g.Sum(s => s.StockQuantity), Value: g.Sum(StockValue)))
+                .OrderByDescending(x => x.Value)
+                .Select(x => (x.Name, x.Units, x.Value, Pct: total <= 0 ? 0 : (int)Math.Round((double)(x.Value / total) * 100)))
+                .ToList();
+        }
+    }
+
+    private List<StockMovementDto> FilteredStockMovements =>
+        _stockMovements.Where(m =>
+            (_stockCategoryFilter == 0 || m.CategoryId == _stockCategoryFilter) &&
+            (_stockMoveProductFilter is null || m.ProductId == _stockMoveProductFilter) &&
+            (_stockMoveDateFrom is null || m.Date.Date >= _stockMoveDateFrom.Value.Date) &&
+            (_stockMoveDateTo is null || m.Date.Date <= _stockMoveDateTo.Value.Date))
+        .ToList();
+
+    private void ClearStockMoveDates()
+    {
+        _stockMoveDateFrom = null;
+        _stockMoveDateTo = null;
+        _stockMoveProductFilter = null;
+    }
+
+    private string MovementReasonLabel(StockMovementReason reason) => reason switch
+    {
+        StockMovementReason.Purchase => Loc.T("Purchase"),
+        StockMovementReason.Sale => Loc.T("Sale"),
+        StockMovementReason.Adjustment => Loc.T("Adjustment"),
+        _ => reason.ToString()
+    };
+
+    private decimal MaxStock => _stock.Count == 0 ? 0 : _stock.Max(s => s.StockQuantity);
+
+    private int StockPct(StockItemDto item) => MaxStock <= 0 ? 0 : (int)Math.Round((double)(item.StockQuantity / MaxStock) * 100);
+
+    private static string Initials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "?",
+            1 => parts[0][..1].ToUpperInvariant(),
+            _ => (parts[0][..1] + parts[^1][..1]).ToUpperInvariant(),
+        };
+    }
 
     protected override async Task OnInitializedAsync()
     {
         _suppliers = await SupplierService.GetAllAsync();
         _products = await ProductService.GetAllAsync();
+
+        // Only open the real-time channel during the interactive render (not prerender).
+        if (!RendererInfo.IsInteractive) return;
+
+        _suppliersHub = new HubConnectionBuilder()
+            .WithUrl(Nav.ToAbsoluteUri(SuppliersHub.Path))
+            .WithAutomaticReconnect()
+            .Build();
+
+        // The vision-model call can take minutes, so the user may have left this tab (or the
+        // page) by the time it finishes — refresh the list/open detail without a reload.
+        _suppliersHub.On<int, string>(SuppliersHub.AlbaranScanUpdated, async (scanId, _) =>
+        {
+            _albaranScans = await AlbaranScanService.GetAllAsync();
+            if (_albaranDetail?.Id == scanId) await OpenAlbaranDetail(scanId);
+            await InvokeAsync(StateHasChanged);
+        });
+
+        await _suppliersHub.StartAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_suppliersHub is not null) await _suppliersHub.DisposeAsync();
     }
 
     private async Task SelectPurchases()
     {
         _tab = "purchases";
         _purchases = await PurchaseService.GetAllAsync();
+        _albaranScans = await AlbaranScanService.GetAllAsync();
     }
 
     private async Task SelectStock()
     {
         _tab = "stock";
         _stock = await StockService.GetAllAsync();
+        _stockMovements = await StockService.GetAllMovementsAsync();
     }
 
     // ---- Suppliers ----------------------------------------------------------
@@ -392,11 +867,14 @@ else if (_tab == "stock")
     private void OpenStockAdjust(StockItemDto item)
     {
         _stockError = null;
-        _stockAdjustProductName = item.ProductName;
         _stockForm = new StockAdjustFormDto { ProductId = item.ProductId, NewQuantity = item.StockQuantity };
     }
 
-    private void CloseStockForm() => _stockForm = null;
+    private void CloseStockForm()
+    {
+        _stockForm = null;
+        _stockError = null;
+    }
 
     private async Task SaveStockAdjust()
     {
@@ -407,5 +885,126 @@ else if (_tab == "stock")
         await StockService.AdjustAsync(_stockForm);
         _stockForm = null;
         _stock = await StockService.GetAllAsync();
+        _stockMovements = await StockService.GetAllMovementsAsync();
+    }
+
+    // ---- Albarán scans ------------------------------------------------------
+
+    private void ToggleAlbaranUploadMenu()
+    {
+        _albaranUploadError = null;
+        _albaranUploadMenuOpen = !_albaranUploadMenuOpen;
+    }
+
+    private void CloseAlbaranUploadMenu() => _albaranUploadMenuOpen = false;
+
+    private async Task OnAlbaranPhotoSelected(InputFileChangeEventArgs e)
+    {
+        _albaranUploadError = null;
+        var file = e.File;
+
+        if (file.Size > MaxAlbaranBytes) { _albaranUploadError = Loc.T("File is too large (max 10 MB)."); return; }
+        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) { _albaranUploadError = Loc.T("Please choose an image file."); return; }
+
+        var ext = Path.GetExtension(file.Name);
+        if (string.IsNullOrWhiteSpace(ext)) ext = ".jpg";
+        var dir = Path.Combine(Env.WebRootPath, "uploads", "albaranes");
+        Directory.CreateDirectory(dir);
+        var storedName = $"{Guid.NewGuid():N}{ext.ToLowerInvariant()}";
+        var absolutePath = Path.Combine(dir, storedName);
+
+        await using (var output = File.Create(absolutePath))
+        await using (var input = file.OpenReadStream(MaxAlbaranBytes))
+        {
+            await input.CopyToAsync(output);
+        }
+
+        var url = $"/uploads/albaranes/{storedName}";
+        var scanId = await AlbaranScanService.CreateAsync(url, null);
+        ScanRunner.QueueScan(scanId, absolutePath);
+
+        _albaranUploadMenuOpen = false;
+        _albaranScans = await AlbaranScanService.GetAllAsync();
+        await OpenAlbaranDetail(scanId);
+    }
+
+    private async Task OpenAlbaranDetail(int id)
+    {
+        _albaranDetailError = null;
+        _albaranDetail = await AlbaranScanService.GetByIdAsync(id);
+        if (_albaranDetail is null) return;
+
+        _albaranEditForm = new AlbaranScanEditDto
+        {
+            SupplierId = _albaranDetail.SupplierId ?? 0,
+            AlbaranNumber = _albaranDetail.AlbaranNumber,
+            AlbaranDate = _albaranDetail.AlbaranDate,
+            Lines = _albaranDetail.Lines.Select(l => new AlbaranScanLineEditDto
+            {
+                Id = l.Id,
+                Description = l.Description,
+                Quantity = l.Quantity,
+                UnitPrice = l.UnitPrice,
+                ProductId = l.ProductId ?? 0
+            }).ToList()
+        };
+    }
+
+    private void CloseAlbaranDetail()
+    {
+        _albaranDetail = null;
+        _albaranEditForm = null;
+    }
+
+    private void OnAlbaranDateChanged(ChangeEventArgs e)
+    {
+        if (_albaranEditForm is null) return;
+        _albaranEditForm.AlbaranDate = DateTime.TryParse(e.Value?.ToString(), out var date) ? date : null;
+    }
+
+    private async Task SaveAlbaranDraft()
+    {
+        if (_albaranDetail is null || _albaranEditForm is null) return;
+        _albaranDetailError = null;
+        var result = await AlbaranScanValidator.ValidateAsync(_albaranEditForm);
+        if (!result.IsValid) { _albaranDetailError = result.Errors[0].ErrorMessage; return; }
+
+        await AlbaranScanService.SaveDraftAsync(_albaranDetail.Id, _albaranEditForm);
+        await OpenAlbaranDetail(_albaranDetail.Id);
+        _albaranScans = await AlbaranScanService.GetAllAsync();
+    }
+
+    private async Task ValidateAlbaran()
+    {
+        if (_albaranDetail is null || _albaranEditForm is null) return;
+        _albaranDetailError = null;
+        var result = await AlbaranScanValidator.ValidateAsync(_albaranEditForm);
+        if (!result.IsValid) { _albaranDetailError = result.Errors[0].ErrorMessage; return; }
+
+        try
+        {
+            await AlbaranScanService.ValidateAndCreatePurchaseAsync(_albaranDetail.Id, _albaranEditForm);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _albaranDetailError = ex.Message;
+            return;
+        }
+
+        CloseAlbaranDetail();
+        _albaranScans = await AlbaranScanService.GetAllAsync();
+        _purchases = await PurchaseService.GetAllAsync();
+        _stock = await StockService.GetAllAsync();
+    }
+
+    private async Task RetryAlbaran()
+    {
+        if (_albaranDetail is null) return;
+        var absolutePath = Path.Combine(Env.WebRootPath, _albaranDetail.ImageUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+
+        await AlbaranScanService.RetryAsync(_albaranDetail.Id);
+        ScanRunner.QueueScan(_albaranDetail.Id, absolutePath);
+        await OpenAlbaranDetail(_albaranDetail.Id);
+        _albaranScans = await AlbaranScanService.GetAllAsync();
     }
 }

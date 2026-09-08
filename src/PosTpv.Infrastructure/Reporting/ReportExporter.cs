@@ -20,6 +20,14 @@ public class ReportExporter : IReportExporter
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
+    // Mirrors PosTpv.Web.Localization.Loc.IsSpanish: the culture cookie middleware sets
+    // CurrentUICulture per request, and that flows into this layer without needing a
+    // reference to the Web project.
+    private static bool IsSpanish =>
+        CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("es", StringComparison.OrdinalIgnoreCase);
+
+    private static string T(string english, string spanish) => IsSpanish ? spanish : english;
+
     public ExportFile ExportBilling(BillingReportDto report, DateTime from, DateTime to, ExportFormat format)
     {
         var stamp = $"{from:yyyyMMdd}-{to:yyyyMMdd}";
@@ -33,13 +41,21 @@ public class ReportExporter : IReportExporter
         };
     }
 
+    public ExportFile ExportStock(IReadOnlyList<StockItemDto> items, IReadOnlyList<StockMovementDto> movements)
+    {
+        var stamp = DateTime.Today.ToString("yyyyMMdd", Inv);
+        return new ExportFile(BuildStockExcel(items, movements),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"stock_{stamp}.xlsx");
+    }
+
     private static string Money(decimal d) => d.ToString("N2", Inv);
 
     // ---- CSV ------------------------------------------------------------------
     private static byte[] BuildCsv(BillingReportDto report)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Invoice,Order,Table,Method,Date,Subtotal,VAT,Total");
+        sb.AppendLine(T("Invoice,Order,Table,Method,Date,Subtotal,VAT,Total",
+            "Factura,Pedido,Mesa,Método,Fecha,Subtotal,IVA,Total"));
         foreach (var i in report.Invoices)
         {
             sb.Append(Csv(i.Number)).Append(',')
@@ -52,9 +68,9 @@ public class ReportExporter : IReportExporter
               .Append(i.Total.ToString("F2", Inv)).AppendLine();
         }
         sb.AppendLine();
-        sb.AppendLine($"Totals,,,,,{report.Total - report.VatTotal:F2},{report.VatTotal.ToString("F2", Inv)},{report.Total.ToString("F2", Inv)}");
-        sb.AppendLine($"Invoices,{report.Count}");
-        sb.AppendLine($"Average ticket,{report.Average.ToString("F2", Inv)}");
+        sb.AppendLine($"{T("Totals", "Totales")},,,,,{report.Total - report.VatTotal:F2},{report.VatTotal.ToString("F2", Inv)},{report.Total.ToString("F2", Inv)}");
+        sb.AppendLine($"{T("Invoices", "Facturas")},{report.Count}");
+        sb.AppendLine($"{T("Average ticket", "Ticket medio")},{report.Average.ToString("F2", Inv)}");
 
         // UTF-8 BOM so Excel opens accented text correctly.
         return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
@@ -72,28 +88,30 @@ public class ReportExporter : IReportExporter
     private static byte[] BuildExcel(BillingReportDto report, DateTime from, DateTime to)
     {
         using var wb = new XLWorkbook();
-        var ws = wb.Worksheets.Add("Billing");
+        var ws = wb.Worksheets.Add(T("Billing", "Facturación"));
 
-        ws.Cell("A1").Value = "PosTPV — Billing report";
+        ws.Cell("A1").Value = T("PosTPV — Billing report", "PosTPV — Informe de facturación");
         ws.Range("A1:H1").Merge();
         ws.Cell("A1").Style.Font.SetBold().Font.FontSize = 16;
 
-        ws.Cell("A2").Value = $"Period: {from:yyyy-MM-dd} → {to:yyyy-MM-dd}";
+        ws.Cell("A2").Value = $"{T("Period", "Periodo")}: {from:yyyy-MM-dd} → {to:yyyy-MM-dd}";
         ws.Range("A2:H2").Merge();
         ws.Cell("A2").Style.Font.FontColor = XLColor.Gray;
 
         // Summary block
-        ws.Cell("A4").Value = "Revenue"; ws.Cell("B4").Value = report.Total;
-        ws.Cell("A5").Value = "VAT collected"; ws.Cell("B5").Value = report.VatTotal;
-        ws.Cell("A6").Value = "Invoices"; ws.Cell("B6").Value = report.Count;
-        ws.Cell("A7").Value = "Average ticket"; ws.Cell("B7").Value = report.Average;
+        ws.Cell("A4").Value = T("Revenue", "Ingresos"); ws.Cell("B4").Value = report.Total;
+        ws.Cell("A5").Value = T("VAT collected", "IVA recaudado"); ws.Cell("B5").Value = report.VatTotal;
+        ws.Cell("A6").Value = T("Invoices", "Facturas"); ws.Cell("B6").Value = report.Count;
+        ws.Cell("A7").Value = T("Average ticket", "Ticket medio"); ws.Cell("B7").Value = report.Average;
         ws.Range("A4:A7").Style.Font.SetBold();
         ws.Range("B4:B5").Style.NumberFormat.Format = "#,##0.00";
         ws.Cell("B7").Style.NumberFormat.Format = "#,##0.00";
 
         // Invoice table
         const int header = 9;
-        string[] columns = { "Invoice", "Order", "Table", "Method", "Date", "Subtotal", "VAT", "Total" };
+        string[] columns = IsSpanish
+            ? new[] { "Factura", "Pedido", "Mesa", "Método", "Fecha", "Subtotal", "IVA", "Total" }
+            : new[] { "Invoice", "Order", "Table", "Method", "Date", "Subtotal", "VAT", "Total" };
         for (var c = 0; c < columns.Length; c++)
             ws.Cell(header, c + 1).Value = columns[c];
 
@@ -133,6 +151,110 @@ public class ReportExporter : IReportExporter
         return ms.ToArray();
     }
 
+    // ---- Stock (Excel only, two sheets) ----------------------------------------
+    private static byte[] BuildStockExcel(IReadOnlyList<StockItemDto> items, IReadOnlyList<StockMovementDto> movements)
+    {
+        using var wb = new XLWorkbook();
+
+        // ---- Sheet 1: stock levels ----
+        var stockWs = wb.Worksheets.Add(T("Stock", "Stock"));
+        stockWs.Cell("A1").Value = T("PosTPV — Stock report", "PosTPV — Informe de stock");
+        stockWs.Range("A1:F1").Merge();
+        stockWs.Cell("A1").Style.Font.SetBold().Font.FontSize = 16;
+
+        stockWs.Cell("A2").Value = $"{T("Generated", "Generado")}: {DateTime.Now:yyyy-MM-dd HH:mm}";
+        stockWs.Range("A2:F2").Merge();
+        stockWs.Cell("A2").Style.Font.FontColor = XLColor.Gray;
+
+        var totalUnits = items.Sum(i => i.StockQuantity);
+        var totalValue = items.Sum(i => i.StockQuantity * i.UnitPrice);
+        var outOfStock = items.Count(i => i.StockQuantity <= 0);
+
+        stockWs.Cell("A4").Value = T("Products tracked", "Productos controlados"); stockWs.Cell("B4").Value = items.Count;
+        stockWs.Cell("A5").Value = T("Units in stock", "Unidades en stock"); stockWs.Cell("B5").Value = totalUnits;
+        stockWs.Cell("A6").Value = T("Out of stock", "Sin stock"); stockWs.Cell("B6").Value = outOfStock;
+        stockWs.Cell("A7").Value = T("Inventory value", "Valor del inventario"); stockWs.Cell("B7").Value = totalValue;
+        stockWs.Range("A4:A7").Style.Font.SetBold();
+        stockWs.Cell("B5").Style.NumberFormat.Format = "#,##0.00";
+        stockWs.Cell("B7").Style.NumberFormat.Format = "#,##0.00";
+
+        const int stockHeader = 9;
+        string[] stockCols = IsSpanish
+            ? new[] { "Producto", "Categoría", "Stock", "Precio unitario", "Valor", "Última actualización" }
+            : new[] { "Product", "Category", "Stock", "Unit price", "Value", "Last updated" };
+        for (var c = 0; c < stockCols.Length; c++)
+            stockWs.Cell(stockHeader, c + 1).Value = stockCols[c];
+
+        var stockHead = stockWs.Range(stockHeader, 1, stockHeader, stockCols.Length);
+        stockHead.Style.Font.SetBold().Font.FontColor = XLColor.White;
+        stockHead.Style.Fill.BackgroundColor = XLColor.FromHtml("#4f46e5");
+
+        var sRow = stockHeader + 1;
+        foreach (var i in items.OrderBy(i => i.ProductName))
+        {
+            stockWs.Cell(sRow, 1).Value = i.ProductName;
+            stockWs.Cell(sRow, 2).Value = i.CategoryName;
+            stockWs.Cell(sRow, 3).Value = i.StockQuantity;
+            stockWs.Cell(sRow, 4).Value = i.UnitPrice;
+            stockWs.Cell(sRow, 5).Value = i.StockQuantity * i.UnitPrice;
+            if (i.LastUpdatedAt is not null)
+            {
+                stockWs.Cell(sRow, 6).Value = i.LastUpdatedAt.Value;
+                stockWs.Cell(sRow, 6).Style.DateFormat.Format = "yyyy-mm-dd hh:mm";
+            }
+            sRow++;
+        }
+
+        stockWs.Range(stockHeader + 1, 3, Math.Max(stockHeader + 1, sRow - 1), 3).Style.NumberFormat.Format = "#,##0.00";
+        stockWs.Range(stockHeader + 1, 4, Math.Max(stockHeader + 1, sRow - 1), 5).Style.NumberFormat.Format = "#,##0.00";
+
+        if (items.Count > 0)
+        {
+            var table = stockWs.Range(stockHeader, 1, sRow - 1, stockCols.Length);
+            table.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            table.Style.Border.InsideBorder = XLBorderStyleValues.Hair;
+        }
+        stockWs.Columns().AdjustToContents();
+
+        // ---- Sheet 2: movement history ----
+        var movesWs = wb.Worksheets.Add(T("Movements", "Movimientos"));
+        string[] moveCols = IsSpanish
+            ? new[] { "Fecha", "Producto", "Categoría", "Motivo", "Cambio", "Nota" }
+            : new[] { "Date", "Product", "Category", "Reason", "Change", "Note" };
+        for (var c = 0; c < moveCols.Length; c++)
+            movesWs.Cell(1, c + 1).Value = moveCols[c];
+
+        var moveHead = movesWs.Range(1, 1, 1, moveCols.Length);
+        moveHead.Style.Font.SetBold().Font.FontColor = XLColor.White;
+        moveHead.Style.Fill.BackgroundColor = XLColor.FromHtml("#4f46e5");
+
+        var mRow = 2;
+        foreach (var m in movements.OrderByDescending(m => m.Date))
+        {
+            movesWs.Cell(mRow, 1).Value = m.Date;
+            movesWs.Cell(mRow, 1).Style.DateFormat.Format = "yyyy-mm-dd hh:mm";
+            movesWs.Cell(mRow, 2).Value = m.ProductName;
+            movesWs.Cell(mRow, 3).Value = m.CategoryName;
+            movesWs.Cell(mRow, 4).Value = m.Reason.ToString();
+            movesWs.Cell(mRow, 5).Value = m.QuantityChange;
+            movesWs.Cell(mRow, 6).Value = m.Note ?? "";
+            mRow++;
+        }
+        movesWs.Range(2, 5, Math.Max(2, mRow - 1), 5).Style.NumberFormat.Format = "+#,##0.00;-#,##0.00";
+
+        if (movements.Count > 0)
+        {
+            var table = movesWs.Range(1, 1, mRow - 1, moveCols.Length);
+            table.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            table.Style.Border.InsideBorder = XLBorderStyleValues.Hair;
+        }
+        movesWs.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
+
     // ---- PDF ------------------------------------------------------------------
     private static byte[] BuildPdf(BillingReportDto report, DateTime from, DateTime to)
     {
@@ -149,8 +271,8 @@ public class ReportExporter : IReportExporter
                 page.Header().Column(col =>
                 {
                     col.Item().Text("PosTPV").FontSize(20).Bold().FontColor(indigo);
-                    col.Item().Text("Billing report").FontSize(14).SemiBold();
-                    col.Item().Text($"Period: {from:yyyy-MM-dd} → {to:yyyy-MM-dd}").FontColor("#64748b");
+                    col.Item().Text(T("Billing report", "Informe de facturación")).FontSize(14).SemiBold();
+                    col.Item().Text($"{T("Period", "Periodo")}: {from:yyyy-MM-dd} → {to:yyyy-MM-dd}").FontColor("#64748b");
                 });
 
                 page.Content().PaddingVertical(14).Column(col =>
@@ -161,10 +283,10 @@ public class ReportExporter : IReportExporter
                     col.Item().Row(row =>
                     {
                         row.Spacing(10);
-                        Summary(row, "Revenue", Money(report.Total), indigo);
-                        Summary(row, "VAT collected", Money(report.VatTotal), "#0ea5e9");
-                        Summary(row, "Invoices", report.Count.ToString(), "#22c55e");
-                        Summary(row, "Average ticket", Money(report.Average), "#f59e0b");
+                        Summary(row, T("Revenue", "Ingresos"), Money(report.Total), indigo);
+                        Summary(row, T("VAT collected", "IVA recaudado"), Money(report.VatTotal), "#0ea5e9");
+                        Summary(row, T("Invoices", "Facturas"), report.Count.ToString(), "#22c55e");
+                        Summary(row, T("Average ticket", "Ticket medio"), Money(report.Average), "#f59e0b");
                     });
 
                     // Invoice table
@@ -182,12 +304,12 @@ public class ReportExporter : IReportExporter
 
                         table.Header(h =>
                         {
-                            HeaderCell(h, "Invoice", indigo);
-                            HeaderCell(h, "Order", indigo);
-                            HeaderCell(h, "Table", indigo);
-                            HeaderCell(h, "Method", indigo);
-                            HeaderCell(h, "Date", indigo);
-                            HeaderCell(h, "Total", indigo);
+                            HeaderCell(h, T("Invoice", "Factura"), indigo);
+                            HeaderCell(h, T("Order", "Pedido"), indigo);
+                            HeaderCell(h, T("Table", "Mesa"), indigo);
+                            HeaderCell(h, T("Method", "Método"), indigo);
+                            HeaderCell(h, T("Date", "Fecha"), indigo);
+                            HeaderCell(h, T("Total", "Total"), indigo);
                         });
 
                         var zebra = false;
@@ -205,14 +327,14 @@ public class ReportExporter : IReportExporter
                     });
 
                     if (report.Invoices.Count == 0)
-                        col.Item().PaddingTop(10).Text("No invoices in this period.").FontColor("#64748b");
+                        col.Item().PaddingTop(10).Text(T("No invoices in this period.", "No hay facturas en este periodo.")).FontColor("#64748b");
                 });
 
                 page.Footer().AlignCenter().Text(t =>
                 {
-                    t.Span("PosTPV · generated ").FontColor("#94a3b8");
+                    t.Span(T("PosTPV · generated ", "PosTPV · generado el ")).FontColor("#94a3b8");
                     t.Span($"{from:yyyy-MM-dd}").FontColor("#94a3b8");
-                    t.Span("  ·  Page ").FontColor("#94a3b8");
+                    t.Span(T("  ·  Page ", "  ·  Página ")).FontColor("#94a3b8");
                     t.CurrentPageNumber().FontColor("#94a3b8");
                     t.Span(" / ").FontColor("#94a3b8");
                     t.TotalPages().FontColor("#94a3b8");

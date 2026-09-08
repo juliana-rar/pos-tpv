@@ -34,6 +34,8 @@ public class PosDbContext : DbContext
     public DbSet<Purchase> Purchases => Set<Purchase>();
     public DbSet<PurchaseLine> PurchaseLines => Set<PurchaseLine>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+    public DbSet<AlbaranScan> AlbaranScans => Set<AlbaranScan>();
+    public DbSet<AlbaranScanLine> AlbaranScanLines => Set<AlbaranScanLine>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -242,6 +244,33 @@ public class PosDbContext : DbContext
             e.HasOne(x => x.Product).WithMany()
                 .HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.ProductId);
+        });
+
+        b.Entity<AlbaranScan>(e =>
+        {
+            e.Property(x => x.ImageUrl).HasMaxLength(300).IsRequired();
+            e.Property(x => x.SupplierNameRaw).HasMaxLength(200);
+            e.Property(x => x.AlbaranNumber).HasMaxLength(60);
+            e.Property(x => x.TotalAmount).HasPrecision(10, 2);
+            e.Property(x => x.ErrorMessage).HasMaxLength(500);
+            e.HasOne(x => x.Supplier).WithMany()
+                .HasForeignKey(x => x.SupplierId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Purchase).WithMany()
+                .HasForeignKey(x => x.PurchaseId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.CreatedAt);
+        });
+
+        b.Entity<AlbaranScanLine>(e =>
+        {
+            e.Property(x => x.Description).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Quantity).HasPrecision(10, 2);
+            e.Property(x => x.UnitPrice).HasPrecision(10, 2);
+            e.HasOne(x => x.AlbaranScan).WithMany(s => s.Lines)
+                .HasForeignKey(x => x.AlbaranScanId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Product).WithMany()
+                .HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.SetNull);
+            e.Ignore(x => x.LineTotal);
         });
     }
 

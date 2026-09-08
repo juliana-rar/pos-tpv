@@ -10,6 +10,7 @@ namespace PosTpv.Application.Services;
 public interface IStockService
 {
     Task<List<StockItemDto>> GetAllAsync(CancellationToken ct = default);
+    Task<List<StockMovementDto>> GetAllMovementsAsync(CancellationToken ct = default);
     Task AdjustAsync(StockAdjustFormDto form, CancellationToken ct = default);
 }
 
@@ -26,12 +27,33 @@ public class StockService : IStockService
 
     public async Task<List<StockItemDto>> GetAllAsync(CancellationToken ct = default)
     {
-        var list = await _uow.Repository<Product>().QueryNoTracking()
+        var lastUpdates = await _uow.Repository<StockMovement>().QueryNoTracking()
+            .GroupBy(m => m.ProductId)
+            .Select(g => new { ProductId = g.Key, LastUpdatedAt = g.Max(m => m.CreatedAt) })
+            .ToDictionaryAsync(x => x.ProductId, x => x.LastUpdatedAt, ct);
+
+        var products = await _uow.Repository<Product>().QueryNoTracking()
             .Include(p => p.Category)
             .OrderBy(p => p.Name)
-            .Select(p => new StockItemDto(p.Id, p.Name, p.Category.Name, p.StockQuantity))
+            .Select(p => new { p.Id, p.Name, p.CategoryId, CategoryName = p.Category.Name, p.StockQuantity, p.Price })
             .ToListAsync(ct);
-        return list;
+
+        return products
+            .Select(p => new StockItemDto(
+                p.Id, p.Name, p.CategoryId, p.CategoryName, p.StockQuantity, p.Price,
+                lastUpdates.TryGetValue(p.Id, out var d) ? d : null))
+            .ToList();
+    }
+
+    public async Task<List<StockMovementDto>> GetAllMovementsAsync(CancellationToken ct = default)
+    {
+        return await _uow.Repository<StockMovement>().QueryNoTracking()
+            .Include(m => m.Product).ThenInclude(p => p.Category)
+            .OrderByDescending(m => m.CreatedAt)
+            .Select(m => new StockMovementDto(
+                m.Id, m.CreatedAt, m.ProductId, m.Product.Name, m.Product.CategoryId, m.Product.Category.Name,
+                m.QuantityChange, m.Reason, m.Note))
+            .ToListAsync(ct);
     }
 
     public async Task AdjustAsync(StockAdjustFormDto form, CancellationToken ct = default)

@@ -77,7 +77,18 @@ public class MappingProfile : Profile
         CreateMap<PurchaseLine, PurchaseLineDto>()
             .ForCtorParam(nameof(PurchaseLineDto.ProductName), o => o.MapFrom(s => s.Product.Name));
         CreateMap<Purchase, PurchaseDto>()
-            .ForCtorParam(nameof(PurchaseDto.SupplierName), o => o.MapFrom(s => s.Supplier.Name));
+            .ForCtorParam(nameof(PurchaseDto.SupplierName), o => o.MapFrom(s => s.Supplier.Name))
+            .ForCtorParam(nameof(PurchaseDto.AlbaranScanId), o => o.MapFrom(s => (int?)null))
+            .ForCtorParam(nameof(PurchaseDto.AlbaranImageUrl), o => o.MapFrom(s => (string?)null))
+            .ForCtorParam(nameof(PurchaseDto.AlbaranNumber), o => o.MapFrom(s => (string?)null))
+            .ForCtorParam(nameof(PurchaseDto.AlbaranDate), o => o.MapFrom(s => (DateTime?)null));
+
+        CreateMap<AlbaranScanLine, AlbaranScanLineDto>()
+            .ForCtorParam(nameof(AlbaranScanLineDto.ProductName), o => o.MapFrom(s => s.Product != null ? s.Product.Name : null));
+        CreateMap<AlbaranScan, AlbaranScanSummaryDto>()
+            .ForCtorParam(nameof(AlbaranScanSummaryDto.SupplierName), o => o.MapFrom(s => s.Supplier != null ? s.Supplier.Name : null));
+        CreateMap<AlbaranScan, AlbaranScanDetailDto>()
+            .ForCtorParam(nameof(AlbaranScanDetailDto.SupplierName), o => o.MapFrom(s => s.Supplier != null ? s.Supplier.Name : null));
 
         CreateMap<Reservation, ReservationDto>()
             .ForCtorParam(nameof(ReservationDto.TableIds), o => o.MapFrom(s => s.Tables.Select(t => t.Id)))
