@@ -195,12 +195,18 @@ app.MapGet("/export/billing", async (DateTime? from, DateTime? to, string? forma
     return Results.File(file.Content, file.ContentType, file.FileName);
 }).RequireAuthorization(policy => policy.RequireRole("Admin", "Cashier"));
 
-// Stock report download (Excel — levels + movement history).
-app.MapGet("/export/stock", async (IStockService stock, IReportExporter exporter) =>
+// Stock report download (CSV / Excel / PDF — levels + movement history).
+app.MapGet("/export/stock", async (string? format, IStockService stock, IReportExporter exporter) =>
 {
+    var fmt = format?.ToLowerInvariant() switch
+    {
+        "csv" => ExportFormat.Csv,
+        "pdf" => ExportFormat.Pdf,
+        _ => ExportFormat.Excel
+    };
     var items = await stock.GetAllAsync();
     var movements = await stock.GetAllMovementsAsync();
-    var file = exporter.ExportStock(items, movements);
+    var file = exporter.ExportStock(items, movements, fmt);
     return Results.File(file.Content, file.ContentType, file.FileName);
 }).RequireAuthorization(policy => policy.RequireRole("Admin"));
 

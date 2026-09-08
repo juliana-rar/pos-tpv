@@ -1,0 +1,39 @@
+.page-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: .4rem;
+    padding: .4rem 1.1rem;
+    margin-top: -.6rem;
+    margin-bottom: 1rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--card-2);
+    box-shadow: var(--shadow);
+}
+/* Small tracked-caps treatment — matches the "Categories"/"Products" sidebar-eyebrow style
+   used on Products, so every page's hero title reads as the same typographic family instead
+   of this one being the odd one out at a bigger, non-uppercase size. */
+.page-hero h1 {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    width: 100%;
+    margin: 0;
+    color: var(--text-soft);
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+.page-hero h1::before,
+.page-hero h1::after {
+    content: "";
+    flex: 1 1 auto;
+    height: 2px;
+    border-radius: 1px;
+    background: linear-gradient(to right, transparent, var(--border));
+    box-shadow: 0 4px 0 color-mix(in srgb, var(--primary) 35%, transparent);
+}
+.page-hero h1::after { background: linear-gradient(to left, transparent, var(--border)); }

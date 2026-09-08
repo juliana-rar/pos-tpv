@@ -14,12 +14,54 @@
 
 <PageTitle>Products · @Branding.Current.Title</PageTitle>
 
+<PageHero Icon="utensils-crossed" Title="@Loc.T("Products")">
+    <div class="page-hero__row">
+        <span></span>
+        <div class="tabs" role="tablist">
+            <button class="tabs__opt @(!_viewingAllergens && !_viewingExtras ? "tabs__opt--on" : "")" @onclick="SelectProductsView"><LucideIcon Name="utensils-crossed" Size="16" /> @Loc.T("Products")</button>
+            <button class="tabs__opt @(_viewingAllergens ? "tabs__opt--on" : "")" @onclick="SelectAllergensView"><LucideIcon Name="triangle-alert" Size="16" /> @Loc.T("Allergens")</button>
+            <button class="tabs__opt @(_viewingExtras ? "tabs__opt--on" : "")" @onclick="SelectExtrasView"><LucideIcon Name="tag" Size="16" /> @Loc.T("Extras")</button>
+        </div>
+        <div class="page-hero__actions">
+            @if (_viewingAllergens)
+            {
+                <div class="toolbar__search">
+                    <LucideIcon Name="search" Size="13" />
+                    <input class="input search" placeholder="@Loc.T("Search…")" @bind="_allergenSearch" @bind:event="oninput" />
+                </div>
+                <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("New allergen")" @onclick="() => OpenAllergenForm(null)"><LucideIcon Name="plus" Size="14" /></button>
+            }
+            else if (_viewingExtras)
+            {
+                <div class="toolbar__search">
+                    <LucideIcon Name="search" Size="13" />
+                    <input class="input search" placeholder="@Loc.T("Search…")" @bind="_extraSearch" @bind:event="oninput" />
+                </div>
+                <button class="btn btn--icon btn--neutral btn--sm" title="@Loc.T("New extra")" @onclick="() => OpenExtraForm(null)"><LucideIcon Name="plus" Size="14" /></button>
+            }
+            else if (_selected is not null)
+            {
+                <div class="toolbar__search">
+                    <LucideIcon Name="search" Size="13" />
+                    <input class="input search" placeholder="@Loc.T("Search…")" @bind="_search" @bind:event="oninput" />
+                </div>
+                <button class="btn btn--icon btn--neutral btn--sm" title="@Loc.T("New product")" @onclick="() => OpenProductForm(null)"><LucideIcon Name="plus" Size="14" /></button>
+            }
+        </div>
+    </div>
+</PageHero>
+
 <div class="catalog">
     @* ---- Left rail: categories ---------------------------------------------- *@
     <section class="catalog__cats surface">
         <div class="catalog__cats-head">
             <h2 class="catalog__eyebrow">@Loc.T("Categories")</h2>
-            <button class="btn btn--neutral btn--sm" @onclick="() => OpenCategoryForm(null)"><LucideIcon Name="plus" Size="14" /> @Loc.T("New category")</button>
+            <button class="btn btn--icon btn--neutral btn--sm" title="@Loc.T("New category")" @onclick="() => OpenCategoryForm(null)"><LucideIcon Name="plus" Size="14" /></button>
+        </div>
+
+        <div class="toolbar__search catalog__cats-search">
+            <LucideIcon Name="search" Size="13" />
+            <input class="input search" placeholder="@Loc.T("Search…")" @bind="_categorySearch" @bind:event="oninput" />
         </div>
 
         @if (_notice is not null)
@@ -27,35 +69,8 @@
             <div class="catalog__notice" @onclick="() => _notice = null">@_notice <LucideIcon Name="x" Size="14" /></div>
         }
 
-        @* Its own row above the category list, styled the same as a category row but selecting
-           the allergen manager instead — replaces the old icon button that opened it as a modal,
-           so allergens read as a proper section of the catalogue rather than a hidden popup. *@
-        <div class="catRow catRow--allergens" data-active="@(_viewingAllergens ? "true" : null)" @onclick="SelectAllergensView">
-            <div class="catRow__thumb"><LucideIcon Name="triangle-alert" Size="18" /></div>
-            <div class="catRow__main">
-                <span class="catRow__name">@Loc.T("Allergens")</span>
-                <span class="catRow__meta">
-                    <i class="catRow__dot"></i>
-                    @_allergens.Count @Loc.T("defined")
-                </span>
-            </div>
-            <span class="catRow__nav"><LucideIcon Name="chevron-right" Size="16" /></span>
-        </div>
-        <div class="catRow catRow--extras" data-active="@(_viewingExtras ? "true" : null)" @onclick="SelectExtrasView">
-            <div class="catRow__thumb"><LucideIcon Name="tag" Size="18" /></div>
-            <div class="catRow__main">
-                <span class="catRow__name">@Loc.T("Extras")</span>
-                <span class="catRow__meta">
-                    <i class="catRow__dot"></i>
-                    @_extras.Count @Loc.T("defined")
-                </span>
-            </div>
-            <span class="catRow__nav"><LucideIcon Name="chevron-right" Size="16" /></span>
-        </div>
-        <div class="catalog__cats-sep"></div>
-
         <div class="catalog__cats-list">
-            @foreach (var (c, i) in _categories.Select((c, i) => (c, i)))
+            @foreach (var (c, i) in FilteredCategories.Select((c, i) => (c, i)))
             {
                 <div class="catRow" data-active="@(c.Id == _selectedId ? "true" : null)" @onclick="() => Select(c.Id)">
                     <div class="catRow__thumb">
@@ -81,9 +96,9 @@
                     </div>
                     <div class="catRow__actions" @onclick:stopPropagation="true">
                         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
-                                disabled="@(i == 0)" @onclick="() => MoveCategory(c.Id, -1)"><LucideIcon Name="chevron-up" Size="16" /></button>
+                                disabled="@(!string.IsNullOrWhiteSpace(_categorySearch) || i == 0)" @onclick="() => MoveCategory(c.Id, -1)"><LucideIcon Name="chevron-up" Size="16" /></button>
                         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
-                                disabled="@(i == _categories.Count - 1)" @onclick="() => MoveCategory(c.Id, 1)"><LucideIcon Name="chevron-down" Size="16" /></button>
+                                disabled="@(!string.IsNullOrWhiteSpace(_categorySearch) || i == FilteredCategories.Count - 1)" @onclick="() => MoveCategory(c.Id, 1)"><LucideIcon Name="chevron-down" Size="16" /></button>
                         <button class="btn btn--icon btn--ghost btn--sm" title="@(c.IsVisible ? Loc.T("Hide") : Loc.T("Show"))"
                                 @onclick="() => ToggleCategoryVisibility(c)"><LucideIcon Name="@(c.IsVisible ? "eye-off" : "eye")" Size="16" /></button>
                         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")"
@@ -94,6 +109,7 @@
                 </div>
             }
             @if (_categories.Count == 0) { <p class="empty">@Loc.T("No categories yet.")</p> }
+            else if (FilteredCategories.Count == 0) { <p class="empty">@Loc.T("No categories found.")</p> }
         </div>
     </section>
 
@@ -108,34 +124,13 @@
                     else if (_selected is not null) { <text>@Filtered.Count @Loc.T("products")</text> }
                 </span>
             </div>
-            <span class="spacer"></span>
-            @if (_viewingAllergens)
-            {
-                <button class="btn btn--primary" @onclick="() => OpenAllergenForm(null)"><LucideIcon Name="plus" Size="16" /> @Loc.T("New allergen")</button>
-            }
-            else if (_viewingExtras)
-            {
-                <div class="toolbar__search">
-                    <LucideIcon Name="search" Size="15" />
-                    <input class="input search" placeholder="@Loc.T("Search…")" @bind="_extraSearch" @bind:event="oninput" />
-                </div>
-                <button class="btn btn--neutral" @onclick="() => OpenExtraForm(null)"><LucideIcon Name="plus" Size="16" /> @Loc.T("New extra")</button>
-            }
-            else if (_selected is not null)
-            {
-                <div class="toolbar__search">
-                    <LucideIcon Name="search" Size="15" />
-                    <input class="input search" placeholder="@Loc.T("Search…")" @bind="_search" @bind:event="oninput" />
-                </div>
-                <button class="btn btn--neutral" @onclick="() => OpenProductForm(null)"><LucideIcon Name="plus" Size="16" /> @Loc.T("New product")</button>
-            }
         </div>
 
         @if (_viewingAllergens)
         {
             <div class="allergenManager">
                 <div class="allergenManager__list">
-                    @foreach (var a in _allergens)
+                    @foreach (var a in FilteredAllergens)
                     {
                         <div class="allergenRow">
                             <div class="allergenRow__thumb">
@@ -161,6 +156,7 @@
                         </div>
                     }
                     @if (_allergens.Count == 0) { <p class="empty">@Loc.T("No allergens yet.")</p> }
+                    else if (FilteredAllergens.Count == 0) { <p class="empty">@Loc.T("No allergens found.")</p> }
                 </div>
             </div>
         }
@@ -564,6 +560,7 @@
     private List<ProductDto> _products = new();
     private int? _selectedId;
     private string _search = "";
+    private string _categorySearch = "";
 
     private ProductFormDto? _product;
     private string? _productError;
@@ -581,8 +578,10 @@
 
     private List<AllergenDto> _allergens = new();
     private bool _viewingAllergens;
+    private int? _lastSelectedId;
     private AllergenFormDto? _allergen;
     private string? _allergenError;
+    private string _allergenSearch = "";
 
     private List<ExtraDto> _extras = new();
     private bool _viewingExtras;
@@ -597,6 +596,14 @@
     private HashSet<int> _extraCategoryFilter = new();
 
     private CategoryDto? _selected => _categories.FirstOrDefault(c => c.Id == _selectedId);
+
+    private List<CategoryDto> FilteredCategories => string.IsNullOrWhiteSpace(_categorySearch)
+        ? _categories
+        : _categories.Where(c => c.Name.Contains(_categorySearch, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    private List<AllergenDto> FilteredAllergens => string.IsNullOrWhiteSpace(_allergenSearch)
+        ? _allergens
+        : _allergens.Where(a => a.Name.Contains(_allergenSearch, StringComparison.OrdinalIgnoreCase)).ToList();
 
     private List<ExtraDto> FilteredExtras => string.IsNullOrWhiteSpace(_extraSearch)
         ? _extras
@@ -821,8 +828,21 @@
         await LoadProducts();
     }
 
+    private async Task SelectProductsView()
+    {
+        if (!_viewingAllergens && !_viewingExtras) return;
+        _viewingAllergens = false;
+        _viewingExtras = false;
+        var id = _lastSelectedId ?? _categories.FirstOrDefault()?.Id;
+        _lastSelectedId = null;
+        if (id == _selectedId) return;
+        _selectedId = id;
+        _search = "";
+        await LoadProducts();
+    }
+
     // ---- Allergens ----------------------------------------------------------
-    private void SelectAllergensView() { _viewingAllergens = true; _viewingExtras = false; _selectedId = null; }
+    private void SelectAllergensView() { _lastSelectedId ??= _selectedId; _viewingAllergens = true; _viewingExtras = false; _selectedId = null; _allergenSearch = ""; }
 
     /// <summary>Same as <see cref="SelectAllergensView"/>, but also closes the product form —
     /// for the "Add one" link inside it, which needs to leave that modal to reach the section.</summary>
@@ -872,7 +892,7 @@
     }
 
     // ---- Extras ---------------------------------------------------------------
-    private void SelectExtrasView() { _viewingExtras = true; _viewingAllergens = false; _selectedId = null; _extraSearch = ""; }
+    private void SelectExtrasView() { _lastSelectedId ??= _selectedId; _viewingExtras = true; _viewingAllergens = false; _selectedId = null; _extraSearch = ""; }
 
     /// <summary>Same as <see cref="SelectExtrasView"/>, but also closes the product form —
     /// for the "Add one" link inside it, which needs to leave that modal to reach the section.</summary>

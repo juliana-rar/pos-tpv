@@ -293,6 +293,21 @@ a { color: var(--primary); text-decoration: none; }
 .page-loading, .access-denied { display: grid; place-content: center; gap: .5rem; min-height: 60vh; text-align: center; }
 .toolbar { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
 .toolbar h1 { margin: 0; }
+/* Full-width boxed filter row — own background/border so a toolbar's worth of controls
+   (dropdowns, date pickers, search, actions) reads as one grouped bar spanning the page
+   instead of loose items floating on the page background. Shared by Billing's date-range
+   filter and the Stock tab's category/date/search filter row. */
+.filter-bar {
+    display: flex; align-items: center; flex-wrap: wrap;
+    gap: .5rem;
+    width: 100%;
+    padding: .4rem .7rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: .8rem;
+}
+.filter-bar .muted { font-size: .8rem; }
 .spacer { flex: 1; }
 .muted { color: var(--text-soft); }
 .empty { text-align: center; color: var(--text-soft); padding: 2rem; grid-column: 1 / -1; }
@@ -309,6 +324,7 @@ a { color: var(--primary); text-decoration: none; }
    beside it. The pill chrome (background/border-radius/box-shadow) lives here on the
    wrapper; the tabs and the input below are stripped of their own so only one pill shows. */
 .resv__head-date-wrap {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 0;
@@ -317,23 +333,21 @@ a { color: var(--primary); text-decoration: none; }
     box-shadow: var(--shadow-sm);
 }
 .resv__head-date-wrap .resv__head-periods { border: none; background: transparent; padding: 0; }
-/* No display:flex/fixed width here on purpose — forcing the native date control into a flex
-   box breaks its internal intrinsic sizing in Chromium and makes it overflow past whatever
-   width is set, which read as the date being "cut off". Left unset (auto), the control's
-   own layout is already left-aligned and sized tightly to its content. */
+/* A plain button standing in for what used to be a native <input type="date"> — that control's
+   own picker popover is OS/browser-themed and can render with a black background regardless of
+   the app's light theme, so the date is now picked via our own (always white, see .modal)
+   <Calendar> inside a <Modal> instead — fully within our CSS, never black. */
 .resv__head-date {
     padding: 0;
     font-size: .8rem;
     font-weight: 600;
+    font-family: inherit;
+    color: inherit;
     border: none;
     box-shadow: none;
     background: transparent;
+    cursor: pointer;
 }
-/* Chromium reserves a fixed layout gap in front of the native calendar icon that no amount of
-   margin/padding/width on ::-webkit-calendar-picker-indicator can close — it's baked into the
-   control's internal (non-stylable) layout. Hidden here entirely; .resv__head-date-icon below
-   is a real button standing in for it, right next to the digits with a gap we control. */
-.resv__head-date::-webkit-calendar-picker-indicator { display: none; }
 .resv__head-date-icon {
     display: flex; align-items: center; justify-content: center;
     flex: none;
@@ -344,6 +358,22 @@ a { color: var(--primary); text-decoration: none; }
     cursor: pointer;
 }
 .resv__head-date-icon:hover { color: var(--text); }
+/* Date dropdown — opens under the date pill (same anchored-menu pattern as .resv-policy__menu:
+   fixed backdrop to catch outside clicks, absolutely-positioned panel below the trigger). Centred
+   under the trigger since it's meant to sit under a centred pill or a plain input-like button
+   alike. Shared by the /tables reservations day picker and the Billing/Stock date-range filters. */
+.resv-date__backdrop { position: fixed; inset: 0; z-index: 20; }
+.resv-date__menu {
+    position: absolute; top: calc(100% + .4rem); left: 50%; transform: translateX(-50%); z-index: 21;
+    padding: .6rem;
+    background: var(--card); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+}
+/* Boxed date-picker trigger (looks like .input) that opens the <Calendar> dropdown above —
+   used by the Billing and Stock movement-history date-range filters. */
+.date-filter { position: relative; }
+.date-filter__btn { text-align: left; cursor: pointer; }
 /* Small, unobtrusive icon actions centred right under the date, on both screens.
    Pulled up to sit right under the date input like .tables-datebar's tight .35rem
    gap — the panel's own flex gap (1.1rem, shared with the tabs below) is too wide. */

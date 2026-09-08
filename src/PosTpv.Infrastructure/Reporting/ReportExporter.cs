@@ -41,11 +41,17 @@ public class ReportExporter : IReportExporter
         };
     }
 
-    public ExportFile ExportStock(IReadOnlyList<StockItemDto> items, IReadOnlyList<StockMovementDto> movements)
+    public ExportFile ExportStock(IReadOnlyList<StockItemDto> items, IReadOnlyList<StockMovementDto> movements, ExportFormat format)
     {
         var stamp = DateTime.Today.ToString("yyyyMMdd", Inv);
-        return new ExportFile(BuildStockExcel(items, movements),
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"stock_{stamp}.xlsx");
+        return format switch
+        {
+            ExportFormat.Csv => new ExportFile(BuildStockCsv(items, movements), "text/csv", $"stock_{stamp}.csv"),
+            ExportFormat.Pdf => new ExportFile(BuildStockPdf(items, movements), "application/pdf", $"stock_{stamp}.pdf"),
+            ExportFormat.Excel => new ExportFile(BuildStockExcel(items, movements),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"stock_{stamp}.xlsx"),
+            _ => throw new ArgumentOutOfRangeException(nameof(format))
+        };
     }
 
     private static string Money(decimal d) => d.ToString("N2", Inv);
@@ -71,6 +77,38 @@ public class ReportExporter : IReportExporter
         sb.AppendLine($"{T("Totals", "Totales")},,,,,{report.Total - report.VatTotal:F2},{report.VatTotal.ToString("F2", Inv)},{report.Total.ToString("F2", Inv)}");
         sb.AppendLine($"{T("Invoices", "Facturas")},{report.Count}");
         sb.AppendLine($"{T("Average ticket", "Ticket medio")},{report.Average.ToString("F2", Inv)}");
+
+        // UTF-8 BOM so Excel opens accented text correctly.
+        return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
+    }
+
+    private static byte[] BuildStockCsv(IReadOnlyList<StockItemDto> items, IReadOnlyList<StockMovementDto> movements)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(T("Product,Category,Stock,Unit price,Value,Last updated",
+            "Producto,Categoría,Stock,Precio unitario,Valor,Última actualización"));
+        foreach (var i in items.OrderBy(i => i.ProductName))
+        {
+            sb.Append(Csv(i.ProductName)).Append(',')
+              .Append(Csv(i.CategoryName)).Append(',')
+              .Append(i.StockQuantity.ToString("F2", Inv)).Append(',')
+              .Append(i.UnitPrice.ToString("F2", Inv)).Append(',')
+              .Append((i.StockQuantity * i.UnitPrice).ToString("F2", Inv)).Append(',')
+              .Append(Csv(i.LastUpdatedAt?.ToString("yyyy-MM-dd HH:mm", Inv))).AppendLine();
+        }
+
+        sb.AppendLine();
+        sb.AppendLine(T("Date,Product,Category,Reason,Change,Note",
+            "Fecha,Producto,Categoría,Motivo,Cambio,Nota"));
+        foreach (var m in movements.OrderByDescending(m => m.Date))
+        {
+            sb.Append(m.Date.ToString("yyyy-MM-dd HH:mm", Inv)).Append(',')
+              .Append(Csv(m.ProductName)).Append(',')
+              .Append(Csv(m.CategoryName)).Append(',')
+              .Append(Csv(m.Reason.ToString())).Append(',')
+              .Append(m.QuantityChange.ToString("F2", Inv)).Append(',')
+              .Append(Csv(m.Note)).AppendLine();
+        }
 
         // UTF-8 BOM so Excel opens accented text correctly.
         return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
@@ -334,6 +372,87 @@ public class ReportExporter : IReportExporter
                 {
                     t.Span(T("PosTPV · generated ", "PosTPV · generado el ")).FontColor("#94a3b8");
                     t.Span($"{from:yyyy-MM-dd}").FontColor("#94a3b8");
+                    t.Span(T("  ·  Page ", "  ·  Página ")).FontColor("#94a3b8");
+                    t.CurrentPageNumber().FontColor("#94a3b8");
+                    t.Span(" / ").FontColor("#94a3b8");
+                    t.TotalPages().FontColor("#94a3b8");
+                });
+            });
+        }).GeneratePdf();
+    }
+
+    private static byte[] BuildStockPdf(IReadOnlyList<StockItemDto> items, IReadOnlyList<StockMovementDto> movements)
+    {
+        var indigo = "#4f46e5";
+        var totalValue = items.Sum(i => i.StockQuantity * i.UnitPrice);
+        var outOfStock = items.Count(i => i.StockQuantity <= 0);
+
+        return Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(32);
+                page.DefaultTextStyle(x => x.FontSize(10).FontColor("#0f172a"));
+
+                page.Header().Column(col =>
+                {
+                    col.Item().Text("PosTPV").FontSize(20).Bold().FontColor(indigo);
+                    col.Item().Text(T("Stock report", "Informe de stock")).FontSize(14).SemiBold();
+                    col.Item().Text($"{T("Generated", "Generado")}: {DateTime.Now:yyyy-MM-dd HH:mm}").FontColor("#64748b");
+                });
+
+                page.Content().PaddingVertical(14).Column(col =>
+                {
+                    col.Spacing(12);
+
+                    col.Item().Row(row =>
+                    {
+                        row.Spacing(10);
+                        Summary(row, T("Products tracked", "Productos controlados"), items.Count.ToString(), indigo);
+                        Summary(row, T("Out of stock", "Sin stock"), outOfStock.ToString(), "#ef4444");
+                        Summary(row, T("Inventory value", "Valor del inventario"), Money(totalValue), "#22c55e");
+                    });
+
+                    col.Item().Text(T("Stock levels", "Niveles de stock")).FontSize(12).SemiBold();
+                    col.Item().Table(table =>
+                    {
+                        table.ColumnsDefinition(c =>
+                        {
+                            c.RelativeColumn(3);   // product
+                            c.RelativeColumn(2);   // category
+                            c.RelativeColumn(1);   // stock
+                            c.RelativeColumn(2);   // value
+                        });
+
+                        table.Header(h =>
+                        {
+                            HeaderCell(h, T("Product", "Producto"), indigo);
+                            HeaderCell(h, T("Category", "Categoría"), indigo);
+                            HeaderCell(h, T("Stock", "Stock"), indigo);
+                            HeaderCell(h, T("Value", "Valor"), indigo);
+                        });
+
+                        var zebra = false;
+                        foreach (var i in items.OrderBy(i => i.ProductName))
+                        {
+                            var bg = zebra ? "#f1f5f9" : "#ffffff";
+                            zebra = !zebra;
+                            BodyCell(table, i.ProductName, bg);
+                            BodyCell(table, i.CategoryName, bg);
+                            BodyCell(table, i.StockQuantity.ToString("N2", Inv), bg, alignRight: true);
+                            BodyCell(table, Money(i.StockQuantity * i.UnitPrice), bg, alignRight: true);
+                        }
+                    });
+
+                    if (items.Count == 0)
+                        col.Item().Text(T("No products tracked.", "No hay productos controlados.")).FontColor("#64748b");
+                });
+
+                page.Footer().AlignCenter().Text(t =>
+                {
+                    t.Span(T("PosTPV · generated ", "PosTPV · generado el ")).FontColor("#94a3b8");
+                    t.Span($"{DateTime.Now:yyyy-MM-dd}").FontColor("#94a3b8");
                     t.Span(T("  ·  Page ", "  ·  Página ")).FontColor("#94a3b8");
                     t.CurrentPageNumber().FontColor("#94a3b8");
                     t.Span(" / ").FontColor("#94a3b8");

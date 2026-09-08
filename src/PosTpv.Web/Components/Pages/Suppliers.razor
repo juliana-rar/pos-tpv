@@ -24,14 +24,14 @@
 
 <PageTitle>@Loc.T("Suppliers") · @Branding.Current.Title</PageTitle>
 
-<div class="sup-hero">
-    <h1><LucideIcon Name="truck" Size="20" /> @Loc.T("Suppliers")</h1>
+<PageHero Icon="truck" Title="@Loc.T("Suppliers")">
     <div class="tabs" role="tablist">
         <button class="tabs__opt @(_tab == "suppliers" ? "tabs__opt--on" : "")" @onclick='() => _tab = "suppliers"'><LucideIcon Name="truck" Size="16" /> @Loc.T("Suppliers")</button>
         <button class="tabs__opt @(_tab == "purchases" ? "tabs__opt--on" : "")" @onclick='SelectPurchases'><LucideIcon Name="receipt" Size="16" /> @Loc.T("Purchases")</button>
         <button class="tabs__opt @(_tab == "stock" ? "tabs__opt--on" : "")" @onclick='SelectStock'><LucideIcon Name="clipboard-list" Size="16" /> @Loc.T("Stock")</button>
+        <button class="tabs__opt @(_tab == "estadisticas" ? "tabs__opt--on" : "")" @onclick='SelectEstadisticas'><LucideIcon Name="bar-chart-3" Size="16" /> @Loc.T("Statistics")</button>
     </div>
-</div>
+</PageHero>
 
 @if (_tab == "suppliers")
 {
@@ -75,32 +75,34 @@
 }
 else if (_tab == "purchases")
 {
-    <div class="toolbar">
-        <span class="spacer"></span>
-        <div class="toolbar__search">
-            <LucideIcon Name="search" Size="15" />
-            <input class="input search" placeholder="@Loc.T("Search…")" @bind="_purchasesSearch" @bind:event="oninput" />
+    <div class="card sup-purchases-bar">
+        <div class="toolbar sup-purchases-toolbar">
+            <span class="spacer"></span>
+            <div class="toolbar__search">
+                <LucideIcon Name="search" Size="15" />
+                <input class="input search" placeholder="@Loc.T("Search…")" @bind="_purchasesSearch" @bind:event="oninput" />
+            </div>
+            <div class="albaran-scan-menu">
+                <button class="btn btn--ghost" @onclick="ToggleAlbaranUploadMenu"><LucideIcon Name="camera" Size="16" /> @Loc.T("Scan delivery note") <LucideIcon Name="chevron-down" Size="14" /></button>
+                @if (_albaranUploadMenuOpen)
+                {
+                    <div class="albaran-scan-menu__backdrop" @onclick="CloseAlbaranUploadMenu"></div>
+                    <div class="albaran-scan-menu__panel" @onclick:stopPropagation="true">
+                        <label class="albaran-scan-menu__item docpick">
+                            <LucideIcon Name="camera" Size="16" /> @Loc.T("Take photo")
+                            <InputFile OnChange="OnAlbaranPhotoSelected" class="docpick__input" accept="image/*" capture="environment" />
+                        </label>
+                        <label class="albaran-scan-menu__item docpick">
+                            <LucideIcon Name="upload" Size="16" /> @Loc.T("Choose file")
+                            <InputFile OnChange="OnAlbaranPhotoSelected" class="docpick__input" accept="image/*" />
+                        </label>
+                        <p class="muted albaran-scan-menu__hint">@Loc.T("On mobile, \"Choose file\" also lets you pick from Google Drive, Photos or other apps installed on the device.")</p>
+                        @if (_albaranUploadError is not null) { <div class="field-error">@_albaranUploadError</div> }
+                    </div>
+                }
+            </div>
+            <button class="btn btn--primary" @onclick="OpenPurchaseForm" disabled="@(_suppliers.Count == 0)"><LucideIcon Name="plus" Size="16" /> @Loc.T("New purchase")</button>
         </div>
-        <div class="albaran-scan-menu">
-            <button class="btn btn--ghost" @onclick="ToggleAlbaranUploadMenu"><LucideIcon Name="camera" Size="16" /> @Loc.T("Scan delivery note") <LucideIcon Name="chevron-down" Size="14" /></button>
-            @if (_albaranUploadMenuOpen)
-            {
-                <div class="albaran-scan-menu__backdrop" @onclick="CloseAlbaranUploadMenu"></div>
-                <div class="albaran-scan-menu__panel" @onclick:stopPropagation="true">
-                    <label class="albaran-scan-menu__item docpick">
-                        <LucideIcon Name="camera" Size="16" /> @Loc.T("Take photo")
-                        <InputFile OnChange="OnAlbaranPhotoSelected" class="docpick__input" accept="image/*" capture="environment" />
-                    </label>
-                    <label class="albaran-scan-menu__item docpick">
-                        <LucideIcon Name="upload" Size="16" /> @Loc.T("Choose file")
-                        <InputFile OnChange="OnAlbaranPhotoSelected" class="docpick__input" accept="image/*" />
-                    </label>
-                    <p class="muted albaran-scan-menu__hint">@Loc.T("On mobile, \"Choose file\" also lets you pick from Google Drive, Photos or other apps installed on the device.")</p>
-                    @if (_albaranUploadError is not null) { <div class="field-error">@_albaranUploadError</div> }
-                </div>
-            }
-        </div>
-        <button class="btn btn--primary" @onclick="OpenPurchaseForm" disabled="@(_suppliers.Count == 0)"><LucideIcon Name="plus" Size="16" /> @Loc.T("New purchase")</button>
     </div>
 
     @if (_albaranDetail is not null && _albaranEditForm is not null)
@@ -259,34 +261,8 @@ else if (_tab == "purchases")
 }
 else if (_tab == "stock")
 {
-    <div class="dash__metrics sup-metrics">
-        <div class="metric card"><span class="metric__label">@Loc.T("Products tracked")</span><span class="metric__value">@_stock.Count</span></div>
-        <div class="metric card"><span class="metric__label">@Loc.T("Units in stock")</span><span class="metric__value">@_stock.Sum(s => s.StockQuantity).ToString("N0")</span></div>
-        <div class="metric card" data-status="@(OutOfStockCount > 0 ? "alert" : "ok")"><span class="metric__label">@Loc.T("Out of stock")</span><span class="metric__value">@OutOfStockCount</span></div>
-        <div class="metric card"><span class="metric__label">@Loc.T("Categories")</span><span class="metric__value">@StockCategories.Count</span></div>
-        <div class="metric card"><span class="metric__label">@Loc.T("Inventory value")</span><span class="metric__value">@TotalStockValue.ToString("N2")</span></div>
-    </div>
-
-    @if (StockValueByCategory.Count > 1)
-    {
-        <div class="card sup-stock-cats">
-            <h2 class="sup-stock-cats__title"><LucideIcon Name="bar-chart-3" Size="16" /> @Loc.T("Stock by category")</h2>
-            <div class="sup-stock-cats__list">
-                @foreach (var c in StockValueByCategory)
-                {
-                    <div class="sup-stock-cats__row">
-                        <span class="sup-stock-cats__name">@c.Name</span>
-                        <span class="sup-stock-cats__bar"><span style="--pct:@(c.Pct)%"></span></span>
-                        <span class="sup-stock-cats__units">@c.Units.ToString("N0") @Loc.T("units")</span>
-                        <span class="sup-stock-cats__value">@c.Value.ToString("N2")</span>
-                        <span class="sup-stock-cats__pct">@c.Pct%</span>
-                    </div>
-                }
-            </div>
-        </div>
-    }
-
     <div class="toolbar">
+      <div class="filter-bar">
         <div class="sup-dd">
             <button type="button" class="sup-dd__trigger" @onclick="() => _stockCategoryDropdownOpen = !_stockCategoryDropdownOpen">
                 <span>@(_stockCategoryFilter == 0 ? Loc.T("All categories") : StockCategories.First(c => c.Id == _stockCategoryFilter).Name)</span>
@@ -304,12 +280,53 @@ else if (_tab == "stock")
                 </div>
             }
         </div>
+        <label class="muted">@Loc.T("From")</label>
+        <div class="date-filter">
+            <button type="button" class="input date-filter__btn" style="max-width:150px" @onclick="() => _stockFromPickerOpen = !_stockFromPickerOpen">@(_stockDateFrom?.ToString("dd/MM/yyyy") ?? Loc.T("Any"))</button>
+            @if (_stockFromPickerOpen)
+            {
+                <div class="resv-date__backdrop" @onclick="() => _stockFromPickerOpen = false"></div>
+                <div class="resv-date__menu" @onclick:stopPropagation="true">
+                    <Calendar Value="_stockDateFrom ?? DateTime.Today" ValueChanged="PickStockFrom" />
+                </div>
+            }
+        </div>
+        <label class="muted">@Loc.T("To")</label>
+        <div class="date-filter">
+            <button type="button" class="input date-filter__btn" style="max-width:150px" @onclick="() => _stockToPickerOpen = !_stockToPickerOpen">@(_stockDateTo?.ToString("dd/MM/yyyy") ?? Loc.T("Any"))</button>
+            @if (_stockToPickerOpen)
+            {
+                <div class="resv-date__backdrop" @onclick="() => _stockToPickerOpen = false"></div>
+                <div class="resv-date__menu" @onclick:stopPropagation="true">
+                    <Calendar Value="_stockDateTo ?? DateTime.Today" ValueChanged="PickStockTo" />
+                </div>
+            }
+        </div>
+        @if (_stockDateFrom is not null || _stockDateTo is not null)
+        {
+            <button class="btn btn--ghost btn--sm" @onclick="ClearStockDates"><LucideIcon Name="x" Size="13" /> @Loc.T("Clear filters")</button>
+        }
         <span class="spacer"></span>
         <div class="toolbar__search">
             <LucideIcon Name="search" Size="15" />
             <input class="input search" placeholder="@Loc.T("Search…")" @bind="_stockSearch" @bind:event="oninput" />
         </div>
-        <a class="btn btn--ghost" href="/export/stock" target="_blank" rel="noopener"><LucideIcon Name="download" Size="16" /> @Loc.T("Export")</a>
+        <div class="sup-dd">
+            <button type="button" class="btn btn--ghost" @onclick="() => _stockExportDropdownOpen = !_stockExportDropdownOpen">
+                <LucideIcon Name="download" Size="16" /> @Loc.T("Export")
+                <LucideIcon Name="chevron-down" Size="13" />
+            </button>
+            @if (_stockExportDropdownOpen)
+            {
+                <div class="sup-dd__backdrop" @onclick="() => _stockExportDropdownOpen = false"></div>
+                <div class="sup-dd__menu">
+                    <a class="sup-dd__opt" href="/export/stock?format=csv" target="_blank" rel="noopener" @onclick="() => _stockExportDropdownOpen = false">CSV</a>
+                    <a class="sup-dd__opt" href="/export/stock?format=xlsx" target="_blank" rel="noopener" @onclick="() => _stockExportDropdownOpen = false">Excel</a>
+                    <a class="sup-dd__opt" href="/export/stock?format=pdf" target="_blank" rel="noopener" @onclick="() => _stockExportDropdownOpen = false">PDF</a>
+                </div>
+            }
+        </div>
+      </div>
     </div>
     <div class="card" style="padding:1rem 1.2rem">
         @if (FilteredStock.Count == 0)
@@ -395,9 +412,27 @@ else if (_tab == "stock")
         }
         <span class="spacer"></span>
         <label class="muted">@Loc.T("From")</label>
-        <input type="date" class="input" style="max-width:150px" @bind="_stockMoveDateFrom" />
+        <div class="date-filter">
+            <button type="button" class="input date-filter__btn" style="max-width:150px" @onclick="() => _stockMoveFromPickerOpen = !_stockMoveFromPickerOpen">@(_stockMoveDateFrom?.ToString("dd/MM/yyyy") ?? Loc.T("Any"))</button>
+            @if (_stockMoveFromPickerOpen)
+            {
+                <div class="resv-date__backdrop" @onclick="() => _stockMoveFromPickerOpen = false"></div>
+                <div class="resv-date__menu" @onclick:stopPropagation="true">
+                    <Calendar Value="_stockMoveDateFrom ?? DateTime.Today" ValueChanged="PickStockMoveFrom" />
+                </div>
+            }
+        </div>
         <label class="muted">@Loc.T("To")</label>
-        <input type="date" class="input" style="max-width:150px" @bind="_stockMoveDateTo" />
+        <div class="date-filter">
+            <button type="button" class="input date-filter__btn" style="max-width:150px" @onclick="() => _stockMoveToPickerOpen = !_stockMoveToPickerOpen">@(_stockMoveDateTo?.ToString("dd/MM/yyyy") ?? Loc.T("Any"))</button>
+            @if (_stockMoveToPickerOpen)
+            {
+                <div class="resv-date__backdrop" @onclick="() => _stockMoveToPickerOpen = false"></div>
+                <div class="resv-date__menu" @onclick:stopPropagation="true">
+                    <Calendar Value="_stockMoveDateTo ?? DateTime.Today" ValueChanged="PickStockMoveTo" />
+                </div>
+            }
+        </div>
         @if (_stockMoveDateFrom is not null || _stockMoveDateTo is not null || _stockMoveProductFilter is not null)
         {
             <button class="btn btn--ghost btn--sm" @onclick="ClearStockMoveDates"><LucideIcon Name="x" Size="13" /> @Loc.T("Clear filters")</button>
@@ -430,6 +465,35 @@ else if (_tab == "stock")
             </table>
         }
     </div>
+}
+else if (_tab == "estadisticas")
+{
+    <div class="dash__metrics sup-metrics">
+        <div class="metric card"><span class="metric__label">@Loc.T("Products tracked")</span><span class="metric__value">@_stock.Count</span></div>
+        <div class="metric card"><span class="metric__label">@Loc.T("Units in stock")</span><span class="metric__value">@_stock.Sum(s => s.StockQuantity).ToString("N0")</span></div>
+        <div class="metric card" data-status="@(OutOfStockCount > 0 ? "alert" : "ok")"><span class="metric__label">@Loc.T("Out of stock")</span><span class="metric__value">@OutOfStockCount</span></div>
+        <div class="metric card"><span class="metric__label">@Loc.T("Categories")</span><span class="metric__value">@StockCategories.Count</span></div>
+        <div class="metric card"><span class="metric__label">@Loc.T("Inventory value")</span><span class="metric__value">@TotalStockValue.ToString("N2")</span></div>
+    </div>
+
+    @if (StockValueByCategory.Count > 1)
+    {
+        <div class="card sup-stock-cats">
+            <h2 class="sup-stock-cats__title"><LucideIcon Name="bar-chart-3" Size="16" /> @Loc.T("Stock by category")</h2>
+            <div class="sup-stock-cats__list">
+                @foreach (var c in StockValueByCategory)
+                {
+                    <div class="sup-stock-cats__row">
+                        <span class="sup-stock-cats__name">@c.Name</span>
+                        <span class="sup-stock-cats__bar"><span style="--pct:@(c.Pct)%"></span></span>
+                        <span class="sup-stock-cats__units">@c.Units.ToString("N0") @Loc.T("units")</span>
+                        <span class="sup-stock-cats__value">@c.Value.ToString("N2")</span>
+                        <span class="sup-stock-cats__pct">@c.Pct%</span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
 }
 @* ---- Supplier form + documents ------------------------------------------- *@
 <Modal Visible="_supplierForm is not null" Title="@(_supplierForm?.Id > 0 ? Loc.T("Edit supplier") : Loc.T("New supplier"))" OnClose="CloseSupplierForm">
@@ -543,11 +607,48 @@ else if (_tab == "stock")
     private int _stockCategoryFilter;
     private bool _stockCategoryDropdownOpen;
     private void SelectStockCategory(int id) { _stockCategoryFilter = id; _stockCategoryDropdownOpen = false; }
+    private DateTime? _stockDateFrom;
+    private DateTime? _stockDateTo;
+    private bool _stockFromPickerOpen;
+    private bool _stockToPickerOpen;
+    private bool _stockExportDropdownOpen;
+
+    private void PickStockFrom(DateTime date)
+    {
+        _stockDateFrom = date;
+        _stockFromPickerOpen = false;
+    }
+
+    private void PickStockTo(DateTime date)
+    {
+        _stockDateTo = date;
+        _stockToPickerOpen = false;
+    }
+
+    private void ClearStockDates()
+    {
+        _stockDateFrom = null;
+        _stockDateTo = null;
+    }
     private string _purchasesSearch = "";
     private DateTime? _stockMoveDateFrom;
     private DateTime? _stockMoveDateTo;
+    private bool _stockMoveFromPickerOpen;
+    private bool _stockMoveToPickerOpen;
     private int? _stockMoveProductFilter;
     private string _stockMoveProductName = "";
+
+    private void PickStockMoveFrom(DateTime date)
+    {
+        _stockMoveDateFrom = date;
+        _stockMoveFromPickerOpen = false;
+    }
+
+    private void PickStockMoveTo(DateTime date)
+    {
+        _stockMoveDateTo = date;
+        _stockMoveToPickerOpen = false;
+    }
 
     private void FilterStockMovesByProduct(int productId)
     {
@@ -630,7 +731,9 @@ else if (_tab == "stock")
         {
             var q = _stock.Where(s =>
                 (string.IsNullOrWhiteSpace(_stockSearch) || s.ProductName.Contains(_stockSearch, StringComparison.OrdinalIgnoreCase)) &&
-                (_stockCategoryFilter == 0 || s.CategoryId == _stockCategoryFilter));
+                (_stockCategoryFilter == 0 || s.CategoryId == _stockCategoryFilter) &&
+                (_stockDateFrom is null || (s.LastUpdatedAt is not null && s.LastUpdatedAt.Value.Date >= _stockDateFrom.Value.Date)) &&
+                (_stockDateTo is null || (s.LastUpdatedAt is not null && s.LastUpdatedAt.Value.Date <= _stockDateTo.Value.Date)));
 
             IEnumerable<StockItemDto> sorted = _stockSortField switch
             {
@@ -764,6 +867,12 @@ else if (_tab == "stock")
         _tab = "stock";
         _stock = await StockService.GetAllAsync();
         _stockMovements = await StockService.GetAllMovementsAsync();
+    }
+
+    private async Task SelectEstadisticas()
+    {
+        _tab = "estadisticas";
+        _stock = await StockService.GetAllAsync();
     }
 
     // ---- Suppliers ----------------------------------------------------------

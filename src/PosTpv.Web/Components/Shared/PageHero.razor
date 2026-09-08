@@ -1,0 +1,14 @@
+@* Centered page-title banner — icon + name flanked by gradient hairlines, optionally holding
+   a tab switcher underneath (see Suppliers.razor). Shared so every page that wants this
+   "hero" title treatment (first used on Suppliers) looks identical instead of each page
+   re-implementing its own copy of the chrome. *@
+<div class="page-hero">
+    <h1><LucideIcon Name="@Icon" Size="20" /> @Title</h1>
+    @ChildContent
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Icon { get; set; } = "";
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

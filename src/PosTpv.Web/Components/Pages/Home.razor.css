@@ -7,6 +7,10 @@
 }
 
 
+.dash__section { display: grid; gap: .8rem; }
+.dash__section-head { display: flex; align-items: center; justify-content: space-between; }
+.dash__section-head h2 { margin: 0; }
+
 .dash__panel { padding: 1.2rem 1.4rem; }
 .dash__table { width: 100%; border-collapse: collapse; }
 .dash__table th { text-align: left; color: var(--text-soft); font-size: .8rem; padding: .5rem .4rem; border-bottom: 1px solid var(--border); }

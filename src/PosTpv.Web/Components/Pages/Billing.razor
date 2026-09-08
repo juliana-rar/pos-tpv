@@ -1,25 +1,55 @@
 @page "/billing"
 @rendermode InteractiveServer
 @attribute [Authorize(Roles = "Admin,Cashier")]
-@using System.Globalization
 @inject IBillingService BillingSvc
 @inject AppSettingsCache Branding
 @inject IJSRuntime JS
 
 <PageTitle>Billing · @Branding.Current.Title</PageTitle>
 
+<PageHero Icon="receipt" Title="@Loc.T("Billing")" />
+
 <div class="toolbar">
-    <h1>@Loc.T("Billing")</h1>
-    <span class="spacer"></span>
-    <label class="muted">@Loc.T("From")</label>
-    <input type="date" class="input" style="max-width:170px" @bind="_from" @bind:after="Load" />
-    <label class="muted">@Loc.T("To")</label>
-    <input type="date" class="input" style="max-width:170px" @bind="_to" @bind:after="Load" />
-    <span class="export-group">
-        <a class="btn btn--ghost" href="@ExportUrl("csv")" target="_blank" rel="noopener"><LucideIcon Name="download" Size="16" />CSV</a>
-        <a class="btn btn--ghost" href="@ExportUrl("xlsx")" target="_blank" rel="noopener"><LucideIcon Name="download" Size="16" />Excel</a>
-        <a class="btn btn--primary" href="@ExportUrl("pdf")" target="_blank" rel="noopener"><LucideIcon Name="download" Size="16" />PDF</a>
-    </span>
+    <div class="filter-bar">
+        <label class="muted">@Loc.T("From")</label>
+        <div class="date-filter">
+            <button type="button" class="input date-filter__btn" @onclick="() => _fromPickerOpen = !_fromPickerOpen">@_from.ToString("dd/MM/yyyy")</button>
+            @if (_fromPickerOpen)
+            {
+                <div class="resv-date__backdrop" @onclick="() => _fromPickerOpen = false"></div>
+                <div class="resv-date__menu" @onclick:stopPropagation="true">
+                    <Calendar Value="_from" ValueChanged="PickFrom" />
+                </div>
+            }
+        </div>
+        <label class="muted">@Loc.T("To")</label>
+        <div class="date-filter">
+            <button type="button" class="input date-filter__btn" @onclick="() => _toPickerOpen = !_toPickerOpen">@_to.ToString("dd/MM/yyyy")</button>
+            @if (_toPickerOpen)
+            {
+                <div class="resv-date__backdrop" @onclick="() => _toPickerOpen = false"></div>
+                <div class="resv-date__menu" @onclick:stopPropagation="true">
+                    <Calendar Value="_to" ValueChanged="PickTo" />
+                </div>
+            }
+        </div>
+        <span class="spacer"></span>
+        <div class="bill-dd">
+            <button type="button" class="btn btn--primary" @onclick="() => _exportDropdownOpen = !_exportDropdownOpen">
+                <LucideIcon Name="download" Size="16" />@Loc.T("Download")
+                <LucideIcon Name="chevron-down" Size="13" />
+            </button>
+            @if (_exportDropdownOpen)
+            {
+                <div class="bill-dd__backdrop" @onclick="() => _exportDropdownOpen = false"></div>
+                <div class="bill-dd__menu">
+                    <a class="bill-dd__opt" href="@ExportUrl("csv")" target="_blank" rel="noopener" @onclick="() => _exportDropdownOpen = false">CSV</a>
+                    <a class="bill-dd__opt" href="@ExportUrl("xlsx")" target="_blank" rel="noopener" @onclick="() => _exportDropdownOpen = false">Excel</a>
+                    <a class="bill-dd__opt" href="@ExportUrl("pdf")" target="_blank" rel="noopener" @onclick="() => _exportDropdownOpen = false">PDF</a>
+                </div>
+            }
+        </div>
+    </div>
 </div>
 
 @if (_report is null)
@@ -28,83 +58,6 @@
 }
 else
 {
-    <div class="dash__metrics" style="margin-bottom:1.2rem">
-        <div class="metric card"><span class="metric__label">@Loc.T("Revenue")</span><span class="metric__value">@_report.Total.ToString("N2")</span></div>
-        <div class="metric card"><span class="metric__label">@Loc.T("VAT collected")</span><span class="metric__value">@_report.VatTotal.ToString("N2")</span></div>
-        <div class="metric card"><span class="metric__label">@Loc.T("Invoices")</span><span class="metric__value">@_report.Count</span></div>
-        <div class="metric card"><span class="metric__label">@Loc.T("Average ticket")</span><span class="metric__value">@_report.Average.ToString("N2")</span></div>
-    </div>
-
-    <div class="charts">
-        <div class="card chart">
-            <h2>@Loc.T("Revenue by day")</h2>
-            @if (_report.Daily.All(d => d.Total == 0))
-            {
-                <p class="empty">@Loc.T("No revenue in this range.")</p>
-            }
-            else
-            {
-                var maxDaily = _report.Daily.Max(d => d.Total);
-                <div class="bars">
-                    @foreach (var d in _report.Daily)
-                    {
-                        var h = maxDaily > 0 ? (double)(d.Total / maxDaily) * 100 : 0;
-                        <div class="bars__col" title="@d.Date.ToString("dd/MM/yyyy"): @d.Total.ToString("N2")">
-                            <div class="bars__track">
-                                <div class="bars__bar" style="height:@h.ToString("0.##", Inv)%"></div>
-                            </div>
-                            <span class="bars__label">@d.Date.ToString("dd/MM")</span>
-                        </div>
-                    }
-                </div>
-            }
-        </div>
-
-        <div class="card chart">
-            <h2>@Loc.T("Payment methods")</h2>
-            @{ var slices = MethodSlices(); }
-            @if (slices.Count == 0)
-            {
-                <p class="empty">@Loc.T("No payments in this range.")</p>
-            }
-            else
-            {
-                <div class="donut-wrap">
-                    <svg viewBox="0 0 42 42" class="donut" role="img">
-                        @if (slices.Count == 1)
-                        {
-                            <circle cx="21" cy="21" r="21" fill="@slices[0].Color" />
-                        }
-                        else
-                        {
-                            double ang = -90;
-                            @foreach (var s in slices)
-                            {
-                                var sweep = s.Pct / 100.0 * 360.0;
-                                var (x1, y1) = Pt(ang);
-                                var (x2, y2) = Pt(ang + sweep);
-                                var large = sweep > 180 ? 1 : 0;
-                                <path d="@($"M21,21 L{F(x1)},{F(y1)} A21,21 0 {large} 1 {F(x2)},{F(y2)} Z")" fill="@s.Color" />
-                                ang += sweep;
-                            }
-                        }
-                        <circle cx="21" cy="21" r="12" class="donut__hole" />
-                    </svg>
-                    <div class="legend2">
-                        @foreach (var s in slices)
-                        {
-                            <div class="legend2__item">
-                                <span class="legend2__dot" style="background:@s.Color"></span>
-                                <span class="legend2__label">@s.Label</span>
-                                <span class="legend2__val">@s.Amount.ToString("N2") · @s.Pct.ToString("0", Inv)%</span>
-                            </div>
-                        }
-                    </div>
-                </div>
-            }
-        </div>
-    </div>
-
     <div class="card" style="padding:1rem 1.2rem">
         @if (_report.Invoices.Count == 0)
         {
@@ -145,14 +98,17 @@ else
         {
             <div class="invoice">
                 <div class="invoice__head">
-                    <div>
-                        <strong class="invoice__brand">@Branding.Current.Title</strong>
-                        <div class="muted">@_detail.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                    <div class="invoice__brand-row">
+                        <span class="invoice__icon"><LucideIcon Name="receipt" Size="18" /></span>
+                        <div>
+                            <strong class="invoice__brand">@Branding.Current.Title</strong>
+                            <div class="muted">@_detail.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                        </div>
                     </div>
                     <div class="invoice__meta">
-                        <div><span class="muted">@Loc.T("Order")</span> @_detail.OrderNumber</div>
-                        <div><span class="muted">@Loc.T("Table")</span> @_detail.TableName</div>
-                        <div><span class="muted">@Loc.T("Waiter")</span> @_detail.WaiterName</div>
+                        <span class="invoice__chip" title="@Loc.T("Order")"><LucideIcon Name="clipboard-list" Size="13" /> @_detail.OrderNumber</span>
+                        <span class="invoice__chip" title="@Loc.T("Table")"><LucideIcon Name="armchair" Size="13" /> @_detail.TableName</span>
+                        <span class="invoice__chip" title="@Loc.T("Waiter")"><LucideIcon Name="user" Size="13" /> @_detail.WaiterName</span>
                     </div>
                 </div>
 
@@ -234,9 +190,26 @@ else
     private bool _detailLoading;
     private DateTime _from = DateTime.Today.AddDays(-7);
     private DateTime _to = DateTime.Today;
+    private bool _exportDropdownOpen;
+    private bool _fromPickerOpen;
+    private bool _toPickerOpen;
 
     protected override async Task OnInitializedAsync() => await Load();
     private async Task Load() => _report = await BillingSvc.GetReportAsync(_from, _to);
+
+    private async Task PickFrom(DateTime date)
+    {
+        _from = date;
+        _fromPickerOpen = false;
+        await Load();
+    }
+
+    private async Task PickTo(DateTime date)
+    {
+        _to = date;
+        _toPickerOpen = false;
+        await Load();
+    }
 
     private async Task OpenDetail(int invoiceId)
     {
@@ -251,35 +224,4 @@ else
 
     private string ExportUrl(string format) =>
         $"/export/billing?from={_from:yyyy-MM-dd}&to={_to:yyyy-MM-dd}&format={format}";
-
-    private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
-
-    private record Slice(string Label, decimal Amount, double Pct, string Color);
-
-    private List<Slice> MethodSlices()
-    {
-        var list = new List<Slice>();
-        if (_report is null) return list;
-        var total = _report.ByMethod.Sum(m => m.Amount);
-        if (total <= 0) return list;
-        foreach (var m in _report.ByMethod.OrderByDescending(x => x.Amount))
-            list.Add(new Slice(Loc.T(m.Method.ToString()), m.Amount, (double)(m.Amount / total) * 100.0, MethodColor(m.Method)));
-        return list;
-    }
-
-    private static string MethodColor(PaymentMethod m) => m switch
-    {
-        PaymentMethod.Cash => "#22c55e",
-        PaymentMethod.Card => "#6366f1",
-        _ => "#f59e0b"
-    };
-
-    // Point on the pie circle (r = 21, centre 21,21) for the given angle in degrees.
-    private static (double x, double y) Pt(double deg)
-    {
-        var r = deg * Math.PI / 180.0;
-        return (21 + 21 * Math.Cos(r), 21 + 21 * Math.Sin(r));
-    }
-
-    private static string F(double v) => v.ToString("0.###", Inv);
 }

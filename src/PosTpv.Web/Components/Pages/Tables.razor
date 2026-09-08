@@ -430,8 +430,15 @@
                                 <LucideIcon Name="moon" Size="10" />
                             </button>
                         </div>
-                        <input @ref="_dateInputEl" type="date" class="input resv__head-date" @bind="_reserveDate" @bind:after="LoadReservations" />
-                        <button type="button" class="resv__head-date-icon" title="@Loc.T("Pick a date")" @onclick="OpenDatePicker"><LucideIcon Name="calendar" Size="14" /></button>
+                        <button type="button" class="resv__head-date" @onclick="() => _showDatePicker = !_showDatePicker">@_reserveDate.ToString("dd/MM/yyyy")</button>
+                        <button type="button" class="resv__head-date-icon" title="@Loc.T("Pick a date")" @onclick="() => _showDatePicker = !_showDatePicker"><LucideIcon Name="calendar" Size="14" /></button>
+                        @if (_showDatePicker)
+                        {
+                            <div class="resv-date__backdrop" @onclick="() => _showDatePicker = false"></div>
+                            <div class="resv-date__menu" @onclick:stopPropagation="true">
+                                <Calendar Value="_reserveDate" ValueChanged="PickReserveDate" />
+                            </div>
+                        }
                     </div>
                     <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Next day")" @onclick="() => ShiftDay(1)"><LucideIcon Name="arrow-right" Size="11" /></button>
                 </div>
@@ -1241,8 +1248,13 @@
     // Docked to the left of the floor plan (visually, via CSS order).
     private bool _mapExpanded;
     private DateTime _reserveDate = DateTime.Today;
-    private ElementReference _dateInputEl;
-    private Task OpenDatePicker() => JS.InvokeVoidAsync("posShowDatePicker", _dateInputEl).AsTask();
+    private bool _showDatePicker;
+    private Task PickReserveDate(DateTime date)
+    {
+        _reserveDate = date;
+        _showDatePicker = false;
+        return LoadReservations();
+    }
     private List<ReservationDto> _reservations = new();
     private ServicePeriod? _periodFilter;
 

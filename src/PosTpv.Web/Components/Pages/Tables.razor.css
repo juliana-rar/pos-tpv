@@ -1368,6 +1368,9 @@
 .resv__day-nav-side { display: flex; align-items: center; gap: .3rem; }
 .resv__day-nav-side--end { justify-content: flex-end; }
 .resv__day-nav-center { display: flex; align-items: center; gap: .05rem; justify-self: center; }
+/* Wider than the shared app.css default (which sizes to the text) so the date pill
+   doesn't feel cramped between the prev/next arrows on this panel. */
+.resv__day-nav-center .resv__head-date { min-width: 5.6rem; text-align: center; }
 /* Compact Lunch/Dinner toggle, nested inside .resv__day-nav to its left — click the
    active one again to clear the filter, so no separate "All" option is needed. */
 .resv__head-periods { margin: 0; padding: 2px; flex: none; }
@@ -1379,6 +1382,9 @@
 
 /* Day nav (.resv__day-nav / .resv__head-date) and the small icon actions under it
    (.resv__stats-btn) now live in app.css — shared with the reservations dashboard. */
+
+/* .resv-date__backdrop / .resv-date__menu (the Calendar dropdown) now live in app.css —
+   shared with the Billing date-range filter. */
 
 .resv__list { flex: 1 1 auto; overflow: auto; padding: .5rem .8rem .8rem; display: flex; flex-direction: column; gap: .35rem; }
 

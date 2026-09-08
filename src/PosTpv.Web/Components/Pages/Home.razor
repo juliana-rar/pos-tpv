@@ -1,6 +1,7 @@
 @page "/dashboard"
 @rendermode InteractiveServer
 @inject IDashboardService Dashboard
+@inject IBillingService BillingSvc
 @inject AppSettingsCache Branding
 
 <PageTitle>@Loc.T("Dashboard") · @Branding.Current.Title</PageTitle>
@@ -45,6 +46,23 @@ else
             </div>
         </div>
 
+        <AuthorizeView Roles="Admin,Cashier" Context="auth">
+            <div class="dash__section">
+                <div class="dash__section-head">
+                    <h2>@Loc.T("Billing")</h2>
+                    <a class="btn btn--ghost btn--sm" href="/billing">@Loc.T("View report") <LucideIcon Name="arrow-right" Size="14" /></a>
+                </div>
+                @if (_billing is null)
+                {
+                    <p class="empty">@Loc.T("Loading…")</p>
+                }
+                else
+                {
+                    <BillingStatsPanel Report="_billing" />
+                }
+            </div>
+        </AuthorizeView>
+
         <div class="dash__panel card">
             <h2>@Loc.T("Top products")</h2>
             @if (_data.TopProducts.Count == 0)
@@ -74,9 +92,22 @@ else
 }
 
 @code {
-    private DashboardDto? _data;
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
-    protected override async Task OnInitializedAsync() => _data = await Dashboard.GetAsync();
+    private DashboardDto? _data;
+    private BillingReportDto? _billing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _data = await Dashboard.GetAsync();
+
+        var auth = AuthState is null ? null : await AuthState;
+        if (auth is not null && (auth.User.IsInRole("Admin") || auth.User.IsInRole("Cashier")))
+        {
+            var monthStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            _billing = await BillingSvc.GetReportAsync(monthStart, DateTime.Today);
+        }
+    }
 
     private string CurrentPeriodLabel()
     {
