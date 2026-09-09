@@ -7,6 +7,20 @@
 }
 
 .page-hero .tabs { margin: 0; }
+/* Active Productos/Alérgenos/Extras tab: light-grey + shadow instead of the app-wide blue
+   --primary fill, on repeated request — same "no blue" treatment already applied to this
+   page's focus rings and empty product thumbs below. */
+.tabs__opt--on {
+    background: color-mix(in srgb, var(--card-2) 65%, var(--border) 35%);
+    color: var(--text);
+    box-shadow: var(--shadow), inset 0 0 0 1px color-mix(in srgb, var(--border) 60%, transparent);
+}
+/* Kill the browser's default blue focus ring these buttons get on click — the grey
+   background/shadow above is already enough of an active-state signal. */
+.tabs__opt:focus, .tabs__opt:focus-visible { outline: none; box-shadow: none; }
+.tabs__opt--on:focus, .tabs__opt--on:focus-visible {
+    box-shadow: var(--shadow), inset 0 0 0 1px color-mix(in srgb, var(--border) 60%, transparent);
+}
 /* Grid (not flex+spacer) so the tab switcher sits truly centered in the row — the two
    1fr side columns always claim equal space regardless of how wide .page-hero__actions
    is, instead of the tabs drifting left of center like a flex layout with a single
@@ -184,6 +198,15 @@
 }
 .toolbar__search .input:hover { border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); box-shadow: var(--shadow); }
 .toolbar__search:focus-within ::deep svg { color: var(--primary); }
+
+/* Focused inputs on this page (search bar + every form inside its modals) get a neutral
+   light-grey ring instead of the app-wide blue --primary one, on request — keeps this
+   catalogue's palette restrained rather than flashing the brand colour on every keystroke. */
+.catalog .input:focus, .catalog .select:focus, .catalog textarea.input:focus,
+.modal-backdrop ::deep .input:focus, .modal-backdrop ::deep .select:focus, .modal-backdrop ::deep textarea.input:focus {
+    border-color: color-mix(in srgb, var(--text-soft) 45%, var(--border));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-soft) 15%, transparent);
+}
 /* Auto-fill instead of a fixed 4-up grid so cards keep a sane minimum width at any viewport
    (mobile-first minmax(), no hardcoded breakpoint math) — and a real gutter between cards
    instead of gap:0, so each one reads as its own bordered surface rather than a flush cell in
@@ -233,18 +256,19 @@
 .mgmt-card:hover .mgmt-card__thumb img { transform: scale(1.08); }
 /* Products without their own photo still get a tinted tile instead of no icon at all — a soft
    tint of the product's own accent colour, consistent whether or not an item has real
-   photography yet. */
+   photography yet. Falls back to a neutral grey (not --primary) so products without a custom
+   colour don't default to a blue glow. */
 .mgmt-card__thumb--empty {
     display: grid; place-items: center;
     background:
-        radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--prod, var(--primary)) 22%, transparent), transparent 65%),
+        radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--prod, var(--text-soft)) 22%, transparent), transparent 65%),
         var(--card-2);
 }
 .mgmt-card__thumb--empty span {
     width: 6px; height: 6px;
     border-radius: 50%;
-    background: var(--prod, var(--primary));
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--prod, var(--primary)) 16%, transparent);
+    background: var(--prod, var(--text-soft));
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--prod, var(--text-soft)) 16%, transparent);
 }
 .mgmt-card__head { min-width: 0; align-items: flex-start; }
 .mgmt-card__head strong {

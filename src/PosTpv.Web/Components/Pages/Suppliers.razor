@@ -25,20 +25,73 @@
 <PageTitle>@Loc.T("Suppliers") · @Branding.Current.Title</PageTitle>
 
 <PageHero Icon="truck" Title="@Loc.T("Suppliers")">
-    <div class="tabs" role="tablist">
-        <button class="tabs__opt @(_tab == "suppliers" ? "tabs__opt--on" : "")" @onclick='() => _tab = "suppliers"'><LucideIcon Name="truck" Size="16" /> @Loc.T("Suppliers")</button>
-        <button class="tabs__opt @(_tab == "purchases" ? "tabs__opt--on" : "")" @onclick='SelectPurchases'><LucideIcon Name="receipt" Size="16" /> @Loc.T("Purchases")</button>
-        <button class="tabs__opt @(_tab == "stock" ? "tabs__opt--on" : "")" @onclick='SelectStock'><LucideIcon Name="clipboard-list" Size="16" /> @Loc.T("Stock")</button>
-        <button class="tabs__opt @(_tab == "estadisticas" ? "tabs__opt--on" : "")" @onclick='SelectEstadisticas'><LucideIcon Name="bar-chart-3" Size="16" /> @Loc.T("Statistics")</button>
+    <div class="page-hero__row">
+        <span></span>
+        <div class="tabs" role="tablist">
+            <button class="tabs__opt @(_tab == "suppliers" ? "tabs__opt--on" : "")" @onclick='() => _tab = "suppliers"'><LucideIcon Name="truck" Size="16" /> @Loc.T("Suppliers")</button>
+            <button class="tabs__opt @(_tab == "purchases" ? "tabs__opt--on" : "")" @onclick='SelectPurchases'><LucideIcon Name="receipt" Size="16" /> @Loc.T("Purchases")</button>
+            <button class="tabs__opt @(_tab == "stock" ? "tabs__opt--on" : "")" @onclick='SelectStock'><LucideIcon Name="clipboard-list" Size="16" /> @Loc.T("Stock")</button>
+            <button class="tabs__opt @(_tab == "estadisticas" ? "tabs__opt--on" : "")" @onclick='SelectEstadisticas'><LucideIcon Name="bar-chart-3" Size="16" /> @Loc.T("Statistics")</button>
+        </div>
+        <div class="page-hero__actions">
+            @if (_tab == "suppliers")
+            {
+                <button class="btn btn--icon btn--neutral btn--sm" title="@Loc.T("New supplier")" @onclick="() => OpenSupplierForm(null)"><LucideIcon Name="plus" Size="14" /></button>
+            }
+            else if (_tab == "purchases")
+            {
+                <div class="toolbar__search toolbar__search--sm">
+                    <LucideIcon Name="search" Size="13" />
+                    <input class="input search" placeholder="@Loc.T("Search…")" @bind="_purchasesSearch" @bind:event="oninput" />
+                </div>
+                <div class="albaran-scan-menu">
+                    <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Scan delivery note")" @onclick="ToggleAlbaranUploadMenu"><LucideIcon Name="camera" Size="14" /></button>
+                    @if (_albaranUploadMenuOpen)
+                    {
+                        <div class="albaran-scan-menu__backdrop" @onclick="CloseAlbaranUploadMenu"></div>
+                        <div class="albaran-scan-menu__panel" @onclick:stopPropagation="true">
+                            <label class="albaran-scan-menu__item docpick">
+                                <LucideIcon Name="camera" Size="16" /> @Loc.T("Take photo")
+                                <InputFile OnChange="OnAlbaranPhotoSelected" class="docpick__input" accept="image/*" capture="environment" />
+                            </label>
+                            <label class="albaran-scan-menu__item docpick">
+                                <LucideIcon Name="upload" Size="16" /> @Loc.T("Choose file")
+                                <InputFile OnChange="OnAlbaranPhotoSelected" class="docpick__input" accept="image/*" />
+                            </label>
+                            <p class="muted albaran-scan-menu__hint">@Loc.T("On mobile, \"Choose file\" also lets you pick from Google Drive, Photos or other apps installed on the device.")</p>
+                            @if (_albaranUploadError is not null) { <div class="field-error">@_albaranUploadError</div> }
+                        </div>
+                    }
+                </div>
+                <button class="btn btn--icon btn--neutral btn--sm" title="@Loc.T("New purchase")" @onclick="OpenPurchaseForm" disabled="@(_suppliers.Count == 0)"><LucideIcon Name="plus" Size="14" /></button>
+            }
+            else if (_tab == "stock")
+            {
+                <div class="toolbar__search toolbar__search--sm">
+                    <LucideIcon Name="search" Size="13" />
+                    <input class="input search" placeholder="@Loc.T("Search…")" @bind="_stockSearch" @bind:event="oninput" />
+                </div>
+                <div class="sup-dd">
+                    <button type="button" class="btn btn--icon btn--neutral btn--sm" title="@Loc.T("Export")" @onclick="() => _stockExportDropdownOpen = !_stockExportDropdownOpen">
+                        <LucideIcon Name="download" Size="14" />
+                    </button>
+                    @if (_stockExportDropdownOpen)
+                    {
+                        <div class="sup-dd__backdrop" @onclick="() => _stockExportDropdownOpen = false"></div>
+                        <div class="sup-dd__menu sup-dd__menu--r">
+                            <a class="sup-dd__opt" href="/export/stock?format=csv" target="_blank" rel="noopener" @onclick="() => _stockExportDropdownOpen = false">CSV</a>
+                            <a class="sup-dd__opt" href="/export/stock?format=xlsx" target="_blank" rel="noopener" @onclick="() => _stockExportDropdownOpen = false">Excel</a>
+                            <a class="sup-dd__opt" href="/export/stock?format=pdf" target="_blank" rel="noopener" @onclick="() => _stockExportDropdownOpen = false">PDF</a>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
     </div>
 </PageHero>
 
 @if (_tab == "suppliers")
 {
-    <div class="toolbar">
-        <span class="spacer"></span>
-        <button class="btn btn--primary" @onclick="() => OpenSupplierForm(null)"><LucideIcon Name="plus" Size="16" /> @Loc.T("New supplier")</button>
-    </div>
     @if (_listError is not null) { <div class="field-error">@_listError</div> }
     <div class="grid-cards">
         @foreach (var s in _suppliers)
@@ -75,36 +128,6 @@
 }
 else if (_tab == "purchases")
 {
-    <div class="card sup-purchases-bar">
-        <div class="toolbar sup-purchases-toolbar">
-            <span class="spacer"></span>
-            <div class="toolbar__search">
-                <LucideIcon Name="search" Size="15" />
-                <input class="input search" placeholder="@Loc.T("Search…")" @bind="_purchasesSearch" @bind:event="oninput" />
-            </div>
-            <div class="albaran-scan-menu">
-                <button class="btn btn--ghost" @onclick="ToggleAlbaranUploadMenu"><LucideIcon Name="camera" Size="16" /> @Loc.T("Scan delivery note") <LucideIcon Name="chevron-down" Size="14" /></button>
-                @if (_albaranUploadMenuOpen)
-                {
-                    <div class="albaran-scan-menu__backdrop" @onclick="CloseAlbaranUploadMenu"></div>
-                    <div class="albaran-scan-menu__panel" @onclick:stopPropagation="true">
-                        <label class="albaran-scan-menu__item docpick">
-                            <LucideIcon Name="camera" Size="16" /> @Loc.T("Take photo")
-                            <InputFile OnChange="OnAlbaranPhotoSelected" class="docpick__input" accept="image/*" capture="environment" />
-                        </label>
-                        <label class="albaran-scan-menu__item docpick">
-                            <LucideIcon Name="upload" Size="16" /> @Loc.T("Choose file")
-                            <InputFile OnChange="OnAlbaranPhotoSelected" class="docpick__input" accept="image/*" />
-                        </label>
-                        <p class="muted albaran-scan-menu__hint">@Loc.T("On mobile, \"Choose file\" also lets you pick from Google Drive, Photos or other apps installed on the device.")</p>
-                        @if (_albaranUploadError is not null) { <div class="field-error">@_albaranUploadError</div> }
-                    </div>
-                }
-            </div>
-            <button class="btn btn--primary" @onclick="OpenPurchaseForm" disabled="@(_suppliers.Count == 0)"><LucideIcon Name="plus" Size="16" /> @Loc.T("New purchase")</button>
-        </div>
-    </div>
-
     @if (_albaranDetail is not null && _albaranEditForm is not null)
     {
         <div class="card albaran-editor">
@@ -307,25 +330,6 @@ else if (_tab == "stock")
             <button class="btn btn--ghost btn--sm" @onclick="ClearStockDates"><LucideIcon Name="x" Size="13" /> @Loc.T("Clear filters")</button>
         }
         <span class="spacer"></span>
-        <div class="toolbar__search">
-            <LucideIcon Name="search" Size="15" />
-            <input class="input search" placeholder="@Loc.T("Search…")" @bind="_stockSearch" @bind:event="oninput" />
-        </div>
-        <div class="sup-dd">
-            <button type="button" class="btn btn--ghost" @onclick="() => _stockExportDropdownOpen = !_stockExportDropdownOpen">
-                <LucideIcon Name="download" Size="16" /> @Loc.T("Export")
-                <LucideIcon Name="chevron-down" Size="13" />
-            </button>
-            @if (_stockExportDropdownOpen)
-            {
-                <div class="sup-dd__backdrop" @onclick="() => _stockExportDropdownOpen = false"></div>
-                <div class="sup-dd__menu">
-                    <a class="sup-dd__opt" href="/export/stock?format=csv" target="_blank" rel="noopener" @onclick="() => _stockExportDropdownOpen = false">CSV</a>
-                    <a class="sup-dd__opt" href="/export/stock?format=xlsx" target="_blank" rel="noopener" @onclick="() => _stockExportDropdownOpen = false">Excel</a>
-                    <a class="sup-dd__opt" href="/export/stock?format=pdf" target="_blank" rel="noopener" @onclick="() => _stockExportDropdownOpen = false">PDF</a>
-                </div>
-            }
-        </div>
       </div>
     </div>
     <div class="card" style="padding:1rem 1.2rem">
