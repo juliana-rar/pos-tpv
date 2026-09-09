@@ -128,6 +128,38 @@
 }
 else if (_tab == "purchases")
 {
+    <div class="toolbar">
+      <div class="filter-bar">
+        <label class="muted">@Loc.T("From")</label>
+        <div class="date-filter">
+            <button type="button" class="input date-filter__btn" style="max-width:150px" @onclick="() => _purchaseFromPickerOpen = !_purchaseFromPickerOpen">@(_purchaseDateFrom?.ToString("dd/MM/yyyy") ?? Loc.T("Any"))</button>
+            @if (_purchaseFromPickerOpen)
+            {
+                <div class="resv-date__backdrop" @onclick="() => _purchaseFromPickerOpen = false"></div>
+                <div class="resv-date__menu" @onclick:stopPropagation="true">
+                    <Calendar Value="_purchaseDateFrom ?? DateTime.Today" ValueChanged="PickPurchaseFrom" />
+                </div>
+            }
+        </div>
+        <label class="muted">@Loc.T("To")</label>
+        <div class="date-filter">
+            <button type="button" class="input date-filter__btn" style="max-width:150px" @onclick="() => _purchaseToPickerOpen = !_purchaseToPickerOpen">@(_purchaseDateTo?.ToString("dd/MM/yyyy") ?? Loc.T("Any"))</button>
+            @if (_purchaseToPickerOpen)
+            {
+                <div class="resv-date__backdrop" @onclick="() => _purchaseToPickerOpen = false"></div>
+                <div class="resv-date__menu" @onclick:stopPropagation="true">
+                    <Calendar Value="_purchaseDateTo ?? DateTime.Today" ValueChanged="PickPurchaseTo" />
+                </div>
+            }
+        </div>
+        @if (_purchaseDateFrom is not null || _purchaseDateTo is not null)
+        {
+            <button class="btn btn--ghost btn--sm" @onclick="ClearPurchaseDates"><LucideIcon Name="x" Size="13" /> @Loc.T("Clear filters")</button>
+        }
+        <span class="spacer"></span>
+      </div>
+    </div>
+
     @if (_albaranDetail is not null && _albaranEditForm is not null)
     {
         <div class="card albaran-editor">
@@ -635,6 +667,28 @@ else if (_tab == "estadisticas")
         _stockDateTo = null;
     }
     private string _purchasesSearch = "";
+    private DateTime? _purchaseDateFrom;
+    private DateTime? _purchaseDateTo;
+    private bool _purchaseFromPickerOpen;
+    private bool _purchaseToPickerOpen;
+
+    private void PickPurchaseFrom(DateTime date)
+    {
+        _purchaseDateFrom = date;
+        _purchaseFromPickerOpen = false;
+    }
+
+    private void PickPurchaseTo(DateTime date)
+    {
+        _purchaseDateTo = date;
+        _purchaseToPickerOpen = false;
+    }
+
+    private void ClearPurchaseDates()
+    {
+        _purchaseDateFrom = null;
+        _purchaseDateTo = null;
+    }
     private DateTime? _stockMoveDateFrom;
     private DateTime? _stockMoveDateTo;
     private bool _stockMoveFromPickerOpen;
@@ -724,9 +778,11 @@ else if (_tab == "estadisticas")
 
     private List<PurchaseDto> FilteredPurchases =>
         _purchases.Where(p =>
-            string.IsNullOrWhiteSpace(_purchasesSearch) ||
-            p.SupplierName.Contains(_purchasesSearch, StringComparison.OrdinalIgnoreCase) ||
-            (p.Reference?.Contains(_purchasesSearch, StringComparison.OrdinalIgnoreCase) ?? false))
+            (string.IsNullOrWhiteSpace(_purchasesSearch) ||
+             p.SupplierName.Contains(_purchasesSearch, StringComparison.OrdinalIgnoreCase) ||
+             (p.Reference?.Contains(_purchasesSearch, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+            (_purchaseDateFrom is null || p.Date.Date >= _purchaseDateFrom.Value.Date) &&
+            (_purchaseDateTo is null || p.Date.Date <= _purchaseDateTo.Value.Date))
         .ToList();
 
     private List<StockItemDto> FilteredStock

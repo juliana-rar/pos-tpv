@@ -204,6 +204,19 @@
     right: .3rem;
 }
 
+/* Reservations sidebar toggle: same absolute-corner treatment as .floor-settings, mirrored
+   to the map's top-left corner instead — its own free-standing widget since (unlike the
+   gear) it isn't part of the Edit/Select/Reassign/default toolbar row. */
+.floor-resv-toggle {
+    position: absolute;
+    top: .6rem;
+    left: .6rem;
+    z-index: 4;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+}
+
 /* Each toggle's own small widget — position:relative so its popover menu (.floor-tex-menu)
    anchors to it individually. Same fixed size as the row's other icon buttons so it lines up
    cleanly regardless of which icon it holds. */
@@ -1275,6 +1288,9 @@
    reordering the markup, so the drag/resize JS (keyed off the .floor element) is untouched. */
 .floor-layout--split .resv-col { order: -1; }
 .floor-layout--map-expanded .resv-col { display: none; }
+/* Independent of map-expanded: only hides the sidebar (via .floor-resv-toggle), leaving the
+   rest of the split layout — and the map's own expand/collapse state — untouched. */
+.floor-layout--resv-collapsed .resv-col { display: none; }
 /* Fixed + covers the whole viewport (topbar included) so the map reads as truly
    fullscreen instead of just growing within the page's own padding. No padding gap
    around it and the .card look (rounded corners, border, shadow) is stripped off the

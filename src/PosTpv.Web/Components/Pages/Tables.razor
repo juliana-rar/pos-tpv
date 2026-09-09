@@ -19,7 +19,7 @@
 
 <PageTitle>Tables · @Branding.Current.Title</PageTitle>
 
-<div class="floor-layout floor-layout--split @(_mapExpanded ? "floor-layout--map-expanded" : "")">
+<div class="floor-layout floor-layout--split @(_mapExpanded ? "floor-layout--map-expanded" : "") @(!_resSidebarOpen ? "floor-layout--resv-collapsed" : "")">
     <div class="floor-panel card">
         @if (_notice is not null)
         {
@@ -31,6 +31,13 @@
         }
 
     <div class="floor-wrap">
+    @* Mirrors .floor-settings on the opposite corner: floats over the map's top-left corner
+       instead of taking its own row, so it stays reachable no matter which toolbar row
+       (Edit/Select/Reassign/default) is showing on the right. *@
+    <button class="btn btn--icon @(_resSidebarOpen ? "btn--primary" : "btn--ghost") btn--sm floor-resv-toggle" type="button"
+            title="@(_resSidebarOpen ? Loc.T("Hide reservations") : Loc.T("Show reservations"))" @onclick="() => _resSidebarOpen = !_resSidebarOpen">
+        <LucideIcon Name="calendar" Size="16" />
+    </button>
     @* Floats over the map's top-right corner instead of taking its own row, so the map
        fills the whole panel height. *@
     <div class="toolbar toolbar--tables @(_showFilters ? "toolbar--tables-menu-open" : "")">
@@ -1247,6 +1254,7 @@
     // ---- Reservations panel state ----
     // Docked to the left of the floor plan (visually, via CSS order).
     private bool _mapExpanded;
+    private bool _resSidebarOpen = true;
     private DateTime _reserveDate = DateTime.Today;
     private bool _showDatePicker;
     private Task PickReserveDate(DateTime date)
