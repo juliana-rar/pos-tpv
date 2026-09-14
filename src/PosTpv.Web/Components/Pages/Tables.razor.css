@@ -206,15 +206,14 @@
 
 /* Reservations sidebar toggle: same absolute-corner treatment as .floor-settings, mirrored
    to the map's top-left corner instead — its own free-standing widget since (unlike the
-   gear) it isn't part of the Edit/Select/Reassign/default toolbar row. */
-.floor-resv-toggle {
+   gear) it isn't part of the Edit/Select/Reassign/default toolbar row. Combined with
+   .floor-tex-widget (32px, position:relative) so .resv-col below can anchor to it exactly
+   like the gear's own .floor-tools-menu anchors to .floor-tex-widget.floor-settings. */
+.floor-tex-widget.floor-resv-corner {
     position: absolute;
     top: .6rem;
     left: .6rem;
     z-index: 4;
-    width: 32px;
-    height: 32px;
-    padding: 0;
 }
 
 /* Each toggle's own small widget — position:relative so its popover menu (.floor-tex-menu)
@@ -1282,15 +1281,11 @@
 
 /* ---- Reservations panel & assignment -------------------------------------- */
 /* Pulls the whole row up against the topbar, cancelling the page's own top padding — the
-   job the old full-width .tables-datebar used to do before it moved inside .resv. */
+   job the old full-width .tables-datebar used to do before it moved inside .resv. Still a
+   flex row even though .floor-panel is its only remaining child (.resv-col now floats over
+   the map instead of sharing this row, see .resv-col below) — harmless with one child, and
+   keeps this rule ready if another sibling column ever gets added back. */
 .floor-layout--split { display: flex; gap: 1rem; align-items: stretch; margin-top: -1.4rem; }
-/* Visually place the reservations panel before the floor plan (left side) without
-   reordering the markup, so the drag/resize JS (keyed off the .floor element) is untouched. */
-.floor-layout--split .resv-col { order: -1; }
-.floor-layout--map-expanded .resv-col { display: none; }
-/* Independent of map-expanded: only hides the sidebar (via .floor-resv-toggle), leaving the
-   rest of the split layout — and the map's own expand/collapse state — untouched. */
-.floor-layout--resv-collapsed .resv-col { display: none; }
 /* Fixed + covers the whole viewport (topbar included) so the map reads as truly
    fullscreen instead of just growing within the page's own padding. No padding gap
    around it and the .card look (rounded corners, border, shadow) is stripped off the
@@ -1343,16 +1338,71 @@
 }
 
 /* Side drawer */
-/* Left column: holds the single .resv card (date picker + reservations list, see .tables-datebar
-   above) that fills its whole width/height. */
+/* Floating dropdown instead of a full-height side column: anchored to
+   .floor-tex-widget.floor-resv-corner (the 32px calendar toggle, position:relative) exactly
+   like the gear's .floor-tools-menu anchors to .floor-settings — top:100% of that 32px
+   widget, not of .resv-col itself. Capped default width/height (vw/rem, not % — its
+   containing block is that same 32px-wide widget, so percentages here would resolve against
+   32px) keep it a compact companion panel over the map rather than a second full-size column
+   by default; .resv's own internal scroll areas (.resv__list, the wizard) take care of any
+   content taller than that cap, so the panel itself never needs its own scrollbar under
+   normal use. Resizing is its own explicit .resv__resize-handle grip (posPanelResize in
+   pos.js) rather than native CSS `resize` — that needs a fiddly, easy-to-miss 15px corner
+   grab-zone and doesn't work on touch at all, which the camarero screens depend on.
+   transform-origin/animation only run once on open, so they don't fight the resize handle's
+   own inline width/height afterwards. */
 .resv-col {
-    flex: 0 0 380px;
+    position: absolute;
+    top: calc(100% + .5rem);
+    left: 0;
+    z-index: 5;
     display: flex;
     flex-direction: column;
     gap: 0;
-    height: calc(100vh - var(--topbar-h) - env(safe-area-inset-bottom, 0px) - 1.4rem);
-    min-height: 420px;
+    width: 440px;
+    height: min(38rem, calc(100vh - var(--topbar-h) - env(safe-area-inset-bottom, 0px) - 6rem));
+    min-width: 300px;
+    min-height: 220px;
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100vh - var(--topbar-h) - env(safe-area-inset-bottom, 0px) - 1rem);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    transform-origin: top left;
+    animation: floor-resv-unfold 320ms cubic-bezier(.16, 1, .3, 1);
 }
+/* Explicit resize grip (bottom-right corner), poking slightly outside the box so it's easy
+   to see/grab — same visual treatment as .tbl__handle--resize on the floor plan's own table
+   resize handle, for a consistent affordance across the page. posPanelResize (pos.js) drives
+   it via pointer events, so it works with touch as well as mouse. */
+.resv__resize-handle {
+    position: absolute;
+    right: -6px; bottom: -6px;
+    width: 16px; height: 16px;
+    border: 2px solid var(--text);
+    border-radius: 4px;
+    background: var(--card);
+    cursor: nwse-resize;
+    touch-action: none;
+    z-index: 6;
+}
+@keyframes floor-resv-unfold {
+    from { opacity: 0; transform: scaleY(.7); }
+    to   { opacity: 1; transform: scaleY(1); }
+}
+/* Grip strip above the date bar — grabbing it (not the header buttons themselves) is what
+   .resv-col's drag JS (posPanelDrag, see pos.js) binds to, so dragging never fights clicks on
+   the prev/next-date or new-reservation buttons right below it. */
+.resv__drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.1rem;
+    color: var(--text-soft);
+    cursor: grab;
+    touch-action: none;
+    flex: none;
+}
+.resv__drag-handle:active { cursor: grabbing; }
 .resv {
     flex: 1 1 auto;
     min-height: 0;
@@ -2072,10 +2122,4 @@
     background:
         linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, .55) 45%, transparent 60%),
         linear-gradient(160deg, #cfe8f5 0%, #8fc2da 100%);
-}
-
-@media (max-width: 900px) {
-    .floor-layout--split { flex-direction: column; }
-    .resv-col { flex-basis: auto; height: auto; }
-    .resv { height: 420px; }
 }

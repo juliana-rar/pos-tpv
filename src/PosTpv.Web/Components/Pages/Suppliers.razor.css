@@ -29,6 +29,7 @@
 
 .tabs { display: flex; width: fit-content; }
 .page-hero .tabs { margin: 0; }
+.tabs__opt { font-size: .7rem; }
 /* Active tab: grey + shadow instead of the app-wide blue --primary fill, same treatment as
    Products.razor.css. */
 .tabs__opt--on {

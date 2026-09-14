@@ -19,7 +19,7 @@
 
 <PageTitle>Tables · @Branding.Current.Title</PageTitle>
 
-<div class="floor-layout floor-layout--split @(_mapExpanded ? "floor-layout--map-expanded" : "") @(!_resSidebarOpen ? "floor-layout--resv-collapsed" : "")">
+<div class="floor-layout floor-layout--split floor-layout--map-expanded">
     <div class="floor-panel card">
         @if (_notice is not null)
         {
@@ -34,362 +34,17 @@
     @* Mirrors .floor-settings on the opposite corner: floats over the map's top-left corner
        instead of taking its own row, so it stays reachable no matter which toolbar row
        (Edit/Select/Reassign/default) is showing on the right. *@
-    <button class="btn btn--icon @(_resSidebarOpen ? "btn--primary" : "btn--ghost") btn--sm floor-resv-toggle" type="button"
+    <div class="floor-tex-widget floor-resv-corner">
+    <button class="btn btn--icon @(_resSidebarOpen ? "btn--primary" : "btn--ghost") btn--sm" type="button"
             title="@(_resSidebarOpen ? Loc.T("Hide reservations") : Loc.T("Show reservations"))" @onclick="() => _resSidebarOpen = !_resSidebarOpen">
         <LucideIcon Name="calendar" Size="16" />
     </button>
-    @* Floats over the map's top-right corner instead of taking its own row, so the map
-       fills the whole panel height. *@
-    <div class="toolbar toolbar--tables @(_showFilters ? "toolbar--tables-menu-open" : "")">
-        <span class="spacer"></span>
-        @* Rendered unconditionally (outside the Edit/Select/Reassign/default branches below) and
-           absolutely positioned (.floor-settings) so it always sits in the map's top-right corner —
-           it used to live inside the "default" toolbar-actions row only, so it vanished entirely
-           whenever _editing/_selecting/_reassigning replaced that row with their own controls. *@
-        <div class="floor-tex-widget floor-settings">
-            <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters"><LucideIcon Name="settings" Size="16" /></button>
-            @if (_showFilters)
-            {
-                <div class="floor-tools-menu">
-                    <div class="floor-tex-widget">
-                        <button class="btn btn--icon @(_zoneMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Zones")" @onclick="ToggleZoneMenu"><LucideIcon Name="square-dashed" Size="16" /></button>
-                        @if (_zoneMenuOpen || _zoneMenuClosing)
-                        {
-                            <div class="floor-tex-menu zone-pick @(_zoneMenuClosing ? "floor-tex-menu--closing" : "")">
-                                @foreach (var z in _zones)
-                                {
-                                    <button type="button" class="zone-chip" style="@(z.Color is not null && !IsImageColor(z.Color) ? $"--zc:{z.Color}" : "")" @onclick="() => { OnZoneClick(z); _zoneMenuOpen = false; _zoneEditActive = true; StartEdit(); }">@z.Name</button>
-                                }
-                                <button type="button" class="floor-tex-opt" title="@Loc.T("Add zone")" @onclick="AddZone">
-                                    <span class="zone-swatch"><LucideIcon Name="plus" Size="14" /></span>
-                                    <span class="floor-tex-opt__label">@Loc.T("Add zone")</span>
-                                </button>
-                            </div>
-                        }
-                    </div>
-                    <div class="floor-tex-widget">
-                        <button class="btn btn--icon @(_floorMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Floor style")" @onclick="ToggleFloorMenu"><LucideIcon Name="image" Size="16" /></button>
-                        @if (_floorMenuOpen || _floorMenuClosing)
-                        {
-                            <div class="floor-tex-menu tex-pick @(_floorMenuClosing ? "floor-tex-menu--closing" : "")">
-                                @foreach (var tex in FloorTextures)
-                                {
-                                    <button type="button" class="floor-tex-opt @(Branding.Current.FloorTexture == tex ? "floor-tex-opt--on" : "")" title="@Loc.T(TextureLabel(tex))" @onclick="() => ChooseFloorTexture(tex)">
-                                        <span class="floor-tex-swatch floor-tex-swatch--@tex"></span>
-                                        <span class="floor-tex-opt__label">@Loc.T(TextureLabel(tex))</span>
-                                    </button>
-                                }
-                            </div>
-                        }
-                    </div>
-                    <div class="floor-tex-widget">
-                        <button class="btn btn--icon @(_paintMode || _paintMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Paint table colours")" @onclick="TogglePaintMenu"><LucideIcon Name="palette" Size="16" /></button>
-                    </div>
-                    <div class="floor-tex-widget">
-                        <button class="btn btn--icon @(_plantMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Plants")" @onclick="TogglePlantMenu"><LucideIcon Name="leaf" Size="16" /></button>
-                        @if (_plantMenuOpen || _plantMenuClosing)
-                        {
-                            <div class="floor-tex-menu plant-pick @(_plantMenuClosing ? "floor-tex-menu--closing" : "")">
-                                @foreach (var type in PlantTypes)
-                                {
-                                    <button type="button" class="floor-tex-opt" title="@Loc.T(DecorLabel(type))" @onclick="() => AddDecor(type)">
-                                        <span class="decor-swatch decor-swatch--@DecorSlug(type)"></span>
-                                        <span class="floor-tex-opt__label">@Loc.T(DecorLabel(type))</span>
-                                    </button>
-                                }
-                            </div>
-                        }
-                    </div>
-                    <div class="floor-tex-widget">
-                        <button class="btn btn--icon @(_designMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Design elements")" @onclick="ToggleDesignMenu"><LucideIcon Name="layout-template" Size="16" /></button>
-                        @if (_designMenuOpen || _designMenuClosing)
-                        {
-                            <div class="floor-tex-menu design-pick @(_designMenuClosing ? "floor-tex-menu--closing" : "")">
-                                @foreach (var type in InteriorTypes)
-                                {
-                                    <button type="button" class="floor-tex-opt" title="@Loc.T(DecorLabel(type))" @onclick="() => AddDecor(type)">
-                                        <span class="decor-swatch decor-swatch--@DecorSlug(type)"></span>
-                                        <span class="floor-tex-opt__label">@Loc.T(DecorLabel(type))</span>
-                                    </button>
-                                }
-                            </div>
-                        }
-                    </div>
-                </div>
-            }
-        </div>
-        @if (_editing)
-        {
-            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Cancel")" @onclick="CancelEdit"><LucideIcon Name="x" Size="16" /></button>
-            <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Save layout")" @onclick="SaveLayout"><LucideIcon Name="save" Size="14" /></button>
-        }
-        else if (_selecting)
-        {
-            <span class="badge badge--primary">@_selection.Count @Loc.T("selected")</span>
-            <button class="btn btn--ghost btn--sm" @onclick="CancelSelect">@Loc.T("Cancel")</button>
-            @if (SelectedGroupId is not null)
-            {
-                <button class="btn btn--danger btn--sm" @onclick="SeparateSelectedGroup"><LucideIcon Name="split" Size="14" />@Loc.T("Separate")</button>
-            }
-            else
-            {
-                <button class="btn btn--primary btn--sm" disabled="@(_selection.Count < 2)" @onclick="OpenJoinNamePrompt"><LucideIcon Name="link" Size="14" />@Loc.T("Join")</button>
-            }
-        }
-        else if (_reassigning)
-        {
-            <button class="btn btn--ghost btn--sm" @onclick="CancelReassign">@Loc.T("Cancel")</button>
-        }
-        else if (_paintMode)
-        {
-            @* Each tap on a table already applies (and persists) the selected colour immediately —
-               there's no staged change to discard — but the icon-only Cancel/Done pair still mirrors
-               the Edit-layout toolbar (see _editing above) so every "mode" in this toolbar exits the
-               same way instead of paint mode alone keeping the old floating text hint + button. *@
-            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Cancel")" @onclick="StopPaintMode"><LucideIcon Name="x" Size="16" /></button>
-            <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Done")" @onclick="StopPaintMode"><LucideIcon Name="save" Size="14" /></button>
-        }
-        else if (_showFilters)
-        {
-            <div class="toolbar-actions">
-                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("New table")" @onclick="() => OpenForm(null)"><LucideIcon Name="plus" Size="16" /></button>
-                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Join tables")" @onclick="StartSelect"><LucideIcon Name="link" Size="16" /></button>
-                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Assign tables")" @onclick="StartReassign"><LucideIcon Name="arrow-right-left" Size="16" /></button>
-                <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Edit layout")" @onclick="StartEdit"><LucideIcon Name="move" Size="16" /></button>
-            </div>
-        }
-        @* Expand/collapse always renders, regardless of Edit/Select/Reassign/Filters mode, so the
-           map stays navigable while any of those tools is active instead of only from the bare
-           default toolbar. Zoom moved out of this bar (see .floor-zoom-dock below) to sit right
-           above the zone-filter pill instead. *@
-        <button class="btn btn--icon btn--ghost btn--sm" type="button"
-                title="@(_mapExpanded ? Loc.T("Minimise map") : Loc.T("Expand map"))" @onclick="() => _mapExpanded = !_mapExpanded">
-            <LucideIcon Name="@(_mapExpanded ? "minimize-2" : "maximize-2")" Size="16" />
-        </button>
-    </div>
-    @* Stacked bottom-center of the map: zoom always renders here (even in Edit/Select mode, when
-       the zone-filter pill below it is hidden), with the zone tabs docked directly under it. *@
-    <div class="floor-zoom-dock">
-        <span class="zoom-group zoom-group--sm">
-            <button class="btn btn--icon btn--ghost btn--sm" type="button" disabled="@(_zoom <= ZoomMin)" title="@Loc.T("Zoom out")" @onclick="ZoomOut"><LucideIcon Name="zoom-out" Size="12" /></button>
-            <button class="zoom-group__level" type="button" title="@Loc.T("Reset zoom")" @onclick="ZoomReset">@((_zoom * 100).ToString("0"))%</button>
-            <button class="btn btn--icon btn--ghost btn--sm" type="button" disabled="@(_zoom >= ZoomMax)" title="@Loc.T("Zoom in")" @onclick="ZoomIn"><LucideIcon Name="zoom-in" Size="12" /></button>
-        </span>
-        @if (!_editing && !_selecting && _assignReservationId is null && Zones.Count > 0)
-        {
-            <div class="tabs zone-filter">
-                <button class="tabs__opt @(_zoneFilter is null ? "tabs__opt--on" : "")" @onclick="() => _zoneFilter = null">@Loc.T("All zones")</button>
-                @foreach (var z in Zones)
-                {
-                    <button class="tabs__opt @(_zoneFilter == z ? "tabs__opt--on" : "")" @onclick="() => _zoneFilter = z">@z</button>
-                }
-            </div>
-        }
-    </div>
-    @if (_reassigning && _reassignSource is null)
+    @if (_resSidebarOpen)
     {
-        <div class="floor-hint floor-hint--assign floor-hint--floating">
-            <LucideIcon Name="arrow-right-left" Size="16" /> @Loc.T("Click the occupied table whose order you want to move.")
-        </div>
-    }
-    @if (_reassignSource is not null)
-    {
-        <div class="reassign-popover">
-            <div class="reassign-popover__title"><LucideIcon Name="arrow-right-left" Size="15" /> @Loc.T("Reassign") @(_reassignSource.GroupId is not null ? (_reassignSource.GroupName ?? _reassignSource.Name) : _reassignSource.Name)?</div>
-            <select class="select" @bind="_reassignDestId">
-                <option value="">@Loc.T("Choose a table")</option>
-                @foreach (var dest in VisibleTables.Where(x => x.Id != _reassignSource.Id && x.ActiveOrderId is null && x.GroupId is null))
-                {
-                    <option value="@dest.Id">@dest.Name</option>
-                }
-            </select>
-            <div class="reassign-popover__actions">
-                <button class="btn btn--ghost btn--sm" @onclick="CancelReassign">@Loc.T("Cancel")</button>
-                <button class="btn btn--primary btn--sm" disabled="@(_reassignDestId is null)" @onclick="ConfirmReassign">@Loc.T("Confirm")</button>
-            </div>
-        </div>
-    }
-    <div class="floor floor--tex-@Branding.Current.FloorTexture @(_editing ? "floor--edit" : "") @(_selecting ? "floor--select" : "") @(_assignReservationId is not null ? "floor--assign" : "") @(_reassigning ? "floor--assign" : "") @(_paintMode ? "floor--assign" : "")" @ref="_floorEl">
-        @{
-            // Computed once per render instead of once per table/foreach: VisibleTables filters the
-            // whole floor and ResByTable groups every reservation, so re-evaluating either property
-            // on each access below was doing that work again for every table and every group badge.
-            var visible = VisibleTables;
-            var resByTable = ResByTable;
-        }
-    <div class="floor-canvas" style="transform:scale(@N(_zoom)); transform-origin:0 0; --zoom:@N(_zoom);">
-        @foreach (var z in VisibleZones)
-        {
-            <div class="floor-zone @(!_editing && _zoneFilter == z.Name ? "floor-zone--on" : "") @(_editing && _zoneEditActive ? "floor-zone--btns-visible" : "") @(z.Color is not null && IsImageColor(z.Color) ? "floor-zone--img" : "")"
-                 data-id="@z.Id"
-                 data-x="@N(z.PositionX)" data-y="@N(z.PositionY)"
-                 data-w="@N(z.Width)" data-h="@N(z.Height)" data-rot="0"
-                 data-locked="false"
-                 style="@ZoneStyle(z)"
-                 title="@z.Name">
-                <span class="floor-zone__name">@z.Name</span>
-                @if (_editing)
-                {
-                    @if (_zoneEditActive)
-                    {
-                        @* Rename/delete need a Blazor-rendered Modal (rename) or a live list
-                           update (delete) to actually show up — impossible while _editing has
-                           frozen rendering for JS to own the DOM (see ShouldRender/_suppressRender)
-                           — so both handlers below step out of edit mode first (Save for rename,
-                           so a drag already in progress isn't silently thrown away; Cancel for
-                           delete, since the zone about to be removed has nothing worth keeping)
-                           before doing anything Blazor needs to re-render for. floorplan.js's
-                           onDown also has to ignore pointerdown on these two, or it arms a drag
-                           on the zone underneath before the click ever reaches these handlers. *@
-                        <button class="floor-zone__rename" type="button" title="@Loc.T("Rename")" @onclick="() => EditZoneDuringLayoutEdit(z)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="12" /></button>
-                    }
-                    <button class="floor-zone__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RequestDeleteZone(z)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
-                    <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
-                }
-                else if (_zoneMenuOpen || _zoneFilter == z.Name)
-                {
-                    @* Shown while the "Zones" toolbar button's own edit mode is on (see
-                       ToggleZoneMenu) — otherwise these sat on every zone box all the time, so
-                       modifying a zone only ever took clicking directly on it, never the button —
-                       or, once a chip has narrowed the map down to that one zone (_zoneFilter),
-                       on that single remaining zone box even after the dropdown itself has
-                       closed, since it's now the only thing left to act on. *@
-                    <button class="floor-zone__rename" type="button" title="@Loc.T("Rename")" @onclick="() => StartRenameZone(z)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="12" /></button>
-                    <button class="floor-zone__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RemoveZone(z.Id)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
-                }
-            </div>
-        }
-        @foreach (var t in visible)
-        {
-            resByTable.TryGetValue(t.Id, out var rv);
-            <div class="@TableClass(t, rv)"
-                 data-id="@t.Id"
-                 data-x="@N(t.PositionX)" data-y="@N(t.PositionY)"
-                 data-w="@N(t.Width)" data-h="@N(t.Height)" data-rot="@N(t.Rotation)"
-                 data-locked="@(t.IsLocked ? "true" : "false")"
-                 data-shape="@((int)t.Shape)"
-                 data-group="@(t.GroupId?.ToString() ?? "")"
-                 data-seam="@GroupSeamAttr(t)"
-                 style="@TableStyle(t)"
-                 @onclick="() => OnTableClick(t)"
-                 @oncontextmenu:preventDefault="true"
-                 title="@(t.GroupId is not null ? (t.GroupName ?? t.Name) : t.Name)">
-                @if (!_editing)
-                {
-                    @foreach (var chairStyle in ChairStyles(t, _tables))
-                    {
-                        <svg class="tbl__chair @(EffectiveTableStatus(t, rv) == TableStatus.Occupied ? "tbl__chair--seated" : "")"
-                             style="@chairStyle" viewBox="0 0 14 19.6" width="14" height="19.6">
-                            <rect class="chair-leg" x="-1" y="9.1" width="1.7" height="2" rx="0.4" />
-                            <rect class="chair-leg" x="13.3" y="9.1" width="1.7" height="2" rx="0.4" />
-                            <rect class="chair-leg" x="-1" y="13.65" width="1.7" height="2" rx="0.4" />
-                            <rect class="chair-leg" x="13.3" y="13.65" width="1.7" height="2" rx="0.4" />
-                            <rect class="chair-seat" x="0" y="5.25" width="14" height="14" rx="3.5" />
-                            <rect class="chair-cushion" x="2.1" y="7.35" width="9.8" height="9.8" rx="2.45" />
-                            <rect class="chair-backrest" x="1.4" y="0" width="11.2" height="5.95" rx="2.8" />
-                        </svg>
-                    }
-                }
-                <div class="tbl__content">
-                    @if (t.GroupId is null)
-                    {
-                        <span class="tbl__name">@t.Name</span>
-                        <span class="tbl__seats">@t.Seats<LucideIcon Name="user" Size="12" /></span>
-                        @if (rv is not null)
-                        {
-                            <span class="tbl__total">@rv.CustomerName</span>
-                        }
-                    }
-                </div>
-                @* Grouped tables skip this entirely — see the .tbl__resv--group badge below,
-                   rendered once per group and centred on the whole joined row instead of hanging
-                   off whichever member happens to be the anchor. *@
-                @if (!_editing && rv is not null && t.GroupId is null)
-                {
-                    <span class="tbl__resv" title="@rv.CustomerName"><LucideIcon Name="@(rv.Status == ReservationStatus.Seated ? "armchair" : PeriodIcon(rv.Time))" Size="14" /> @rv.Time.ToString("HH:mm")</span>
-                }
-                @* Revealed by a first click on this same assigned table (see OnTableClick) instead of
-                   showing on every reserved table all the time — a second click on the table itself
-                   still opens its comanda as usual; this X only removes the table from the reservation. *@
-                @if (!_editing && rv is not null && _selectedAssignedTableId == t.Id)
-                {
-                    <button type="button" class="tbl__unassign" title="@Loc.T("Remove from reservation")" @onclick="() => RemoveTableFromReservation(t)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
-                }
-                @if (_editing)
-                {
-                    @if (t.GroupId is null)
-                    {
-                        @* Grouped members skip shape: JoinTablesAsync already forces every member
-                           to share one Rotation/IsLocked/Height, so editing it individually while
-                           joined doesn't fit the "reads as one table" model — and, concretely,
-                           .tbl__shape sits bottom-left on its own table while .tbl__handle--resize
-                           sits bottom-right on the one before it, so for two tables snapped
-                           edge-to-edge those two controls land almost exactly on top of each other
-                           at the shared seam. Grabbing one member's resize handle there could land
-                           on its neighbour's shape button instead, silently cycling that neighbour
-                           from square to round. *@
-                        <button class="tbl__shape" type="button" title="@Loc.T("Change shape")">@ShapeIcon(t.Shape)</button>
-                    }
-                    @* One edit button per group (on its anchor member), not one per table — a
-                       joined block reads and is edited as a single unit, so its pencil opens the
-                       shared group name below instead of each member's own name in turn. *@
-                    @if (t.GroupId is null || IsGroupAnchor(t))
-                    {
-                        <button class="tbl__rename" type="button" title="@Loc.T("Edit table")" @onclick="() => EditTableDuringLayoutEdit(t)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="14" /></button>
-                    }
-                    <button class="tbl__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RequestDeleteTable(t)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="14" /></button>
-                    <span class="tbl__handle tbl__handle--rotate" title="@Loc.T("Rotate")"></span>
-                    <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
-                }
-            </div>
-        }
-        @* One badge per group, centered on the bounding box of its member tables — rather
-           than pinned to a single anchor table — so it sits right where they join once
-           dragged, and carries the group's own name now that no single member shows it. *@
-        @foreach (var gid in visible.Where(t => t.GroupId.HasValue).Select(t => t.GroupId!.Value).Distinct())
-        {
-            var grv = GroupReservation(gid, resByTable);
-            <span class="tbl__group" data-group="@gid" style="@GroupCenterStyle(gid, visible) --grp:@GroupColor(gid)">
-                @if (grv is not null)
-                {
-                    <span class="tbl__total">@grv.CustomerName</span>
-                }
-                <span class="tbl__group-name">@GroupDisplayName(gid)</span>
-                <span class="tbl__group-seats"><LucideIcon Name="link" Size="15" /> @GroupSeats(gid)<LucideIcon Name="user" Size="14" /></span>
-            </span>
-            @if (!_editing && grv is not null)
-            {
-                <span class="tbl__resv tbl__resv--group" data-group="@gid" style="@GroupBottomCenterStyle(gid, visible)" title="@grv.CustomerName"><LucideIcon Name="@(grv.Status == ReservationStatus.Seated ? "armchair" : PeriodIcon(grv.Time))" Size="14" /> @grv.Time.ToString("HH:mm")</span>
-            }
-        }
-        @foreach (var d in VisibleDecor)
-        {
-            <div class="decor decor--@DecorSlug(d.Type)"
-                 data-id="@d.Id"
-                 data-x="@N(d.PositionX)" data-y="@N(d.PositionY)"
-                 data-w="@N(d.Width)" data-h="@N(d.Height)" data-rot="@N(d.Rotation)"
-                 data-locked="@(d.IsLocked ? "true" : "false")"
-                 style="@DecorStyle(d)"
-                 title="@Loc.T(DecorLabel(d.Type))">
-                @if (_editing)
-                {
-                    <button class="tbl__lock" type="button" title="@Loc.T("Lock / unlock")"><LucideIcon Name="@(d.IsLocked ? "lock" : "lock-open")" Size="14" /></button>
-                    <button class="decor__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RequestDeleteDecor(d)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
-                    <span class="tbl__handle tbl__handle--rotate" title="@Loc.T("Rotate")"></span>
-                    <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
-                }
-            </div>
-        }
-        @if (_tables.Count == 0) { <p class="empty">@Loc.T("No tables yet. Create one to start.")</p> }
-        else if (visible.Count == 0) { <p class="empty">@Loc.T("No tables in this zone.")</p> }
-    </div>
-    </div>
-    </div>
-    </div>
-
-        <div class="resv-col">
+        <div class="resv-col" @ref="_resvPanelEl">
         <aside class="resv card">
-        <div class="tables-datebar">
+        <div class="resv__drag-handle" @ref="_resvHandleEl" title="@Loc.T("Drag to move")"><LucideIcon Name="move" Size="12" /></div>
+        <div class="tables-datebar" @ref="_resvHeaderEl">
             <div class="resv__day-nav">
                 <div class="resv__day-nav-side">
                     <div class="resv-policy">
@@ -713,7 +368,351 @@
             </div>
         }
         </aside>
+        <div class="resv__resize-handle" @ref="_resvResizeEl" title="@Loc.T("Resize")"></div>
         </div>
+    }
+    </div>
+    @* Floats over the map's top-right corner instead of taking its own row, so the map
+       fills the whole panel height. *@
+    <div class="toolbar toolbar--tables @(_showFilters ? "toolbar--tables-menu-open" : "")">
+        <span class="spacer"></span>
+        @* Rendered unconditionally (outside the Edit/Select/Reassign/default branches below) and
+           absolutely positioned (.floor-settings) so it always sits in the map's top-right corner —
+           it used to live inside the "default" toolbar-actions row only, so it vanished entirely
+           whenever _editing/_selecting/_reassigning replaced that row with their own controls. *@
+        <div class="floor-tex-widget floor-settings">
+            <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters"><LucideIcon Name="settings" Size="16" /></button>
+            @if (_showFilters)
+            {
+                <div class="floor-tools-menu">
+                    <div class="floor-tex-widget">
+                        <button class="btn btn--icon @(_zoneMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Zones")" @onclick="ToggleZoneMenu"><LucideIcon Name="square-dashed" Size="16" /></button>
+                        @if (_zoneMenuOpen || _zoneMenuClosing)
+                        {
+                            <div class="floor-tex-menu zone-pick @(_zoneMenuClosing ? "floor-tex-menu--closing" : "")">
+                                @foreach (var z in _zones)
+                                {
+                                    <button type="button" class="zone-chip" style="@(z.Color is not null && !IsImageColor(z.Color) ? $"--zc:{z.Color}" : "")" @onclick="() => { OnZoneClick(z); _zoneMenuOpen = false; _zoneEditActive = true; StartEdit(); }">@z.Name</button>
+                                }
+                                <button type="button" class="floor-tex-opt" title="@Loc.T("Add zone")" @onclick="AddZone">
+                                    <span class="zone-swatch"><LucideIcon Name="plus" Size="14" /></span>
+                                    <span class="floor-tex-opt__label">@Loc.T("Add zone")</span>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                    <div class="floor-tex-widget">
+                        <button class="btn btn--icon @(_floorMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Floor style")" @onclick="ToggleFloorMenu"><LucideIcon Name="image" Size="16" /></button>
+                        @if (_floorMenuOpen || _floorMenuClosing)
+                        {
+                            <div class="floor-tex-menu tex-pick @(_floorMenuClosing ? "floor-tex-menu--closing" : "")">
+                                @foreach (var tex in FloorTextures)
+                                {
+                                    <button type="button" class="floor-tex-opt @(Branding.Current.FloorTexture == tex ? "floor-tex-opt--on" : "")" title="@Loc.T(TextureLabel(tex))" @onclick="() => ChooseFloorTexture(tex)">
+                                        <span class="floor-tex-swatch floor-tex-swatch--@tex"></span>
+                                        <span class="floor-tex-opt__label">@Loc.T(TextureLabel(tex))</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="floor-tex-widget">
+                        <button class="btn btn--icon @(_paintMode || _paintMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Paint table colours")" @onclick="TogglePaintMenu"><LucideIcon Name="palette" Size="16" /></button>
+                    </div>
+                    <div class="floor-tex-widget">
+                        <button class="btn btn--icon @(_plantMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Plants")" @onclick="TogglePlantMenu"><LucideIcon Name="leaf" Size="16" /></button>
+                        @if (_plantMenuOpen || _plantMenuClosing)
+                        {
+                            <div class="floor-tex-menu plant-pick @(_plantMenuClosing ? "floor-tex-menu--closing" : "")">
+                                @foreach (var type in PlantTypes)
+                                {
+                                    <button type="button" class="floor-tex-opt" title="@Loc.T(DecorLabel(type))" @onclick="() => AddDecor(type)">
+                                        <span class="decor-swatch decor-swatch--@DecorSlug(type)"></span>
+                                        <span class="floor-tex-opt__label">@Loc.T(DecorLabel(type))</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="floor-tex-widget">
+                        <button class="btn btn--icon @(_designMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Design elements")" @onclick="ToggleDesignMenu"><LucideIcon Name="layout-template" Size="16" /></button>
+                        @if (_designMenuOpen || _designMenuClosing)
+                        {
+                            <div class="floor-tex-menu design-pick @(_designMenuClosing ? "floor-tex-menu--closing" : "")">
+                                @foreach (var type in InteriorTypes)
+                                {
+                                    <button type="button" class="floor-tex-opt" title="@Loc.T(DecorLabel(type))" @onclick="() => AddDecor(type)">
+                                        <span class="decor-swatch decor-swatch--@DecorSlug(type)"></span>
+                                        <span class="floor-tex-opt__label">@Loc.T(DecorLabel(type))</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+        @if (_editing)
+        {
+            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Cancel")" @onclick="CancelEdit"><LucideIcon Name="x" Size="16" /></button>
+            <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Save layout")" @onclick="SaveLayout"><LucideIcon Name="save" Size="14" /></button>
+        }
+        else if (_selecting)
+        {
+            <span class="badge badge--primary">@_selection.Count @Loc.T("selected")</span>
+            <button class="btn btn--ghost btn--sm" @onclick="CancelSelect">@Loc.T("Cancel")</button>
+            @if (SelectedGroupId is not null)
+            {
+                <button class="btn btn--danger btn--sm" @onclick="SeparateSelectedGroup"><LucideIcon Name="split" Size="14" />@Loc.T("Separate")</button>
+            }
+            else
+            {
+                <button class="btn btn--primary btn--sm" disabled="@(_selection.Count < 2)" @onclick="OpenJoinNamePrompt"><LucideIcon Name="link" Size="14" />@Loc.T("Join")</button>
+            }
+        }
+        else if (_reassigning)
+        {
+            <button class="btn btn--ghost btn--sm" @onclick="CancelReassign">@Loc.T("Cancel")</button>
+        }
+        else if (_paintMode)
+        {
+            @* Each tap on a table already applies (and persists) the selected colour immediately —
+               there's no staged change to discard — but the icon-only Cancel/Done pair still mirrors
+               the Edit-layout toolbar (see _editing above) so every "mode" in this toolbar exits the
+               same way instead of paint mode alone keeping the old floating text hint + button. *@
+            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Cancel")" @onclick="StopPaintMode"><LucideIcon Name="x" Size="16" /></button>
+            <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Done")" @onclick="StopPaintMode"><LucideIcon Name="save" Size="14" /></button>
+        }
+        else if (_showFilters)
+        {
+            <div class="toolbar-actions">
+                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("New table")" @onclick="() => OpenForm(null)"><LucideIcon Name="plus" Size="16" /></button>
+                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Join tables")" @onclick="StartSelect"><LucideIcon Name="link" Size="16" /></button>
+                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Assign tables")" @onclick="StartReassign"><LucideIcon Name="arrow-right-left" Size="16" /></button>
+                <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("Edit layout")" @onclick="StartEdit"><LucideIcon Name="move" Size="16" /></button>
+            </div>
+        }
+    </div>
+    @* Stacked bottom-center of the map: zoom always renders here (even in Edit/Select mode, when
+       the zone-filter pill below it is hidden), with the zone tabs docked directly under it. *@
+    <div class="floor-zoom-dock">
+        <span class="zoom-group zoom-group--sm">
+            <button class="btn btn--icon btn--ghost btn--sm" type="button" disabled="@(_zoom <= ZoomMin)" title="@Loc.T("Zoom out")" @onclick="ZoomOut"><LucideIcon Name="zoom-out" Size="12" /></button>
+            <button class="zoom-group__level" type="button" title="@Loc.T("Reset zoom")" @onclick="ZoomReset">@((_zoom * 100).ToString("0"))%</button>
+            <button class="btn btn--icon btn--ghost btn--sm" type="button" disabled="@(_zoom >= ZoomMax)" title="@Loc.T("Zoom in")" @onclick="ZoomIn"><LucideIcon Name="zoom-in" Size="12" /></button>
+        </span>
+        @if (!_editing && !_selecting && _assignReservationId is null && Zones.Count > 0)
+        {
+            <div class="tabs zone-filter">
+                <button class="tabs__opt @(_zoneFilter is null ? "tabs__opt--on" : "")" @onclick="() => _zoneFilter = null">@Loc.T("All zones")</button>
+                @foreach (var z in Zones)
+                {
+                    <button class="tabs__opt @(_zoneFilter == z ? "tabs__opt--on" : "")" @onclick="() => _zoneFilter = z">@z</button>
+                }
+            </div>
+        }
+    </div>
+    @if (_reassigning && _reassignSource is null)
+    {
+        <div class="floor-hint floor-hint--assign floor-hint--floating">
+            <LucideIcon Name="arrow-right-left" Size="16" /> @Loc.T("Click the occupied table whose order you want to move.")
+        </div>
+    }
+    @if (_reassignSource is not null)
+    {
+        <div class="reassign-popover">
+            <div class="reassign-popover__title"><LucideIcon Name="arrow-right-left" Size="15" /> @Loc.T("Reassign") @(_reassignSource.GroupId is not null ? (_reassignSource.GroupName ?? _reassignSource.Name) : _reassignSource.Name)?</div>
+            <select class="select" @bind="_reassignDestId">
+                <option value="">@Loc.T("Choose a table")</option>
+                @foreach (var dest in VisibleTables.Where(x => x.Id != _reassignSource.Id && x.ActiveOrderId is null && x.GroupId is null))
+                {
+                    <option value="@dest.Id">@dest.Name</option>
+                }
+            </select>
+            <div class="reassign-popover__actions">
+                <button class="btn btn--ghost btn--sm" @onclick="CancelReassign">@Loc.T("Cancel")</button>
+                <button class="btn btn--primary btn--sm" disabled="@(_reassignDestId is null)" @onclick="ConfirmReassign">@Loc.T("Confirm")</button>
+            </div>
+        </div>
+    }
+    <div class="floor floor--tex-@Branding.Current.FloorTexture @(_editing ? "floor--edit" : "") @(_selecting ? "floor--select" : "") @(_assignReservationId is not null ? "floor--assign" : "") @(_reassigning ? "floor--assign" : "") @(_paintMode ? "floor--assign" : "")" @ref="_floorEl">
+        @{
+            // Computed once per render instead of once per table/foreach: VisibleTables filters the
+            // whole floor and ResByTable groups every reservation, so re-evaluating either property
+            // on each access below was doing that work again for every table and every group badge.
+            var visible = VisibleTables;
+            var resByTable = ResByTable;
+        }
+    <div class="floor-canvas" style="transform:scale(@N(_zoom)); transform-origin:0 0; --zoom:@N(_zoom);">
+        @foreach (var z in VisibleZones)
+        {
+            <div class="floor-zone @(!_editing && _zoneFilter == z.Name ? "floor-zone--on" : "") @(_editing && _zoneEditActive ? "floor-zone--btns-visible" : "") @(z.Color is not null && IsImageColor(z.Color) ? "floor-zone--img" : "")"
+                 data-id="@z.Id"
+                 data-x="@N(z.PositionX)" data-y="@N(z.PositionY)"
+                 data-w="@N(z.Width)" data-h="@N(z.Height)" data-rot="0"
+                 data-locked="false"
+                 style="@ZoneStyle(z)"
+                 title="@z.Name">
+                <span class="floor-zone__name">@z.Name</span>
+                @if (_editing)
+                {
+                    @if (_zoneEditActive)
+                    {
+                        @* Rename/delete need a Blazor-rendered Modal (rename) or a live list
+                           update (delete) to actually show up — impossible while _editing has
+                           frozen rendering for JS to own the DOM (see ShouldRender/_suppressRender)
+                           — so both handlers below step out of edit mode first (Save for rename,
+                           so a drag already in progress isn't silently thrown away; Cancel for
+                           delete, since the zone about to be removed has nothing worth keeping)
+                           before doing anything Blazor needs to re-render for. floorplan.js's
+                           onDown also has to ignore pointerdown on these two, or it arms a drag
+                           on the zone underneath before the click ever reaches these handlers. *@
+                        <button class="floor-zone__rename" type="button" title="@Loc.T("Rename")" @onclick="() => EditZoneDuringLayoutEdit(z)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="12" /></button>
+                    }
+                    <button class="floor-zone__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RequestDeleteZone(z)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
+                    <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
+                }
+                else if (_zoneMenuOpen || _zoneFilter == z.Name)
+                {
+                    @* Shown while the "Zones" toolbar button's own edit mode is on (see
+                       ToggleZoneMenu) — otherwise these sat on every zone box all the time, so
+                       modifying a zone only ever took clicking directly on it, never the button —
+                       or, once a chip has narrowed the map down to that one zone (_zoneFilter),
+                       on that single remaining zone box even after the dropdown itself has
+                       closed, since it's now the only thing left to act on. *@
+                    <button class="floor-zone__rename" type="button" title="@Loc.T("Rename")" @onclick="() => StartRenameZone(z)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="12" /></button>
+                    <button class="floor-zone__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RemoveZone(z.Id)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
+                }
+            </div>
+        }
+        @foreach (var t in visible)
+        {
+            resByTable.TryGetValue(t.Id, out var rv);
+            <div class="@TableClass(t, rv)"
+                 data-id="@t.Id"
+                 data-x="@N(t.PositionX)" data-y="@N(t.PositionY)"
+                 data-w="@N(t.Width)" data-h="@N(t.Height)" data-rot="@N(t.Rotation)"
+                 data-locked="@(t.IsLocked ? "true" : "false")"
+                 data-shape="@((int)t.Shape)"
+                 data-group="@(t.GroupId?.ToString() ?? "")"
+                 data-seam="@GroupSeamAttr(t)"
+                 style="@TableStyle(t)"
+                 @onclick="() => OnTableClick(t)"
+                 @oncontextmenu:preventDefault="true"
+                 title="@(t.GroupId is not null ? (t.GroupName ?? t.Name) : t.Name)">
+                @if (!_editing)
+                {
+                    @foreach (var chairStyle in ChairStyles(t, _tables))
+                    {
+                        <svg class="tbl__chair @(EffectiveTableStatus(t, rv) == TableStatus.Occupied ? "tbl__chair--seated" : "")"
+                             style="@chairStyle" viewBox="0 0 14 19.6" width="14" height="19.6">
+                            <rect class="chair-leg" x="-1" y="9.1" width="1.7" height="2" rx="0.4" />
+                            <rect class="chair-leg" x="13.3" y="9.1" width="1.7" height="2" rx="0.4" />
+                            <rect class="chair-leg" x="-1" y="13.65" width="1.7" height="2" rx="0.4" />
+                            <rect class="chair-leg" x="13.3" y="13.65" width="1.7" height="2" rx="0.4" />
+                            <rect class="chair-seat" x="0" y="5.25" width="14" height="14" rx="3.5" />
+                            <rect class="chair-cushion" x="2.1" y="7.35" width="9.8" height="9.8" rx="2.45" />
+                            <rect class="chair-backrest" x="1.4" y="0" width="11.2" height="5.95" rx="2.8" />
+                        </svg>
+                    }
+                }
+                <div class="tbl__content">
+                    @if (t.GroupId is null)
+                    {
+                        <span class="tbl__name">@t.Name</span>
+                        <span class="tbl__seats">@t.Seats<LucideIcon Name="user" Size="12" /></span>
+                        @if (rv is not null)
+                        {
+                            <span class="tbl__total">@rv.CustomerName</span>
+                        }
+                    }
+                </div>
+                @* Grouped tables skip this entirely — see the .tbl__resv--group badge below,
+                   rendered once per group and centred on the whole joined row instead of hanging
+                   off whichever member happens to be the anchor. *@
+                @if (!_editing && rv is not null && t.GroupId is null)
+                {
+                    <span class="tbl__resv" title="@rv.CustomerName"><LucideIcon Name="@(rv.Status == ReservationStatus.Seated ? "armchair" : PeriodIcon(rv.Time))" Size="14" /> @rv.Time.ToString("HH:mm")</span>
+                }
+                @* Revealed by a first click on this same assigned table (see OnTableClick) instead of
+                   showing on every reserved table all the time — a second click on the table itself
+                   still opens its comanda as usual; this X only removes the table from the reservation. *@
+                @if (!_editing && rv is not null && _selectedAssignedTableId == t.Id)
+                {
+                    <button type="button" class="tbl__unassign" title="@Loc.T("Remove from reservation")" @onclick="() => RemoveTableFromReservation(t)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
+                }
+                @if (_editing)
+                {
+                    @if (t.GroupId is null)
+                    {
+                        @* Grouped members skip shape: JoinTablesAsync already forces every member
+                           to share one Rotation/IsLocked/Height, so editing it individually while
+                           joined doesn't fit the "reads as one table" model — and, concretely,
+                           .tbl__shape sits bottom-left on its own table while .tbl__handle--resize
+                           sits bottom-right on the one before it, so for two tables snapped
+                           edge-to-edge those two controls land almost exactly on top of each other
+                           at the shared seam. Grabbing one member's resize handle there could land
+                           on its neighbour's shape button instead, silently cycling that neighbour
+                           from square to round. *@
+                        <button class="tbl__shape" type="button" title="@Loc.T("Change shape")">@ShapeIcon(t.Shape)</button>
+                    }
+                    @* One edit button per group (on its anchor member), not one per table — a
+                       joined block reads and is edited as a single unit, so its pencil opens the
+                       shared group name below instead of each member's own name in turn. *@
+                    @if (t.GroupId is null || IsGroupAnchor(t))
+                    {
+                        <button class="tbl__rename" type="button" title="@Loc.T("Edit table")" @onclick="() => EditTableDuringLayoutEdit(t)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="14" /></button>
+                    }
+                    <button class="tbl__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RequestDeleteTable(t)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="14" /></button>
+                    <span class="tbl__handle tbl__handle--rotate" title="@Loc.T("Rotate")"></span>
+                    <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
+                }
+            </div>
+        }
+        @* One badge per group, centered on the bounding box of its member tables — rather
+           than pinned to a single anchor table — so it sits right where they join once
+           dragged, and carries the group's own name now that no single member shows it. *@
+        @foreach (var gid in visible.Where(t => t.GroupId.HasValue).Select(t => t.GroupId!.Value).Distinct())
+        {
+            var grv = GroupReservation(gid, resByTable);
+            <span class="tbl__group" data-group="@gid" style="@GroupCenterStyle(gid, visible) --grp:@GroupColor(gid)">
+                @if (grv is not null)
+                {
+                    <span class="tbl__total">@grv.CustomerName</span>
+                }
+                <span class="tbl__group-name">@GroupDisplayName(gid)</span>
+                <span class="tbl__group-seats"><LucideIcon Name="link" Size="15" /> @GroupSeats(gid)<LucideIcon Name="user" Size="14" /></span>
+            </span>
+            @if (!_editing && grv is not null)
+            {
+                <span class="tbl__resv tbl__resv--group" data-group="@gid" style="@GroupBottomCenterStyle(gid, visible)" title="@grv.CustomerName"><LucideIcon Name="@(grv.Status == ReservationStatus.Seated ? "armchair" : PeriodIcon(grv.Time))" Size="14" /> @grv.Time.ToString("HH:mm")</span>
+            }
+        }
+        @foreach (var d in VisibleDecor)
+        {
+            <div class="decor decor--@DecorSlug(d.Type)"
+                 data-id="@d.Id"
+                 data-x="@N(d.PositionX)" data-y="@N(d.PositionY)"
+                 data-w="@N(d.Width)" data-h="@N(d.Height)" data-rot="@N(d.Rotation)"
+                 data-locked="@(d.IsLocked ? "true" : "false")"
+                 style="@DecorStyle(d)"
+                 title="@Loc.T(DecorLabel(d.Type))">
+                @if (_editing)
+                {
+                    <button class="tbl__lock" type="button" title="@Loc.T("Lock / unlock")"><LucideIcon Name="@(d.IsLocked ? "lock" : "lock-open")" Size="14" /></button>
+                    <button class="decor__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RequestDeleteDecor(d)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
+                    <span class="tbl__handle tbl__handle--rotate" title="@Loc.T("Rotate")"></span>
+                    <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
+                }
+            </div>
+        }
+        @if (_tables.Count == 0) { <p class="empty">@Loc.T("No tables yet. Create one to start.")</p> }
+        else if (visible.Count == 0) { <p class="empty">@Loc.T("No tables in this zone.")</p> }
+    </div>
+    </div>
+    </div>
+    </div>
+
 </div>
 
 <Modal Visible="_form is not null" Title="@(_form?.Id > 0 ? Loc.T("Edit table") : Loc.T("New table"))" OnClose="Close" FullScreen="true">
@@ -1252,9 +1251,13 @@
     private void ZoomReset() => _zoom = 1;
 
     // ---- Reservations panel state ----
-    // Docked to the left of the floor plan (visually, via CSS order).
-    private bool _mapExpanded;
+    // Floats over the map, anchored under the calendar toggle (see .resv-col in Tables.razor.css).
     private bool _resSidebarOpen = true;
+    private ElementReference _resvPanelEl;
+    private ElementReference _resvHandleEl;
+    private ElementReference _resvResizeEl;
+    private ElementReference _resvHeaderEl;
+    private bool _resvDragBound;
     private DateTime _reserveDate = DateTime.Today;
     private bool _showDatePicker;
     private Task PickReserveDate(DateTime date)
@@ -1627,6 +1630,25 @@
             _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/floorplan.js?v=2");
             await _module.InvokeVoidAsync("init", _floorEl, _zoom);
             _suppressRender = true;
+        }
+        if (_resSidebarOpen && !_resvDragBound && RendererInfo.IsInteractive)
+        {
+            // Client-only drag (grab the .resv__drag-handle grip) — position isn't persisted
+            // anywhere, it just resets to the default corner-anchored spot next time the panel
+            // is opened. Sizing uses its own explicit handle (.resv__resize-handle) driven by
+            // pointer events rather than native CSS `resize`, which needs a fiddly 15px corner
+            // grab-zone that's easy to miss/mis-hit and doesn't work on touch at all — the
+            // camarero screens are touch-first, so this has to work with a finger too.
+            await JS.InvokeVoidAsync("posPanelDrag", _resvHandleEl, _resvPanelEl);
+            // Width floor is read live from the header row's own natural (unwrapped) width
+            // rather than a guessed constant, so the panel can never be shrunk narrower than
+            // what the date-nav icons need — they'd otherwise start wrapping/overlapping.
+            await JS.InvokeVoidAsync("posPanelResize", _resvResizeEl, _resvPanelEl, _resvHeaderEl, 220);
+            _resvDragBound = true;
+        }
+        else if (!_resSidebarOpen)
+        {
+            _resvDragBound = false;
         }
     }
 

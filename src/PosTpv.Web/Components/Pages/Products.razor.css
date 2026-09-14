@@ -7,6 +7,7 @@
 }
 
 .page-hero .tabs { margin: 0; }
+.tabs__opt { font-size: .75rem; }
 /* Active Productos/Alérgenos/Extras tab: light-grey + shadow instead of the app-wide blue
    --primary fill, on repeated request — same "no blue" treatment already applied to this
    page's focus rings and empty product thumbs below. */
@@ -32,13 +33,8 @@
 .page-hero__row .toolbar__search ::deep svg { left: .65rem; }
 
 /* --- Left rail: categories --- */
-.catalog__cats { display: flex; flex-direction: column; min-height: 0; padding: 1rem; }
-.catalog__cats-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .8rem; }
-/* Full-width variant of the shared .toolbar__search pill — the generic one is a fixed
-   15rem, sized for sitting next to page-hero tabs, which is wider than this 340px rail
-   has room for. */
-.catalog__cats-search { margin-bottom: .8rem; }
-.catalog__cats-search .input { width: 100%; max-width: 100%; }
+.catalog__cats { display: flex; flex-direction: column; min-height: 0; padding: .35rem 1rem 1rem; }
+.catalog__cats-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .3rem; }
 
 /* Small tracked-caps section label instead of a full heading — reads as a dashboard sidebar
    section marker (à la Linear/Notion) rather than competing with the page's real h1. */
@@ -61,7 +57,10 @@
     cursor: pointer;
 }
 
-.catalog__cats-list { display: flex; flex-direction: column; gap: .5rem; overflow-y: auto; padding-right: .2rem; }
+/* Caps the rail at exactly 4 rows tall (measured row height ~6.05rem, incl. the
+   wrapped meta line, + .5rem gap) so the list scrolls internally past 4 categories
+   instead of pushing the right panel taller. */
+.catalog__cats-list { display: flex; flex-direction: column; gap: .5rem; overflow-y: auto; padding-right: .2rem; max-height: calc(6.05rem * 4 + .5rem * 3); }
 
 /* Neutral card for every category row — a single consistent business-grey surface, with
    --primary for the active/selected state. */
@@ -106,8 +105,7 @@
 .catRow__actions .btn--ghost:hover { color: var(--text); }
 
 /* --- Right panel: products --- */
-.catalog__products { display: flex; flex-direction: column; min-height: 0; }
-.catalog__products .toolbar { margin-bottom: 1.3rem; }
+.catalog__products { display: flex; flex-direction: column; min-height: 0; padding-top: .35rem; }
 
 /* Neutral, solid-fill "create" button — New category/New product read as calm structural
    actions in a muted business grey instead of the loud brand-primary fill, which stays
@@ -126,24 +124,6 @@
     border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
     box-shadow: var(--shadow);
 }
-
-/* Page title (and, below, modal titles opened from this page) reuse the exact same tracked-caps
-   "eyebrow" treatment as .catalog__eyebrow ("Categories") instead of the app-wide h1 default,
-   so every heading on /products — sidebar and product panel alike — reads as one consistent
-   typographic family at the same size. No font-size declared here: the eyebrow's own .6rem
-   already loses to the catch-all ".catalog *" rule below (same specificity, later in file),
-   which is what actually renders it at .68rem — leaving this selector's font-size unset lets
-   that same catch-all rule win here too instead of freezing in a value that no longer matches
-   what "Categories" actually renders at. */
-.toolbar__title { display: flex; flex-direction: column; gap: .15rem; }
-.toolbar__title h1 {
-    margin: 0;
-    font-weight: 700;
-    letter-spacing: .07em;
-    text-transform: uppercase;
-    color: var(--text-soft);
-}
-.toolbar__count { font-size: .62rem; font-weight: 600; color: var(--text-soft); min-height: 1.1em; }
 
 /* Modal titles: Modal.razor is a shared component with no CSS of its own, so its <h2> only
    picks up Products' scope on its root (.modal-backdrop) — ::deep reaches past that to the
@@ -277,7 +257,7 @@
     overflow: hidden; text-overflow: ellipsis;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     white-space: normal; line-height: 1.2;
-    font-size: .64rem; font-weight: 700; letter-spacing: -.01em;
+    font-size: .56rem; font-weight: 700; letter-spacing: -.01em;
 }
 /* A plain bordered figure instead of a bright primary-tinted pill — reads like a price column
    in a business ledger/spreadsheet rather than a promotional badge, in keeping with the rest of
@@ -327,14 +307,14 @@
    same semantic colour, matching the bordered-surface language used across this card now. */
 .allergen-tag {
     display: inline-flex; align-items: center; gap: .15rem;
-    padding: .04rem .3rem;
+    padding: .03rem .28rem;
     border-radius: 999px;
     background: transparent;
     border: 1px solid color-mix(in srgb, var(--warning) 40%, var(--border));
     color: color-mix(in srgb, var(--warning) 85%, var(--text));
-    font-size: .52rem; font-weight: 700;
+    font-size: .46rem; font-weight: 700;
 }
-.allergen-tag img { width: 10px; height: 10px; border-radius: 50%; object-fit: cover; }
+.allergen-tag img { width: 8px; height: 8px; border-radius: 50%; object-fit: cover; }
 
 /* --- Extra tags on a product card --- */
 /* Unlike .mgmt-card__allergens above, this row only renders when the product actually has
@@ -343,19 +323,18 @@
 .mgmt-card__extras { display: flex; flex-wrap: wrap; gap: .2rem; }
 .extra-tag {
     display: inline-flex; align-items: center; gap: .15rem;
-    padding: .04rem .3rem;
+    padding: .03rem .28rem;
     border-radius: 999px;
     background: transparent;
     border: 1px solid color-mix(in srgb, var(--secondary) 40%, var(--border));
     color: color-mix(in srgb, var(--secondary) 85%, var(--text));
-    font-size: .52rem; font-weight: 700;
+    font-size: .46rem; font-weight: 700;
 }
 .extra-tag b { font-weight: 800; }
 
 /* --- Allergen manager modal: list of allergens with a thumbnail image --- */
 /* No longer inside a modal (the section lives inline in .catalog__products now, switched to
-   via the page-hero tabs), so no extra top margin is needed — the toolbar above it already has
-   its own margin-bottom. */
+   via the page-hero tabs); top spacing comes from .catalog__products' own padding-top. */
 .allergenManager__list { display: flex; flex-direction: column; gap: .5rem; max-width: 32rem; }
 .allergenRow {
     display: flex; align-items: center; gap: .6rem;
@@ -497,7 +476,6 @@
 
 @media (max-width: 900px) {
     .catalog { grid-template-columns: 1fr; height: auto; }
-    .catalog__cats-list { max-height: 40vh; }
 }
 
 /* --- Product edit modal: packed into 3-up rows and scaled down across the board (labels,

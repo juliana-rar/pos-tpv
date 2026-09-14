@@ -88,7 +88,7 @@
     --shadow-lg: 0 24px 48px rgba(0, 0, 0, .6);
 }
 
-*, *::before, *::after { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 html, body { height: 100%; }
 
@@ -136,6 +136,8 @@ a { color: var(--primary); text-decoration: none; }
 .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
 .btn:active { transform: translateY(0); }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.btn:focus { outline: none; }
+.btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .btn--primary { background: var(--primary); color: var(--on-primary); }
 .btn--primary:hover { background: var(--primary-strong); }
 .btn--danger { background: var(--danger); color: var(--on-danger); }

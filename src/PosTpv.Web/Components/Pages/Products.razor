@@ -14,7 +14,7 @@
 
 <PageTitle>Products · @Branding.Current.Title</PageTitle>
 
-<PageHero Icon="utensils-crossed" Title="@Loc.T("Products")">
+<PageHero Title="@Loc.T("Products")">
     <div class="page-hero__row">
         <span></span>
         <div class="tabs" role="tablist">
@@ -59,18 +59,13 @@
             <button class="btn btn--icon btn--neutral btn--sm" title="@Loc.T("New category")" @onclick="() => OpenCategoryForm(null)"><LucideIcon Name="plus" Size="14" /></button>
         </div>
 
-        <div class="toolbar__search catalog__cats-search">
-            <LucideIcon Name="search" Size="13" />
-            <input class="input search" placeholder="@Loc.T("Search…")" @bind="_categorySearch" @bind:event="oninput" />
-        </div>
-
         @if (_notice is not null)
         {
             <div class="catalog__notice" @onclick="() => _notice = null">@_notice <LucideIcon Name="x" Size="14" /></div>
         }
 
         <div class="catalog__cats-list">
-            @foreach (var (c, i) in FilteredCategories.Select((c, i) => (c, i)))
+            @foreach (var (c, i) in _categories.Select((c, i) => (c, i)))
             {
                 <div class="catRow" data-active="@(c.Id == _selectedId ? "true" : null)" @onclick="() => Select(c.Id)">
                     <div class="catRow__thumb">
@@ -96,9 +91,9 @@
                     </div>
                     <div class="catRow__actions" @onclick:stopPropagation="true">
                         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
-                                disabled="@(!string.IsNullOrWhiteSpace(_categorySearch) || i == 0)" @onclick="() => MoveCategory(c.Id, -1)"><LucideIcon Name="chevron-up" Size="16" /></button>
+                                disabled="@(i == 0)" @onclick="() => MoveCategory(c.Id, -1)"><LucideIcon Name="chevron-up" Size="16" /></button>
                         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
-                                disabled="@(!string.IsNullOrWhiteSpace(_categorySearch) || i == FilteredCategories.Count - 1)" @onclick="() => MoveCategory(c.Id, 1)"><LucideIcon Name="chevron-down" Size="16" /></button>
+                                disabled="@(i == _categories.Count - 1)" @onclick="() => MoveCategory(c.Id, 1)"><LucideIcon Name="chevron-down" Size="16" /></button>
                         <button class="btn btn--icon btn--ghost btn--sm" title="@(c.IsVisible ? Loc.T("Hide") : Loc.T("Show"))"
                                 @onclick="() => ToggleCategoryVisibility(c)"><LucideIcon Name="@(c.IsVisible ? "eye-off" : "eye")" Size="16" /></button>
                         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")"
@@ -109,23 +104,11 @@
                 </div>
             }
             @if (_categories.Count == 0) { <p class="empty">@Loc.T("No categories yet.")</p> }
-            else if (FilteredCategories.Count == 0) { <p class="empty">@Loc.T("No categories found.")</p> }
         </div>
     </section>
 
     @* ---- Right panel: products of the selected category ---------------------- *@
     <section class="catalog__products">
-        <div class="toolbar">
-            <div class="toolbar__title">
-                <h1>@(_viewingAllergens ? Loc.T("Allergens") : _viewingExtras ? Loc.T("Extras") : (_selected?.Name ?? Loc.T("Products")))</h1>
-                <span class="toolbar__count">
-                    @if (_viewingAllergens) { <text>@_allergens.Count @Loc.T("defined")</text> }
-                    else if (_viewingExtras) { <text>@_extras.Count @Loc.T("defined")</text> }
-                    else if (_selected is not null) { <text>@Filtered.Count @Loc.T("products")</text> }
-                </span>
-            </div>
-        </div>
-
         @if (_viewingAllergens)
         {
             <div class="allergenManager">
@@ -560,7 +543,6 @@
     private List<ProductDto> _products = new();
     private int? _selectedId;
     private string _search = "";
-    private string _categorySearch = "";
 
     private ProductFormDto? _product;
     private string? _productError;
@@ -596,10 +578,6 @@
     private HashSet<int> _extraCategoryFilter = new();
 
     private CategoryDto? _selected => _categories.FirstOrDefault(c => c.Id == _selectedId);
-
-    private List<CategoryDto> FilteredCategories => string.IsNullOrWhiteSpace(_categorySearch)
-        ? _categories
-        : _categories.Where(c => c.Name.Contains(_categorySearch, StringComparison.OrdinalIgnoreCase)).ToList();
 
     private List<AllergenDto> FilteredAllergens => string.IsNullOrWhiteSpace(_allergenSearch)
         ? _allergens
