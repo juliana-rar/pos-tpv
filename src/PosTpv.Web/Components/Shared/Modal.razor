@@ -4,13 +4,20 @@
     <div class="modal-backdrop @(FullScreen ? "modal-backdrop--full" : "")" @onclick="OnBackdrop">
         <div class="modal @(Wide ? "modal--wide" : "") @(Narrow ? "modal--narrow" : "") @(FullScreen ? "modal--full" : "")" @onclick:stopPropagation="true">
             <div class="modal__head">
+                @if (CloseLeft)
+                {
+                    <button class="btn btn--icon btn--ghost" @onclick="Close" type="button"><LucideIcon Name="x" Size="18" /></button>
+                }
                 <div class="modal__head-title">
                     <h2>@Title</h2>
                     @TitleActions
                 </div>
                 <div class="modal__head-actions">
                     @HeaderActions
-                    <button class="btn btn--icon btn--ghost" @onclick="Close" type="button"><LucideIcon Name="x" Size="18" /></button>
+                    @if (!CloseLeft)
+                    {
+                        <button class="btn btn--icon btn--ghost" @onclick="Close" type="button"><LucideIcon Name="x" Size="18" /></button>
+                    }
                 </div>
             </div>
             <div class="modal__body">
@@ -36,6 +43,7 @@
     [Parameter] public bool Wide { get; set; }
     [Parameter] public bool Narrow { get; set; }
     [Parameter] public bool FullScreen { get; set; }
+    [Parameter] public bool CloseLeft { get; set; }
 
     private Task Close() => OnClose.InvokeAsync();
     private Task OnBackdrop() => CloseOnBackdrop ? OnClose.InvokeAsync() : Task.CompletedTask;

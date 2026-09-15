@@ -80,14 +80,6 @@
                     </div>
                     <div class="catRow__main">
                         <span class="catRow__name">@c.Name</span>
-                        <span class="catRow__meta">
-                            <i class="catRow__dot" data-visible="@(c.IsVisible ? "true" : "false")"></i>
-                            @(c.IsVisible ? Loc.T("Visible") : Loc.T("Hidden"))
-                            <span class="catRow__meta-sep">·</span>
-                            @c.ProductCount @Loc.T("products")
-                            <span class="catRow__meta-sep">·</span>
-                            #@c.DisplayOrder
-                        </span>
                     </div>
                     <div class="catRow__actions" @onclick:stopPropagation="true">
                         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
@@ -238,12 +230,14 @@
 </div>
 
 @* ---- Product form modal -------------------------------------------------- *@
-<Modal Visible="_product is not null" Title="@(_product?.Id > 0 ? Loc.T("Edit product") : Loc.T("New product"))" OnClose="CloseProduct" Wide="true">
+<Modal Visible="_product is not null" Title="@(_product?.Id > 0 ? Loc.T("Edit product") : Loc.T("New product"))" OnClose="CloseProduct" Wide="true" CloseLeft="true">
     <TitleActions>
         @if (_product is not null)
         {
-            <label class="switch" title="@Loc.T("Available")"><input type="checkbox" @bind="_product.IsAvailable" /><span>@Loc.T("Available")</span></label>
-            <label class="switch" title="@Loc.T("Visible")"><input type="checkbox" @bind="_product.IsVisible" /><span>@Loc.T("Visible")</span></label>
+            <div class="modal-switches">
+                <label class="switch" title="@Loc.T("Visible")"><input type="checkbox" @bind="_product.IsVisible" /><span>@Loc.T("Visible")</span></label>
+                <label class="switch" title="@Loc.T("Available")"><input type="checkbox" @bind="_product.IsAvailable" /><span>@Loc.T("Available")</span></label>
+            </div>
         }
     </TitleActions>
     <HeaderActions>
@@ -253,7 +247,18 @@
         @if (_product is not null)
         {
             <div class="product-form">
-            <div class="field"><label>@Loc.T("Name")</label><input class="input" @bind="_product.Name" /></div>
+            <div class="row-2">
+                <div class="field"><label>@Loc.T("Name")</label><input class="input" @bind="_product.Name" /></div>
+                <div class="field"><label>@Loc.T("Category")</label>
+                    <select class="select" @bind="_product.CategoryId">
+                        <option value="0">@Loc.T("— select —")</option>
+                        @foreach (var c in _categories)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
             <div class="field">
                 <label>@Loc.T("Extras")</label>
                 @if (_extras.Count > 0)
@@ -285,20 +290,8 @@
                     <p class="muted">@Loc.T("No extras defined yet.") <button type="button" class="btn btn--ghost btn--sm" @onclick="GoToExtras">@Loc.T("Add one")</button></p>
                 }
             </div>
-            <div class="row-3">
-                <div class="field"><label>@Loc.T("Category")</label>
-                    <select class="select" @bind="_product.CategoryId">
-                        <option value="0">@Loc.T("— select —")</option>
-                        @foreach (var c in _categories)
-                        {
-                            <option value="@c.Id">@c.Name</option>
-                        }
-                    </select>
-                </div>
-                <div class="field"><label>@Loc.T("Colour")</label><input type="color" class="input" @bind="_product.Color" /></div>
+            <div class="row-narrow">
                 <div class="field"><label>@Loc.T("Price")</label><input type="number" step="0.01" class="input" @bind="_product.Price" /></div>
-            </div>
-            <div class="row-3">
                 <div class="field"><label>@Loc.T("VAT %")</label><input type="number" step="0.5" class="input" @bind="_product.VatRate" /></div>
                 <div class="field"><label>@Loc.T("Prep. minutes")</label><input type="number" class="input" @bind="_product.PreparationMinutes" /></div>
                 <div class="field"><label>@Loc.T("Display order")</label><input type="number" class="input" @bind="_product.DisplayOrder" /></div>
@@ -344,7 +337,7 @@
 </Modal>
 
 @* ---- Category form modal ------------------------------------------------- *@
-<Modal Visible="_category is not null" Title="@(_category?.Id > 0 ? Loc.T("Edit category") : Loc.T("New category"))" OnClose="CloseCategory">
+<Modal Visible="_category is not null" Title="@(_category?.Id > 0 ? "" : Loc.T("New category"))" OnClose="CloseCategory">
     <ChildContent>
         @if (_category is not null)
         {

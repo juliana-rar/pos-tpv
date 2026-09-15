@@ -241,17 +241,18 @@ a { color: var(--primary); text-decoration: none; }
 .modal--wide { width: min(680px, 100%); }
 .modal--narrow { width: min(360px, 100%); }
 .modal__head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
-/* Groups the title with any extra controls a modal wants sitting right next to it (e.g. the
-   product edit modal's Available/Visible switches, via TitleActions) instead of them drifting
-   all the way to the header's far edge alongside Save/Close. min-width:0 so a long title still
-   truncates/wraps instead of pushing those controls out of the header. */
+/* Groups the title with any extra controls a modal wants attached to it (e.g. the product edit
+   modal's Available/Visible switches, via TitleActions) instead of them drifting all the way to
+   the header's far edge alongside Save/Close. min-width:0 so a long title still truncates/wraps
+   instead of pushing those controls out of the header. */
 .modal__head-title { display: flex; align-items: center; gap: .6rem; min-width: 0; }
 .modal__head-actions { display: flex; align-items: center; gap: .4rem; flex: none; }
-/* A modal that puts toggle switches next to its title (currently just the product edit modal —
-   see TitleActions in Products.razor) is packing more into that row than a plain title, so
-   shrink the title to make room instead of letting it wrap or crowd out the switches. */
-.modal__head-title:has(.switch) h2 { font-size: .95rem; }
-.modal__head-title .switch { font-size: .68rem; gap: .25rem; }
+/* A modal that puts toggle switches under its title (currently just the product edit modal —
+   see TitleActions in Products.razor) stacks the switch row below the title instead of
+   crowding them onto the same line. */
+.modal__head-title:has(.switch) { flex-direction: column; align-items: flex-start; gap: .2rem; }
+.modal-switches { display: flex; align-items: center; gap: .6rem; }
+.modal__head-title .switch { font-size: .58rem; gap: .25rem; }
 .modal__body { padding: 1.25rem; }
 .modal__foot { display: flex; justify-content: flex-end; gap: .6rem; padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
 

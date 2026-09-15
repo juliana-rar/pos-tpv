@@ -135,6 +135,16 @@
     text-transform: uppercase;
     color: var(--text-soft);
 }
+/* app.css's `.modal__head-title:has(.switch) h2` (product edit modal's Visible/Available
+   switches trigger it) outranks the rule above on specificity and bumps the title back up to
+   .95rem — repeat the tracked-caps treatment at that same higher specificity so it wins too. */
+.modal-backdrop ::deep .modal__head-title:has(.switch) h2 {
+    font-size: .74rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--text-soft);
+}
 
 /* Every piece of text on this page — including product/category/allergen/extra names and
    prices — shares the same tracked-caps eyebrow look, on request. A smaller base font-size
@@ -485,8 +495,10 @@
    into that height either. */
 .product-form .field { gap: .15rem; margin-bottom: .4rem; }
 .product-form .field > label { font-size: .6rem; }
-.product-form .row-2, .product-form .row-3 { gap: .4rem; }
-.product-form .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+.product-form .row-2 { gap: .4rem; }
+.product-form .row-narrow { display: flex; flex-wrap: wrap; gap: .6rem; }
+.product-form .row-narrow .field { flex: 0 0 auto; }
+.product-form .row-narrow .input { width: 4.2rem; }
 .product-form .input, .product-form .select, .product-form textarea.input {
     padding: .35rem .5rem;
     font-size: .68rem;
