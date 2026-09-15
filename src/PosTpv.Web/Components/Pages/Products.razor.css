@@ -137,9 +137,11 @@
 }
 /* app.css's `.modal__head-title:has(.switch) h2` (product edit modal's Visible/Available
    switches trigger it) outranks the rule above on specificity and bumps the title back up to
-   .95rem — repeat the tracked-caps treatment at that same higher specificity so it wins too. */
+   .95rem — repeat the tracked-caps treatment at that same higher specificity so it wins too.
+   Sized smaller than the shared .74rem title above since this is the only modal title that
+   also carries a switch row underneath it. */
 .modal-backdrop ::deep .modal__head-title:has(.switch) h2 {
-    font-size: .74rem;
+    font-size: .62rem;
     font-weight: 700;
     letter-spacing: .07em;
     text-transform: uppercase;
@@ -494,21 +496,23 @@
    (see HeaderActions in the Modal markup) instead of a footer, so there's no bottom bar eating
    into that height either. */
 .product-form .field { gap: .15rem; margin-bottom: .4rem; }
-.product-form .field > label { font-size: .6rem; }
+.product-form .field > label { font-size: .5rem; }
 .product-form .row-2 { gap: .4rem; }
 .product-form .row-narrow { display: flex; flex-wrap: wrap; gap: .6rem; }
 .product-form .row-narrow .field { flex: 0 0 auto; }
 .product-form .row-narrow .input { width: 4.2rem; }
 .product-form .input, .product-form .select, .product-form textarea.input {
-    padding: .35rem .5rem;
-    font-size: .68rem;
+    padding: .3rem .45rem;
+    font-size: .56rem;
 }
 .product-form .select { padding-right: 1.7rem; background-size: 13px; }
 .product-form textarea.input { min-height: unset; }
-.product-form .switch { font-size: .62rem; }
+.product-form .switch { font-size: .52rem; }
+.product-form .muted { font-size: .54rem; }
 .product-form .allergen-pick, .product-form .extra-pick { gap: .3rem; }
-.product-form .allergen-chip, .product-form .extra-chip { padding: .22rem .5rem; font-size: .6rem; }
-.product-form .allergen-chip__thumb { width: 14px; height: 14px; }
+.product-form .allergen-chip, .product-form .extra-chip { padding: .2rem .45rem; font-size: .5rem; }
+.product-form .allergen-chip__thumb { width: 12px; height: 12px; }
+.product-form .extra-dd__trigger, .product-form .extra-dd__opt { font-size: .54rem; }
 
 /* --- Extra edit modal: same compact field/chip treatment as .product-form, plus a bordered
    panel around the product picker so the category-filter + product-chip flow reads as one
