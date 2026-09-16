@@ -51,9 +51,9 @@
     </div>
 </PageHero>
 
-<div class="catalog">
+<div class="catalog" @onclick="ClearExpandedCatRows">
     @* ---- Left rail: categories ---------------------------------------------- *@
-    <section class="catalog__cats surface">
+    <section class="catalog__cats surface" @onclick:stopPropagation="true">
         <div class="catalog__cats-head">
             <h2 class="catalog__eyebrow">@Loc.T("Categories")</h2>
             <button class="btn btn--icon btn--neutral btn--sm" title="@Loc.T("New category")" @onclick="() => OpenCategoryForm(null)"><LucideIcon Name="plus" Size="14" /></button>
@@ -82,16 +82,19 @@
                         <span class="catRow__name">@c.Name</span>
                     </div>
                     <div class="catRow__actions" @onclick:stopPropagation="true">
-                        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
-                                disabled="@(i == 0)" @onclick="() => MoveCategory(c.Id, -1)"><LucideIcon Name="chevron-up" Size="16" /></button>
-                        <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
-                                disabled="@(i == _categories.Count - 1)" @onclick="() => MoveCategory(c.Id, 1)"><LucideIcon Name="chevron-down" Size="16" /></button>
-                        <button class="btn btn--icon btn--ghost btn--sm" title="@(c.IsVisible ? Loc.T("Hide") : Loc.T("Show"))"
-                                @onclick="() => ToggleCategoryVisibility(c)"><LucideIcon Name="@(c.IsVisible ? "eye-off" : "eye")" Size="16" /></button>
+                        @if (_expandedCatRows.Contains(c.Id))
+                        {
+                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
+                                    disabled="@(i == 0)" @onclick="() => MoveCategory(c.Id, -1)"><LucideIcon Name="chevron-up" Size="16" /></button>
+                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
+                                    disabled="@(i == _categories.Count - 1)" @onclick="() => MoveCategory(c.Id, 1)"><LucideIcon Name="chevron-down" Size="16" /></button>
+                            <button class="btn btn--icon btn--ghost btn--sm" title="@(c.IsVisible ? Loc.T("Hide") : Loc.T("Show"))"
+                                    @onclick="() => ToggleCategoryVisibility(c)"><LucideIcon Name="@(c.IsVisible ? "eye-off" : "eye")" Size="16" /></button>
+                            <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")"
+                                    @onclick="() => DeleteCategory(c)"><LucideIcon Name="trash-2" Size="16" /></button>
+                        }
                         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")"
-                                @onclick="() => OpenCategoryForm(c.Id)"><LucideIcon Name="pencil" Size="16" /></button>
-                        <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")"
-                                @onclick="() => DeleteCategory(c)"><LucideIcon Name="trash-2" Size="16" /></button>
+                                @onclick="() => ToggleCatRow(c.Id)"><LucideIcon Name="pencil" Size="16" /></button>
                     </div>
                 </div>
             }
@@ -162,7 +165,7 @@
         else
         {
             <div class="grid-cards">
-                @foreach (var (p, i) in Filtered.Select((p, i) => (p, i)))
+                @foreach (var p in Filtered)
                 {
                     <div class="card mgmt-card" data-off="@(!p.IsAvailable ? "true" : null)" style="--prod:@p.Color" @onclick="() => OpenProductForm(p.Id)">
                         <div class="mgmt-card__head">
@@ -207,20 +210,6 @@
                                 }
                             </div>
                         }
-                        <div class="mgmt-card__actions" @onclick:stopPropagation="true">
-                            <label class="switch" title="@(p.IsAvailable ? Loc.T("Available") : Loc.T("Off"))">
-                                <input type="checkbox" checked="@p.IsAvailable" @onchange="e => ToggleAvailable(p, (bool)e.Value!)" />
-                            </label>
-                            <span class="spacer"></span>
-                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
-                                    disabled="@(!string.IsNullOrWhiteSpace(_search) || i == 0)" @onclick="() => MoveProduct(p.Id, -1)"><LucideIcon Name="chevron-up" Size="12" /></button>
-                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
-                                    disabled="@(!string.IsNullOrWhiteSpace(_search) || i == Filtered.Count - 1)" @onclick="() => MoveProduct(p.Id, 1)"><LucideIcon Name="chevron-down" Size="12" /></button>
-                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")" @onclick="() => OpenProductForm(p.Id)"><LucideIcon Name="pencil" Size="12" /></button>
-                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Duplicate")" @onclick="() => Duplicate(p.Id)"><LucideIcon Name="copy" Size="12" /></button>
-                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move to category")" @onclick="() => OpenMove(p)"><LucideIcon Name="arrow-right-left" Size="12" /></button>
-                            <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")" @onclick="() => DeleteProduct(p.Id)"><LucideIcon Name="trash-2" Size="12" /></button>
-                        </div>
                     </div>
                 }
                 @if (Filtered.Count == 0) { <p class="empty">@Loc.T("No products found.")</p> }
@@ -241,6 +230,20 @@
         }
     </TitleActions>
     <HeaderActions>
+        @if (_product is not null && _product.Id > 0)
+        {
+            var idx = Filtered.FindIndex(x => x.Id == _product.Id);
+            <button class="btn btn--icon btn--ghost" title="@Loc.T("Move up")" type="button"
+                    disabled="@(!string.IsNullOrWhiteSpace(_search) || idx <= 0)" @onclick="() => MoveProduct(_product.Id, -1)"><LucideIcon Name="chevron-up" Size="16" /></button>
+            <button class="btn btn--icon btn--ghost" title="@Loc.T("Move down")" type="button"
+                    disabled="@(!string.IsNullOrWhiteSpace(_search) || idx < 0 || idx == Filtered.Count - 1)" @onclick="() => MoveProduct(_product.Id, 1)"><LucideIcon Name="chevron-down" Size="16" /></button>
+            <button class="btn btn--icon btn--ghost" title="@Loc.T("Duplicate")" type="button" @onclick="() => Duplicate(_product.Id)"><LucideIcon Name="copy" Size="16" /></button>
+            var forMove = Filtered.FirstOrDefault(x => x.Id == _product.Id);
+            @if (forMove is not null)
+            {
+                <button class="btn btn--icon btn--ghost" title="@Loc.T("Move to category")" type="button" @onclick="() => OpenMove(forMove)"><LucideIcon Name="arrow-right-left" Size="16" /></button>
+            }
+        }
         <button class="btn btn--icon btn--primary" title="@Loc.T("Save")" @onclick="SaveProduct" type="button"><LucideIcon Name="check" Size="18" /></button>
     </HeaderActions>
     <ChildContent>
@@ -622,6 +625,23 @@
     }
 
     // ---- Categories -------------------------------------------------------
+    private readonly HashSet<int> _expandedCatRows = new();
+
+    private void ClearExpandedCatRows() => _expandedCatRows.Clear();
+
+    private void ToggleCatRow(int id)
+    {
+        if (_expandedCatRows.Contains(id))
+        {
+            _expandedCatRows.Remove(id);
+            OpenCategoryForm(id);
+        }
+        else
+        {
+            _expandedCatRows.Add(id);
+        }
+    }
+
     private void OpenCategoryForm(int? id) => _ = OpenCategoryFormAsync(id);
 
     private async Task OpenCategoryFormAsync(int? id)
