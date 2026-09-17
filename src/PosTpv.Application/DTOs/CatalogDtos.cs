@@ -17,7 +17,7 @@ public class UserFormDto
     public string? Pin { get; set; }
 }
 
-public record ExtraDto(int Id, string Name, decimal Price);
+public record ExtraDto(int Id, string Name, decimal Price, DateTime CreatedAt = default);
 
 public class ExtraFormDto
 {
@@ -27,7 +27,7 @@ public class ExtraFormDto
     public List<int> ProductIds { get; set; } = new();
 }
 
-public record AllergenDto(int Id, string Name, string? Description, string? ImageUrl);
+public record AllergenDto(int Id, string Name, string? Description, string? ImageUrl, DateTime CreatedAt = default);
 
 public class AllergenFormDto
 {
@@ -65,7 +65,7 @@ public record ProductDto(
     int Id, string Name, string? Description, decimal Price, decimal VatRate,
     string Color, string? ImageUrl, int DisplayOrder, bool IsVisible, bool IsAvailable,
     int PreparationMinutes, string? Ingredients, IReadOnlyList<AllergenDto> Allergens, int CategoryId, string CategoryName,
-    IReadOnlyList<ExtraDto> Extras);
+    IReadOnlyList<ExtraDto> Extras, DateTime CreatedAt = default);
 
 public class ProductFormDto
 {

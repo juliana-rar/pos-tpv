@@ -105,6 +105,13 @@
     transition: box-shadow var(--transition), border-color var(--transition), background var(--transition);
 }
 .catRow:hover { background: var(--card-2); border-color: color-mix(in srgb, var(--primary) 25%, var(--border)); }
+/* Reorder mode (toggled from the page-hero hand icon) repurposes a plain click into a
+   tap-to-pick-up / tap-to-drop pair instead of a press-and-drag gesture — native HTML5 drag/drop
+   doesn't work reliably in Blazor Server (dataTransfer.setData() isn't callable from C#, so the
+   browser's drag session starts/cancels inconsistently), and two taps work identically with a
+   mouse or a finger on the tablets this page also runs on. */
+.catRow[data-reorder="true"], .mgmt-card[data-reorder="true"] { cursor: pointer; }
+.catRow[data-dragging="true"], .mgmt-card[data-dragging="true"] { opacity: .5; }
 .catRow[data-active] {
     border-color: var(--primary);
     background: color-mix(in srgb, var(--primary) 7%, var(--card));
@@ -166,19 +173,6 @@
     text-transform: uppercase;
     color: var(--text-soft);
 }
-/* app.css's `.modal__head-title:has(.switch) h2` (product edit modal's Visible/Available
-   switches trigger it) outranks the rule above on specificity and bumps the title back up to
-   .95rem — repeat the tracked-caps treatment at that same higher specificity so it wins too.
-   Sized smaller than the shared .74rem title above since this is the only modal title that
-   also carries a switch row underneath it. */
-.modal-backdrop ::deep .modal__head-title:has(.switch) h2 {
-    font-size: .62rem;
-    font-weight: 700;
-    letter-spacing: .07em;
-    text-transform: uppercase;
-    color: var(--text-soft);
-}
-
 /* Every piece of text on this page — including product/category/allergen/extra names and
    prices — shares the same tracked-caps eyebrow look, on request. A smaller base font-size
    here too (all text on the page requested small) so any element without its own explicit
@@ -221,6 +215,25 @@
 }
 .toolbar__search .input:hover { border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); box-shadow: var(--shadow); }
 .toolbar__search:focus-within ::deep svg { color: var(--primary); }
+
+/* Gear button docked left of the search box, opening a dropdown of sort options (manual order,
+   alphabetical, date created). Same trigger+backdrop+menu shape as .extra-dd below (options
+   reuse its .extra-dd__opt row styling), kept separate since it lives in the toolbar row
+   rather than the product-form. */
+.toolbar__filters { position: relative; }
+.toolbar__filters-backdrop { position: fixed; inset: 0; z-index: 20; }
+.toolbar__filters-menu {
+    position: absolute; top: calc(100% + .3rem); left: 0; z-index: 21;
+    min-width: 11rem;
+    display: flex; flex-direction: column; gap: .1rem;
+    padding: .35rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    animation: pop var(--transition);
+    font-size: .66rem;
+}
 
 /* Focused inputs on this page (search bar + every form inside its modals) get a neutral
    light-grey ring instead of the app-wide blue --primary one, on request — keeps this
@@ -526,7 +539,7 @@
    (.modal/.modal__head/h2 — all rendered by the shared Modal.razor, which has no .razor.css of
    its own) can't be reached from here: Blazor CSS isolation only stamps this page's scope
    attribute onto elements Products.razor itself renders (including content passed through
-   ChildContent/HeaderActions, e.g. .product-form/.pform-save below), never onto Modal.razor's
+   ChildContent/HeaderActions, e.g. .product-form/.pform-toolbar below), never onto Modal.razor's
    own markup — even prefixed with ::deep, since a ::deep selector still needs a scoped anchor to
    its left. That chrome override lives in app.css instead (see ".modal:has(.product-form)"
    there), right after the base .modal rules. Everything below here targets .product-form itself
@@ -538,13 +551,37 @@
 .product-form {
     display: flex;
     flex-direction: column;
-    gap: 1.1rem;
+    gap: .8rem;
 }
 .product-form .btn, .product-form ::deep .btn {
     text-transform: none;
     letter-spacing: normal;
     font-size: .78rem;
 }
+
+/* Compact secondary row under the slim X/check header bar (see ".modal:has(.product-form)
+   .modal__head" in app.css): eyebrow label, move/duplicate/move-to-category actions and the
+   Visible/Available switches, all kept out of that bar so it stays a plain close/save pair. */
+.pform-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+    padding-bottom: .6rem;
+    border-bottom: 1px solid var(--border);
+}
+.pform-toolbar__eyebrow {
+    flex: 1 1 auto;
+    font-size: .62rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--primary);
+}
+.pform-toolbar__actions { display: flex; align-items: center; gap: .15rem; flex: none; }
+.pform-toolbar__actions .btn--icon { width: 26px; height: 26px; padding: 0; }
+.pform-toolbar__switches { display: flex; align-items: center; gap: .6rem; flex: none; }
+.pform-toolbar__switches .switch { font-size: .64rem; gap: .25rem; }
 
 /* Hero row: image, name, category and colour swatch on the left, price highlighted on the
    right — the product's "identity", pulled out of the dense field stack the rest of the page
@@ -554,32 +591,32 @@
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
-    gap: 1rem;
-    padding-bottom: 1.1rem;
+    gap: .7rem;
+    padding-bottom: .8rem;
     border-bottom: 1px solid var(--border);
 }
 .pform-hero__media ::deep .imgpick__preview {
-    width: 84px; height: 84px;
+    width: 60px; height: 60px;
     border-radius: var(--radius);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--prod, var(--primary)) 25%, transparent);
 }
-.pform-hero__fields { flex: 1 1 14rem; min-width: 12rem; display: flex; flex-direction: column; gap: .55rem; padding-top: .1rem; }
+.pform-hero__fields { flex: 1 1 14rem; min-width: 12rem; display: flex; flex-direction: column; gap: .4rem; padding-top: .1rem; }
 .pform-hero__name {
     width: 100%;
     border: none; border-bottom: 2px solid transparent;
     background: transparent;
-    padding: .1rem 0 .35rem;
-    font: inherit; font-size: 1.35rem; font-weight: 800; color: var(--text);
+    padding: .1rem 0 .3rem;
+    font: inherit; font-size: 1.05rem; font-weight: 800; color: var(--text);
     transition: border-color var(--transition);
 }
 .pform-hero__name:focus { outline: none; border-color: var(--prod, var(--primary)); }
 .pform-hero__name::placeholder { color: var(--text-soft); font-weight: 600; }
-.pform-hero__row { display: flex; align-items: center; gap: .55rem; }
+.pform-hero__row { display: flex; align-items: center; gap: .45rem; }
 .pform-hero__row .select { flex: 1; }
 .pform-hero__swatch {
     flex: none;
     display: grid; place-items: center;
-    width: 2.5rem; height: 2.5rem;
+    width: 2rem; height: 2rem;
     border-radius: 999px;
     border: 2px solid var(--card);
     box-shadow: 0 0 0 1px var(--border), var(--shadow-sm);
@@ -588,11 +625,11 @@
     overflow: hidden;
 }
 .pform-hero__swatch input { width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-.pform-hero__price { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: .3rem; }
-.pform-hero__price-label { font-size: .68rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .05em; }
+.pform-hero__price { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: .25rem; }
+.pform-hero__price-label { font-size: .6rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .05em; }
 .pform-hero__price-input {
     display: flex; align-items: baseline; gap: .2rem;
-    padding: .4rem .8rem;
+    padding: .3rem .65rem;
     border-radius: 999px;
     background: color-mix(in srgb, var(--prod, var(--primary)) 12%, var(--card-2));
     border: 1px solid color-mix(in srgb, var(--prod, var(--primary)) 30%, var(--border));
@@ -603,8 +640,8 @@
     color: color-mix(in srgb, var(--prod, var(--primary)) 80%, var(--text));
 }
 .pform-hero__price-input input {
-    width: 5rem; border: none; background: transparent;
-    font: inherit; font-size: 1.2rem; font-weight: 800;
+    width: 4rem; border: none; background: transparent;
+    font: inherit; font-size: 1rem; font-weight: 800;
     color: color-mix(in srgb, var(--prod, var(--primary)) 80%, var(--text));
     text-align: right;
 }
@@ -612,51 +649,38 @@
 
 /* Stat row: VAT / prep time / display order as compact inline-edit tiles instead of another
    row of bordered .field inputs. */
-.pform-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .7rem; }
+.pform-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
 .pform-stat {
-    display: flex; flex-direction: column; gap: .3rem;
-    padding: .55rem .75rem;
+    display: flex; flex-direction: column; gap: .25rem;
+    padding: .4rem .6rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--card-2);
     transition: border-color var(--transition), box-shadow var(--transition);
 }
 .pform-stat:focus-within { border-color: color-mix(in srgb, var(--prod, var(--primary)) 40%, var(--border)); box-shadow: var(--shadow-sm); }
-.pform-stat label { font-size: .66rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .04em; }
-.pform-stat .input { padding: .1rem 0; border: none; background: transparent; font-size: .95rem; font-weight: 700; }
+.pform-stat label { font-size: .6rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .04em; }
+.pform-stat .input { padding: .1rem 0; border: none; background: transparent; font-size: .85rem; font-weight: 700; }
 .pform-stat .input:focus { box-shadow: none; }
 
 /* Remaining sections: description / extras / allergens, each a labelled block instead of the
    dense .field stack. */
-.pform-section { display: flex; flex-direction: column; gap: .5rem; }
-.pform-section > label { font-size: .8rem; font-weight: 700; color: var(--text); }
+.pform-section { display: flex; flex-direction: column; gap: .4rem; }
+.pform-section > label { font-size: .72rem; font-weight: 700; color: var(--text); }
 .product-form .input, .product-form .select, .product-form textarea.input {
-    padding: .55rem .8rem;
-    font-size: .82rem;
+    padding: .45rem .7rem;
+    font-size: .76rem;
 }
 .product-form .select { padding-right: 2rem; background-size: 16px; }
-.product-form textarea.input { min-height: 4.5rem; }
-.product-form .muted { font-size: .78rem; }
-.product-form .allergen-pick { gap: .4rem; }
-.product-form .allergen-chip { padding: .3rem .7rem .3rem .3rem; font-size: .74rem; }
-.product-form .allergen-chip__thumb { width: 20px; height: 20px; }
-.product-form .extra-dd__trigger, .product-form .extra-dd__opt { font-size: .78rem; }
+.product-form textarea.input { min-height: 3.6rem; }
+.product-form .muted { font-size: .72rem; }
+.product-form .allergen-pick { gap: .35rem; }
+.product-form .allergen-chip { padding: .25rem .6rem .25rem .25rem; font-size: .68rem; }
+.product-form .allergen-chip__thumb { width: 18px; height: 18px; }
+.product-form .extra-dd__trigger, .product-form .extra-dd__opt { font-size: .72rem; }
 .product-form .field-error { margin-top: -.2rem; }
 
-/* Save button in the modal header: a filled pill with a label, replacing the bare icon button
-   every other modal on this page uses — this modal is the deliberately "premium" one. */
-.pform-save {
-    padding: .5rem 1.1rem;
-    border-radius: 999px;
-    font-weight: 700;
-    font-size: .8rem;
-    box-shadow: var(--shadow-sm);
-}
-.pform-save:hover { box-shadow: var(--shadow); }
-
 @media (max-width: 560px) {
-    /* The header wrap/collision fix for phone widths lives in app.css next to the rest of the
-       ".modal:has(.product-form)" chrome override — see the comment above. */
     .pform-hero { flex-direction: column; align-items: stretch; }
     /* flex-basis 14rem (sized for a *width* in the row layout above) would otherwise be read as
        a minimum *height* once the axis flips to column, leaving a tall empty gap under the name/

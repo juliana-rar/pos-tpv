@@ -14,7 +14,11 @@
 
 <PageTitle>Products · @Branding.Current.Title</PageTitle>
 
-<PageHero Title="@Loc.T("Products")" />
+<PageHero Title="@Loc.T("Products")">
+    <LeftContent>
+        <button type="button" class="btn btn--icon @(_reorderMode ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Drag to reorder")" @onclick="ToggleReorderMode"><LucideIcon Name="hand" Size="10" /></button>
+    </LeftContent>
+</PageHero>
 
 <div class="catalog" @onclick="ClearExpandedCatRows">
     @* ---- Left column: section switcher + categories -------------------------- *@
@@ -37,7 +41,9 @@
         <div class="catalog__cats-list">
             @foreach (var (c, i) in _categories.Select((c, i) => (c, i)))
             {
-                <div class="catRow" data-active="@(c.Id == _selectedId ? "true" : null)" @onclick="() => Select(c.Id)">
+                <div class="catRow" data-active="@(c.Id == _selectedId ? "true" : null)"
+                     data-reorder="@(_reorderMode ? "true" : null)" data-dragging="@(_draggedCategoryId == c.Id ? "true" : null)"
+                     @onclick="() => ClickCategory(c.Id)">
                     <div class="catRow__thumb">
                         @if (!string.IsNullOrWhiteSpace(c.ImageUrl))
                         {
@@ -80,6 +86,27 @@
             <div class="catalog__toolbar">
                 @if (_viewingAllergens)
                 {
+                    <div class="toolbar__filters">
+                        <button type="button" class="btn btn--icon @(_toolbarFiltersOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="() => _toolbarFiltersOpen = !_toolbarFiltersOpen"><LucideIcon Name="sliders-horizontal" Size="13" /></button>
+                        @if (_toolbarFiltersOpen)
+                        {
+                            <div class="toolbar__filters-backdrop" @onclick="() => _toolbarFiltersOpen = false"></div>
+                            <div class="toolbar__filters-menu" @onclick:stopPropagation="true">
+                                <button type="button" class="extra-dd__opt @(_toolbarSort == ToolbarSort.Manual ? "extra-dd__opt--on" : "")" @onclick="() => SetToolbarSort(ToolbarSort.Manual)">
+                                    <span class="extra-dd__check">@(_toolbarSort == ToolbarSort.Manual ? "✓" : "")</span>
+                                    <span class="extra-dd__name">@Loc.T("Manual order")</span>
+                                </button>
+                                <button type="button" class="extra-dd__opt @(_toolbarSort == ToolbarSort.NameAsc ? "extra-dd__opt--on" : "")" @onclick="() => SetToolbarSort(ToolbarSort.NameAsc)">
+                                    <span class="extra-dd__check">@(_toolbarSort == ToolbarSort.NameAsc ? "✓" : "")</span>
+                                    <span class="extra-dd__name">@Loc.T("Alphabetical (A–Z)")</span>
+                                </button>
+                                <button type="button" class="extra-dd__opt @(_toolbarSort == ToolbarSort.CreatedDesc ? "extra-dd__opt--on" : "")" @onclick="() => SetToolbarSort(ToolbarSort.CreatedDesc)">
+                                    <span class="extra-dd__check">@(_toolbarSort == ToolbarSort.CreatedDesc ? "✓" : "")</span>
+                                    <span class="extra-dd__name">@Loc.T("Newest first")</span>
+                                </button>
+                            </div>
+                        }
+                    </div>
                     <div class="toolbar__search">
                         <LucideIcon Name="search" Size="13" />
                         <input class="input search" placeholder="@Loc.T("Search…")" @bind="_allergenSearch" @bind:event="oninput" />
@@ -88,6 +115,27 @@
                 }
                 else if (_viewingExtras)
                 {
+                    <div class="toolbar__filters">
+                        <button type="button" class="btn btn--icon @(_toolbarFiltersOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="() => _toolbarFiltersOpen = !_toolbarFiltersOpen"><LucideIcon Name="sliders-horizontal" Size="13" /></button>
+                        @if (_toolbarFiltersOpen)
+                        {
+                            <div class="toolbar__filters-backdrop" @onclick="() => _toolbarFiltersOpen = false"></div>
+                            <div class="toolbar__filters-menu" @onclick:stopPropagation="true">
+                                <button type="button" class="extra-dd__opt @(_toolbarSort == ToolbarSort.Manual ? "extra-dd__opt--on" : "")" @onclick="() => SetToolbarSort(ToolbarSort.Manual)">
+                                    <span class="extra-dd__check">@(_toolbarSort == ToolbarSort.Manual ? "✓" : "")</span>
+                                    <span class="extra-dd__name">@Loc.T("Manual order")</span>
+                                </button>
+                                <button type="button" class="extra-dd__opt @(_toolbarSort == ToolbarSort.NameAsc ? "extra-dd__opt--on" : "")" @onclick="() => SetToolbarSort(ToolbarSort.NameAsc)">
+                                    <span class="extra-dd__check">@(_toolbarSort == ToolbarSort.NameAsc ? "✓" : "")</span>
+                                    <span class="extra-dd__name">@Loc.T("Alphabetical (A–Z)")</span>
+                                </button>
+                                <button type="button" class="extra-dd__opt @(_toolbarSort == ToolbarSort.CreatedDesc ? "extra-dd__opt--on" : "")" @onclick="() => SetToolbarSort(ToolbarSort.CreatedDesc)">
+                                    <span class="extra-dd__check">@(_toolbarSort == ToolbarSort.CreatedDesc ? "✓" : "")</span>
+                                    <span class="extra-dd__name">@Loc.T("Newest first")</span>
+                                </button>
+                            </div>
+                        }
+                    </div>
                     <div class="toolbar__search">
                         <LucideIcon Name="search" Size="13" />
                         <input class="input search" placeholder="@Loc.T("Search…")" @bind="_extraSearch" @bind:event="oninput" />
@@ -96,6 +144,27 @@
                 }
                 else if (_selected is not null)
                 {
+                    <div class="toolbar__filters">
+                        <button type="button" class="btn btn--icon @(_toolbarFiltersOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="() => _toolbarFiltersOpen = !_toolbarFiltersOpen"><LucideIcon Name="sliders-horizontal" Size="13" /></button>
+                        @if (_toolbarFiltersOpen)
+                        {
+                            <div class="toolbar__filters-backdrop" @onclick="() => _toolbarFiltersOpen = false"></div>
+                            <div class="toolbar__filters-menu" @onclick:stopPropagation="true">
+                                <button type="button" class="extra-dd__opt @(_toolbarSort == ToolbarSort.Manual ? "extra-dd__opt--on" : "")" @onclick="() => SetToolbarSort(ToolbarSort.Manual)">
+                                    <span class="extra-dd__check">@(_toolbarSort == ToolbarSort.Manual ? "✓" : "")</span>
+                                    <span class="extra-dd__name">@Loc.T("Manual order")</span>
+                                </button>
+                                <button type="button" class="extra-dd__opt @(_toolbarSort == ToolbarSort.NameAsc ? "extra-dd__opt--on" : "")" @onclick="() => SetToolbarSort(ToolbarSort.NameAsc)">
+                                    <span class="extra-dd__check">@(_toolbarSort == ToolbarSort.NameAsc ? "✓" : "")</span>
+                                    <span class="extra-dd__name">@Loc.T("Alphabetical (A–Z)")</span>
+                                </button>
+                                <button type="button" class="extra-dd__opt @(_toolbarSort == ToolbarSort.CreatedDesc ? "extra-dd__opt--on" : "")" @onclick="() => SetToolbarSort(ToolbarSort.CreatedDesc)">
+                                    <span class="extra-dd__check">@(_toolbarSort == ToolbarSort.CreatedDesc ? "✓" : "")</span>
+                                    <span class="extra-dd__name">@Loc.T("Newest first")</span>
+                                </button>
+                            </div>
+                        }
+                    </div>
                     <div class="toolbar__search">
                         <LucideIcon Name="search" Size="13" />
                         <input class="input search" placeholder="@Loc.T("Search…")" @bind="_search" @bind:event="oninput" />
@@ -167,7 +236,9 @@
             <div class="grid-cards">
                 @foreach (var p in Filtered)
                 {
-                    <div class="card mgmt-card" data-off="@(!p.IsAvailable ? "true" : null)" style="--prod:@p.Color" @onclick="() => OpenProductForm(p.Id)">
+                    <div class="card mgmt-card" data-off="@(!p.IsAvailable ? "true" : null)"
+                         data-reorder="@(_reorderMode && CanDragProducts ? "true" : null)" data-dragging="@(_draggedProductId == p.Id ? "true" : null)"
+                         style="--prod:@p.Color" @onclick="() => ClickProduct(p.Id)">
                         <div class="mgmt-card__head">
                             @if (!string.IsNullOrWhiteSpace(p.ImageUrl))
                             {
@@ -219,37 +290,38 @@
 </div>
 
 @* ---- Product form modal -------------------------------------------------- *@
-<Modal Visible="_product is not null" Title="@(_product?.Id > 0 ? Loc.T("Edit product") : Loc.T("New product"))" OnClose="CloseProduct" Wide="true" CloseLeft="true">
-    <TitleActions>
-        @if (_product is not null)
-        {
-            <div class="modal-switches">
-                <label class="switch" title="@Loc.T("Visible")"><input type="checkbox" @bind="_product.IsVisible" /><span>@Loc.T("Visible")</span></label>
-                <label class="switch" title="@Loc.T("Available")"><input type="checkbox" @bind="_product.IsAvailable" /><span>@Loc.T("Available")</span></label>
-            </div>
-        }
-    </TitleActions>
+<Modal Visible="_product is not null"
+       OnClose="CloseProduct" Wide="true" CloseLeft="true">
     <HeaderActions>
-        @if (_product is not null && _product.Id > 0)
-        {
-            var idx = Filtered.FindIndex(x => x.Id == _product.Id);
-            <button class="btn btn--icon btn--ghost" title="@Loc.T("Move up")" type="button"
-                    disabled="@(!string.IsNullOrWhiteSpace(_search) || idx <= 0)" @onclick="() => MoveProduct(_product.Id, -1)"><LucideIcon Name="chevron-up" Size="16" /></button>
-            <button class="btn btn--icon btn--ghost" title="@Loc.T("Move down")" type="button"
-                    disabled="@(!string.IsNullOrWhiteSpace(_search) || idx < 0 || idx == Filtered.Count - 1)" @onclick="() => MoveProduct(_product.Id, 1)"><LucideIcon Name="chevron-down" Size="16" /></button>
-            <button class="btn btn--icon btn--ghost" title="@Loc.T("Duplicate")" type="button" @onclick="() => Duplicate(_product.Id)"><LucideIcon Name="copy" Size="16" /></button>
-            var forMove = Filtered.FirstOrDefault(x => x.Id == _product.Id);
-            @if (forMove is not null)
-            {
-                <button class="btn btn--icon btn--ghost" title="@Loc.T("Move to category")" type="button" @onclick="() => OpenMove(forMove)"><LucideIcon Name="arrow-right-left" Size="16" /></button>
-            }
-        }
-        <button class="btn btn--primary pform-save" title="@Loc.T("Save")" @onclick="SaveProduct" type="button"><LucideIcon Name="check" Size="16" /> <span>@Loc.T("Save")</span></button>
+        <button class="btn btn--icon btn--primary" title="@Loc.T("Save")" @onclick="SaveProduct" type="button"><LucideIcon Name="check" Size="18" /></button>
     </HeaderActions>
     <ChildContent>
         @if (_product is not null)
         {
             <div class="product-form" style="--prod:@_product.Color">
+                <div class="pform-toolbar">
+                    <span class="pform-toolbar__eyebrow">@(_product.Id > 0 ? Loc.T("Edit product") : Loc.T("New product"))</span>
+                    @if (_product.Id > 0)
+                    {
+                        var idx = Filtered.FindIndex(x => x.Id == _product.Id);
+                        var forMove = Filtered.FirstOrDefault(x => x.Id == _product.Id);
+                        <div class="pform-toolbar__actions">
+                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Move up")" type="button"
+                                    disabled="@(!string.IsNullOrWhiteSpace(_search) || _toolbarSort != ToolbarSort.Manual || idx <= 0)" @onclick="() => MoveProduct(_product.Id, -1)"><LucideIcon Name="chevron-up" Size="14" /></button>
+                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Move down")" type="button"
+                                    disabled="@(!string.IsNullOrWhiteSpace(_search) || _toolbarSort != ToolbarSort.Manual || idx < 0 || idx == Filtered.Count - 1)" @onclick="() => MoveProduct(_product.Id, 1)"><LucideIcon Name="chevron-down" Size="14" /></button>
+                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Duplicate")" type="button" @onclick="() => Duplicate(_product.Id)"><LucideIcon Name="copy" Size="14" /></button>
+                            @if (forMove is not null)
+                            {
+                                <button class="btn btn--icon btn--ghost" title="@Loc.T("Move to category")" type="button" @onclick="() => OpenMove(forMove)"><LucideIcon Name="arrow-right-left" Size="14" /></button>
+                            }
+                        </div>
+                    }
+                    <div class="pform-toolbar__switches">
+                        <label class="switch" title="@Loc.T("Visible")"><input type="checkbox" @bind="_product.IsVisible" /><span>@Loc.T("Visible")</span></label>
+                        <label class="switch" title="@Loc.T("Available")"><input type="checkbox" @bind="_product.IsAvailable" /><span>@Loc.T("Available")</span></label>
+                    </div>
+                </div>
                 <div class="pform-hero">
                     <div class="pform-hero__media">
                         <ImageUpload Value="_product.ImageUrl" ValueChanged="v => _product.ImageUrl = v" Folder="products" />
@@ -556,6 +628,96 @@
     private List<ProductDto> _products = new();
     private int? _selectedId;
     private string _search = "";
+    private bool _toolbarFiltersOpen;
+    private ToolbarSort _toolbarSort = ToolbarSort.Manual;
+
+    private enum ToolbarSort { Manual, NameAsc, CreatedDesc }
+
+    private bool _reorderMode;
+    private int? _draggedCategoryId;
+    private int? _draggedProductId;
+
+    /// <summary>Also clears any pending pick — otherwise turning reorder mode off mid-pick and
+    /// back on later would leave a stale "armed" item that silently jumps to wherever the next
+    /// tap lands.</summary>
+    private void ToggleReorderMode()
+    {
+        _reorderMode = !_reorderMode;
+        _draggedCategoryId = null;
+        _draggedProductId = null;
+    }
+
+    /// <summary>Reordering swaps neighbours step by step against the service's own DisplayOrder,
+    /// so it only makes sense against the unsorted, unfiltered list — same constraint as the
+    /// existing move-up/down buttons.</summary>
+    private bool CanDragProducts => _toolbarSort == ToolbarSort.Manual && string.IsNullOrWhiteSpace(_search);
+
+    /// <summary>Reorder mode repurposes a plain click into a tap-to-pick-up / tap-to-drop pair
+    /// (first tap on a category marks it, a second tap on another one moves it there) instead of
+    /// a press-and-drag gesture — simpler to hit reliably on the tablets this page also runs on,
+    /// and it doesn't depend on the browser's native HTML5 drag session at all.</summary>
+    private async Task ClickCategory(int id)
+    {
+        if (!_reorderMode) { await Select(id); return; }
+        if (_draggedCategoryId == id) { _draggedCategoryId = null; return; }
+        if (_draggedCategoryId is null) { _draggedCategoryId = id; return; }
+        await DropCategory(id);
+    }
+
+    private async Task ClickProduct(int id)
+    {
+        if (!_reorderMode || !CanDragProducts) { OpenProductForm(id); return; }
+        if (_draggedProductId == id) { _draggedProductId = null; return; }
+        if (_draggedProductId is null) { _draggedProductId = id; return; }
+        await DropProduct(id);
+    }
+
+    private async Task DropCategory(int targetId)
+    {
+        var dragId = _draggedCategoryId;
+        _draggedCategoryId = null;
+        if (dragId is null || dragId == targetId) return;
+
+        var from = _categories.FindIndex(c => c.Id == dragId);
+        var to = _categories.FindIndex(c => c.Id == targetId);
+        if (from < 0 || to < 0) return;
+
+        var direction = to > from ? 1 : -1;
+        for (var i = 0; i < Math.Abs(to - from); i++)
+            await CategoryService.MoveAsync(dragId.Value, direction);
+        await LoadCategories();
+    }
+
+    private async Task DropProduct(int targetId)
+    {
+        var dragId = _draggedProductId;
+        _draggedProductId = null;
+        if (dragId is null || dragId == targetId || !CanDragProducts) return;
+
+        var from = _products.FindIndex(p => p.Id == dragId);
+        var to = _products.FindIndex(p => p.Id == targetId);
+        if (from < 0 || to < 0) return;
+
+        var direction = to > from ? 1 : -1;
+        for (var i = 0; i < Math.Abs(to - from); i++)
+            await Service.MoveAsync(dragId.Value, direction);
+        await LoadProducts();
+    }
+
+    private void SetToolbarSort(ToolbarSort sort)
+    {
+        _toolbarSort = sort;
+        _toolbarFiltersOpen = false;
+    }
+
+    /// <summary>Manual keeps the caller's own order (category/display-order from the service);
+    /// the other modes re-sort on top of whatever search filter was already applied.</summary>
+    private List<T> ApplyToolbarSort<T>(IEnumerable<T> items, Func<T, string> byName, Func<T, DateTime> byCreated) => _toolbarSort switch
+    {
+        ToolbarSort.NameAsc => items.OrderBy(byName, StringComparer.OrdinalIgnoreCase).ToList(),
+        ToolbarSort.CreatedDesc => items.OrderByDescending(byCreated).ToList(),
+        _ => items.ToList(),
+    };
 
     private ProductFormDto? _product;
     private string? _productError;
@@ -591,13 +753,15 @@
 
     private CategoryDto? _selected => _categories.FirstOrDefault(c => c.Id == _selectedId);
 
-    private List<AllergenDto> FilteredAllergens => string.IsNullOrWhiteSpace(_allergenSearch)
+    private List<AllergenDto> FilteredAllergens => ApplyToolbarSort(string.IsNullOrWhiteSpace(_allergenSearch)
         ? _allergens
-        : _allergens.Where(a => a.Name.Contains(_allergenSearch, StringComparison.OrdinalIgnoreCase)).ToList();
+        : _allergens.Where(a => a.Name.Contains(_allergenSearch, StringComparison.OrdinalIgnoreCase)),
+        a => a.Name, a => a.CreatedAt);
 
-    private List<ExtraDto> FilteredExtras => string.IsNullOrWhiteSpace(_extraSearch)
+    private List<ExtraDto> FilteredExtras => ApplyToolbarSort(string.IsNullOrWhiteSpace(_extraSearch)
         ? _extras
-        : _extras.Where(e => e.Name.Contains(_extraSearch, StringComparison.OrdinalIgnoreCase)).ToList();
+        : _extras.Where(e => e.Name.Contains(_extraSearch, StringComparison.OrdinalIgnoreCase)),
+        e => e.Name, e => e.CreatedAt);
 
     private List<ProductDto> FilteredExtraProducts =>
         _extraCategoryFilter.Count == 0
@@ -607,9 +771,10 @@
                 .Where(p => string.IsNullOrWhiteSpace(_extraProductSearch) || p.Name.Contains(_extraProductSearch, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-    private List<ProductDto> Filtered => string.IsNullOrWhiteSpace(_search)
+    private List<ProductDto> Filtered => ApplyToolbarSort(string.IsNullOrWhiteSpace(_search)
         ? _products
-        : _products.Where(p => p.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)).ToList();
+        : _products.Where(p => p.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)),
+        p => p.Name, p => p.CreatedAt);
 
     protected override async Task OnInitializedAsync()
     {

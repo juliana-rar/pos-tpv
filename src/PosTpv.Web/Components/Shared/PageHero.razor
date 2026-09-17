@@ -3,6 +3,10 @@
    "hero" title treatment (first used on Suppliers) looks identical instead of each page
    re-implementing its own copy of the chrome. *@
 <div class="page-hero">
+    @if (LeftContent is not null)
+    {
+        <div class="page-hero__left">@LeftContent</div>
+    }
     <h1>@if (!string.IsNullOrEmpty(Icon)) { <LucideIcon Name="@Icon" Size="20" /> } @Title</h1>
     @ChildContent
 </div>
@@ -10,5 +14,10 @@
 @code {
     [Parameter] public string? Icon { get; set; }
     [Parameter, EditorRequired] public string Title { get; set; } = "";
+
+    /// <summary>Pinned to the page-hero box's own left edge (absolute, outside the centered
+    /// h1/hairline group) — for a page-level action (e.g. Products' reorder toggle) that belongs
+    /// with the title but must stay flush left regardless of how wide the centered title is.</summary>
+    [Parameter] public RenderFragment? LeftContent { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 }

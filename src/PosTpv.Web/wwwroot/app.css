@@ -241,18 +241,24 @@ a { color: var(--primary); text-decoration: none; }
 .modal--wide { width: min(680px, 100%); }
 .modal--narrow { width: min(360px, 100%); }
 .modal__head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
-/* Groups the title with any extra controls a modal wants attached to it (e.g. the product edit
-   modal's Available/Visible switches, via TitleActions) instead of them drifting all the way to
-   the header's far edge alongside Save/Close. min-width:0 so a long title still truncates/wraps
-   instead of pushing those controls out of the header. */
+/* Groups the title with any extra controls a modal wants attached to it (via TitleActions)
+   instead of them drifting all the way to the header's far edge alongside Save/Close. min-width:0
+   so a long title still truncates/wraps instead of pushing those controls out of the header. */
 .modal__head-title { display: flex; align-items: center; gap: .6rem; min-width: 0; }
 .modal__head-actions { display: flex; align-items: center; gap: .4rem; flex: none; }
-/* A modal that puts toggle switches under its title (currently just the product edit modal —
-   see TitleActions in Products.razor) stacks the switch row below the title instead of
-   crowding them onto the same line. */
-.modal__head-title:has(.switch) { flex-direction: column; align-items: flex-start; gap: .2rem; }
+/* A modal that puts toggle switches and/or an eyebrow label above its title (via TitleActions/
+   Eyebrow) stacks them instead of crowding everything onto the same line. */
+.modal__head-title:has(.switch),
+.modal__head-title:has(.modal__eyebrow) { flex-direction: column; align-items: flex-start; gap: .2rem; }
 .modal-switches { display: flex; align-items: center; gap: .6rem; }
 .modal__head-title .switch { font-size: .58rem; gap: .25rem; }
+.modal__eyebrow {
+    font-size: .6rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-soft);
+}
 .modal__body { padding: 1.25rem; }
 .modal__foot { display: flex; justify-content: flex-end; gap: .6rem; padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
 
@@ -268,29 +274,15 @@ a { color: var(--primary); text-decoration: none; }
     overflow: hidden;
     box-shadow: var(--shadow-lg);
 }
+/* Header is now a plain, edge-to-edge close/save bar (title, switches and the row/duplicate
+   actions all moved down into .pform-toolbar, inside the body — see Products.razor) so it stays
+   slim instead of the roomy title bar this used to be. */
 .modal:has(.product-form) .modal__head {
     background: linear-gradient(to bottom, color-mix(in srgb, var(--card) 96%, white 4%), var(--card));
-    padding: 1.1rem 1.4rem;
-}
-.modal:has(.product-form) .modal__head-title h2 {
-    font-size: 1rem;
-    font-weight: 800;
-    letter-spacing: -.01em;
-    color: var(--text);
-}
-.modal:has(.product-form) .modal-switches .switch span {
-    font-size: .72rem;
-    font-weight: 600;
+    padding: .55rem 1.1rem;
 }
 .modal:has(.product-form) .modal__body {
-    padding: 1.3rem 1.4rem 1.5rem;
-}
-@media (max-width: 560px) {
-    /* The header's title (a real heading now, not the page's usual tiny caps) collides with the
-       row of move/duplicate/save buttons at phone widths — wrap it onto its own line instead. */
-    .modal:has(.product-form) .modal__head { flex-wrap: wrap; row-gap: .5rem; }
-    .modal:has(.product-form) .modal__head-title { flex: 1 1 100%; }
-    .modal:has(.product-form) .modal__head-actions { flex: 1 1 100%; justify-content: flex-end; }
+    padding: 1rem 1.4rem 1.4rem;
 }
 
 /* ---- Full-screen modal: an edge-to-edge page instead of a floating dialog -- */

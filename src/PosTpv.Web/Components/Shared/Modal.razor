@@ -9,6 +9,10 @@
                     <button class="btn btn--icon btn--ghost" @onclick="Close" type="button"><LucideIcon Name="x" Size="18" /></button>
                 }
                 <div class="modal__head-title">
+                    @if (!string.IsNullOrWhiteSpace(Eyebrow))
+                    {
+                        <span class="modal__eyebrow">@Eyebrow</span>
+                    }
                     <h2>@Title</h2>
                     @TitleActions
                 </div>
@@ -34,6 +38,7 @@
 @code {
     [Parameter] public bool Visible { get; set; }
     [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string? Eyebrow { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Footer { get; set; }
     [Parameter] public RenderFragment? HeaderActions { get; set; }

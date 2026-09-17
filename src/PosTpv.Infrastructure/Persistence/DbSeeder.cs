@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PosTpv.Application.Common.Interfaces;
@@ -50,13 +51,13 @@ public class DbSeeder : IDbSeeder
         if (!await _db.Categories.AnyAsync(ct))
         {
             _log.LogInformation("Seeding demo catalogue.");
-            var drinks = new Category { Name = "Drinks", Icon = "🥤", Color = "#0ea5e9", DisplayOrder = 1, Kind = CategoryKind.Drink };
-            var starters = new Category { Name = "Starters", Icon = "🥗", Color = "#22c55e", DisplayOrder = 2, Course = CourseType.Starter };
-            var salads = new Category { Name = "Salads", Icon = "🥙", Color = "#65a30d", DisplayOrder = 3, Course = CourseType.Starter };
-            var pizzas = new Category { Name = "Pizzas", Icon = "🍕", Color = "#ef4444", DisplayOrder = 4, Course = CourseType.Main };
-            var pasta = new Category { Name = "Pasta", Icon = "🍝", Color = "#f59e0b", DisplayOrder = 5, Course = CourseType.Main };
-            var burgers = new Category { Name = "Burgers", Icon = "🍔", Color = "#a16207", DisplayOrder = 6, Course = CourseType.Main };
-            var desserts = new Category { Name = "Desserts", Icon = "🍰", Color = "#ec4899", DisplayOrder = 7, Course = CourseType.Dessert };
+            var drinks = new Category { Name = "Drinks", Icon = "🥤", Color = "#0ea5e9", DisplayOrder = 1, Kind = CategoryKind.Drink, ImageUrl = Img("🥤", "#0ea5e9") };
+            var starters = new Category { Name = "Starters", Icon = "🥗", Color = "#22c55e", DisplayOrder = 2, Course = CourseType.Starter, ImageUrl = Img("🥗", "#22c55e") };
+            var salads = new Category { Name = "Salads", Icon = "🥙", Color = "#65a30d", DisplayOrder = 3, Course = CourseType.Starter, ImageUrl = Img("🥙", "#65a30d") };
+            var pizzas = new Category { Name = "Pizzas", Icon = "🍕", Color = "#ef4444", DisplayOrder = 4, Course = CourseType.Main, ImageUrl = Img("🍕", "#ef4444") };
+            var pasta = new Category { Name = "Pasta", Icon = "🍝", Color = "#f59e0b", DisplayOrder = 5, Course = CourseType.Main, ImageUrl = Img("🍝", "#f59e0b") };
+            var burgers = new Category { Name = "Burgers", Icon = "🍔", Color = "#a16207", DisplayOrder = 6, Course = CourseType.Main, ImageUrl = Img("🍔", "#a16207") };
+            var desserts = new Category { Name = "Desserts", Icon = "🍰", Color = "#ec4899", DisplayOrder = 7, Course = CourseType.Dessert, ImageUrl = Img("🍰", "#ec4899") };
 
             starters.Comments.Add(Cmt("No onion", 0));
             salads.Comments.Add(Cmt("No dressing", 0));
@@ -113,7 +114,49 @@ public class DbSeeder : IDbSeeder
                 P("Panna Cotta", 5.00m, desserts, "#db2777", 10, prep: 3),
                 P("Cheesecake", 5.80m, desserts, "#be185d", 10, prep: 3),
                 P("Chocolate Brownie", 5.20m, desserts, "#9d174d", 10, prep: 4),
-                P("Ice Cream", 4.50m, desserts, "#f472b6", 10, prep: 2));
+                P("Ice Cream", 4.50m, desserts, "#f472b6", 10, prep: 2),
+
+                P("Lemonade", 2.10m, drinks, "#eab308", 10),
+                P("Orange Juice", 2.60m, drinks, "#fb923c", 10),
+                P("Red Wine", 3.80m, drinks, "#7f1d1d", 10),
+                P("Sangria", 4.20m, drinks, "#be123c", 10),
+                P("Large Mineral Water", 2.90m, drinks, "#0284c7", 10),
+                P("Hot Chocolate", 2.70m, drinks, "#57534e", 10),
+
+                P("Calamari", 7.50m, starters, "#14b8a6", 21, prep: 9),
+                P("Nachos", 6.80m, starters, "#65a30d", 21, prep: 6),
+                P("Chicken Wings", 7.90m, starters, "#4d7c0f", 21, prep: 10),
+                P("Stuffed Mushrooms", 6.20m, starters, "#15803d", 21, prep: 8),
+                P("Spring Rolls", 5.80m, starters, "#166534", 21, prep: 7),
+
+                P("Cobb Salad", 8.90m, salads, "#3f6212", 21, prep: 6),
+                P("Tuna Salad", 8.60m, salads, "#365314", 21, prep: 6),
+                P("Quinoa Salad", 7.90m, salads, "#a3e635", 21, prep: 5),
+                P("Spinach Salad", 7.50m, salads, "#4ade80", 21, prep: 5),
+
+                P("Napoletana", 9.20m, pizzas, "#c2410c", 21, prep: 12),
+                P("BBQ Chicken", 11.20m, pizzas, "#e11d48", 21, prep: 13),
+                P("Prosciutto", 11.80m, pizzas, "#be123c", 21, prep: 13),
+                P("Funghi", 10.20m, pizzas, "#ea580c", 21, prep: 12),
+                P("Calzone", 10.90m, pizzas, "#9a3412", 21, prep: 14),
+                P("Truffle", 13.50m, pizzas, "#7c2d12", 21, prep: 14),
+
+                P("Fettuccine Alfredo", 9.80m, pasta, "#eab308", 21, prep: 11),
+                P("Arrabbiata", 9.20m, pasta, "#c2410c", 21, prep: 10),
+                P("Seafood Linguine", 12.90m, pasta, "#b45309", 21, prep: 14),
+                P("Gnocchi", 9.60m, pasta, "#d97706", 21, prep: 12),
+                P("Spaghetti Aglio e Olio", 8.50m, pasta, "#f59e0b", 21, prep: 9),
+
+                P("Double Cheeseburger", 12.50m, burgers, "#92400e", 21, prep: 13),
+                P("BBQ Bacon Burger", 12.90m, burgers, "#78350f", 21, prep: 14),
+                P("Mushroom Swiss Burger", 11.50m, burgers, "#a16207", 21, prep: 13),
+                P("Spicy Chicken Burger", 10.90m, burgers, "#b45309", 21, prep: 12),
+
+                P("Apple Pie", 5.40m, desserts, "#f9a8d4", 10, prep: 3),
+                P("Chocolate Lava Cake", 6.20m, desserts, "#831843", 10, prep: 5),
+                P("Crème Brûlée", 5.90m, desserts, "#f0abfc", 10, prep: 4),
+                P("Lemon Tart", 5.30m, desserts, "#fbcfe8", 10, prep: 3),
+                P("Gelato", 4.80m, desserts, "#fda4af", 10, prep: 2));
 
             await _db.SaveChangesAsync(ct);
         }
@@ -262,6 +305,15 @@ public class DbSeeder : IDbSeeder
         Category = cat,
         Color = color,
         VatRate = vat,
-        PreparationMinutes = prep
+        PreparationMinutes = prep,
+        ImageUrl = Img(cat.Icon ?? "🍽️", color)
     };
+
+    /// <summary>Self-contained placeholder image (base64 SVG) so demo products/categories don't ship blank —
+    /// no external image hosting or bundled binary assets needed for a fresh seed.</summary>
+    private static string Img(string emoji, string color)
+    {
+        var svg = $"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'><rect width='400' height='300' fill='{color}'/><text x='200' y='175' font-size='150' text-anchor='middle'>{emoji}</text></svg>";
+        return $"data:image/svg+xml;base64,{Convert.ToBase64String(Encoding.UTF8.GetBytes(svg))}";
+    }
 }

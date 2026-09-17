@@ -304,6 +304,10 @@ public static class Loc
 
         // ---- Products ----
         ["Search…"] = "Buscar…",
+        ["Drag to reorder"] = "Arrastrar para reordenar",
+        ["Manual order"] = "Orden manual",
+        ["Alphabetical (A–Z)"] = "Alfabético (A-Z)",
+        ["Newest first"] = "Más recientes primero",
         ["Search table…"] = "Buscar mesa…",
         ["Show all tables"] = "Ver todas las mesas",
         ["Show fewer tables"] = "Ver menos mesas",
