@@ -6,31 +6,62 @@
     height: calc(100vh - var(--topbar-h) - 2.8rem);
 }
 
-.page-hero .tabs { margin: 0; }
-.tabs__opt { font-size: .75rem; }
-/* Active Productos/Alérgenos/Extras tab: light-grey + shadow instead of the app-wide blue
-   --primary fill, on repeated request — same "no blue" treatment already applied to this
-   page's focus rings and empty product thumbs below. */
-.tabs__opt--on {
-    background: color-mix(in srgb, var(--card-2) 65%, var(--border) 35%);
+/* Search+new-item actions moved out of the page-hero row and into their own toolbar, docked
+   above the products/allergens/extras panel instead of the nav — spans the full width of the
+   right panel (from the sidebar over to the right edge), with its own card surface, and keeps
+   the search+button contents right-aligned inside that bar. */
+.catalog__toolbar {
+    display: flex; align-items: center; justify-content: flex-end; gap: .5rem;
+    width: 100%;
+    margin-top: -.3rem;
+    margin-bottom: .3rem;
+    padding: .15rem .4rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card);
+    box-shadow: var(--shadow-sm);
+}
+.catalog__toolbar .toolbar__search .input { width: 9rem; max-width: 9rem; padding: .22rem .6rem .22rem 1.7rem; }
+.catalog__toolbar .toolbar__search ::deep svg { left: .6rem; }
+.catalog__toolbar .btn--icon { width: 22px; height: 22px; }
+
+/* --- Left column: modern section switcher + categories rail --- */
+/* Wraps the segmented Products/Allergens/Extras switcher and the categories card in one
+   flex column, stacked "above the sidebar" per request, sharing the sidebar's 340px column. */
+.catalog__col { display: flex; flex-direction: column; gap: .4rem; min-height: 0; }
+
+/* A modern segmented "apartados" list — one section per row, stacked vertically — instead of
+   plain inline tab buttons. Reuses the same grey-not-blue active treatment as the rest of this
+   page (see .catalog__section--on) so it still reads as "the same design". */
+.catalog__sections {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    padding: .2rem;
+    border-radius: var(--radius-sm);
+    background: var(--card);
+    border: 1px solid var(--border);
+}
+.catalog__section {
+    display: flex; align-items: center; gap: .4rem;
+    padding: .32rem .6rem;
+    border: none; border-radius: calc(var(--radius-sm) - 3px);
+    background: transparent;
+    color: var(--text-soft);
+    font-weight: 700; font-size: .62rem;
+    cursor: pointer;
+    transition: background var(--transition), color var(--transition), box-shadow var(--transition);
+}
+.catalog__section:hover { color: var(--text); }
+.catalog__section:focus, .catalog__section:focus-visible { outline: none; box-shadow: none; }
+.catalog__section--on {
+    background: var(--card);
     color: var(--text);
-    box-shadow: var(--shadow), inset 0 0 0 1px color-mix(in srgb, var(--border) 60%, transparent);
+    box-shadow: var(--shadow-sm), inset 0 0 0 1px color-mix(in srgb, var(--border) 60%, transparent);
 }
-/* Kill the browser's default blue focus ring these buttons get on click — the grey
-   background/shadow above is already enough of an active-state signal. */
-.tabs__opt:focus, .tabs__opt:focus-visible { outline: none; box-shadow: none; }
-.tabs__opt--on:focus, .tabs__opt--on:focus-visible {
-    box-shadow: var(--shadow), inset 0 0 0 1px color-mix(in srgb, var(--border) 60%, transparent);
+.catalog__section--on:focus, .catalog__section--on:focus-visible {
+    box-shadow: var(--shadow-sm), inset 0 0 0 1px color-mix(in srgb, var(--border) 60%, transparent);
 }
-/* Grid (not flex+spacer) so the tab switcher sits truly centered in the row — the two
-   1fr side columns always claim equal space regardless of how wide .page-hero__actions
-   is, instead of the tabs drifting left of center like a flex layout with a single
-   trailing spacer would. */
-.page-hero__row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .6rem; align-self: stretch; }
-.page-hero__row .tabs { justify-self: center; }
-.page-hero__actions { display: flex; align-items: center; gap: .6rem; justify-self: end; }
-.page-hero__row .toolbar__search .input { width: 10rem; max-width: 10rem; padding: .4rem .7rem .4rem 1.9rem; font-size: .78rem; }
-.page-hero__row .toolbar__search ::deep svg { left: .65rem; }
 
 /* --- Left rail: categories --- */
 .catalog__cats { display: flex; flex-direction: column; min-height: 0; padding: .35rem 1rem 1rem; }
@@ -105,7 +136,7 @@
 .catRow__actions .btn--ghost:hover { color: var(--text); }
 
 /* --- Right panel: products --- */
-.catalog__products { display: flex; flex-direction: column; min-height: 0; padding-top: .35rem; }
+.catalog__products { display: flex; flex-direction: column; min-height: 0; }
 
 /* Neutral, solid-fill "create" button — New category/New product read as calm structural
    actions in a muted business grey instead of the loud brand-primary fill, which stays
@@ -490,29 +521,150 @@
     .catalog { grid-template-columns: 1fr; height: auto; }
 }
 
-/* --- Product edit modal: packed into 3-up rows and scaled down across the board (labels,
-   inputs, row-2, chips) versus the plain .field/.row-2 stack elsewhere on this page — small
-   enough that the whole form fits the modal without scrolling. Save/cancel live in the header
-   (see HeaderActions in the Modal markup) instead of a footer, so there's no bottom bar eating
-   into that height either. */
-.product-form .field { gap: .15rem; margin-bottom: .4rem; }
-.product-form .field > label { font-size: .5rem; }
-.product-form .row-2 { gap: .4rem; }
-.product-form .row-narrow { display: flex; flex-wrap: wrap; gap: .6rem; }
-.product-form .row-narrow .field { flex: 0 0 auto; }
-.product-form .row-narrow .input { width: 4.2rem; }
-.product-form .input, .product-form .select, .product-form textarea.input {
-    padding: .3rem .45rem;
-    font-size: .56rem;
+/* --- Product edit modal: a deliberately roomier, "modern" redesign — distinct from the dense
+   uppercase enterprise-grid look used everywhere else on this page. The surrounding modal chrome
+   (.modal/.modal__head/h2 — all rendered by the shared Modal.razor, which has no .razor.css of
+   its own) can't be reached from here: Blazor CSS isolation only stamps this page's scope
+   attribute onto elements Products.razor itself renders (including content passed through
+   ChildContent/HeaderActions, e.g. .product-form/.pform-save below), never onto Modal.razor's
+   own markup — even prefixed with ::deep, since a ::deep selector still needs a scoped anchor to
+   its left. That chrome override lives in app.css instead (see ".modal:has(.product-form)"
+   there), right after the base .modal rules. Everything below here targets .product-form itself
+   (and its descendants), which is scoped correctly. */
+.product-form, .product-form * {
+    text-transform: none;
+    letter-spacing: normal;
 }
-.product-form .select { padding-right: 1.7rem; background-size: 13px; }
-.product-form textarea.input { min-height: unset; }
-.product-form .switch { font-size: .52rem; }
-.product-form .muted { font-size: .54rem; }
-.product-form .allergen-pick, .product-form .extra-pick { gap: .3rem; }
-.product-form .allergen-chip, .product-form .extra-chip { padding: .2rem .45rem; font-size: .5rem; }
-.product-form .allergen-chip__thumb { width: 12px; height: 12px; }
-.product-form .extra-dd__trigger, .product-form .extra-dd__opt { font-size: .54rem; }
+.product-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+.product-form .btn, .product-form ::deep .btn {
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: .78rem;
+}
+
+/* Hero row: image, name, category and colour swatch on the left, price highlighted on the
+   right — the product's "identity", pulled out of the dense field stack the rest of the page
+   uses. --prod (the product's own accent colour, already used for the card grid) is set on the
+   root .product-form and tints the image ring, swatch and price pill here. */
+.pform-hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 1rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid var(--border);
+}
+.pform-hero__media ::deep .imgpick__preview {
+    width: 84px; height: 84px;
+    border-radius: var(--radius);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--prod, var(--primary)) 25%, transparent);
+}
+.pform-hero__fields { flex: 1 1 14rem; min-width: 12rem; display: flex; flex-direction: column; gap: .55rem; padding-top: .1rem; }
+.pform-hero__name {
+    width: 100%;
+    border: none; border-bottom: 2px solid transparent;
+    background: transparent;
+    padding: .1rem 0 .35rem;
+    font: inherit; font-size: 1.35rem; font-weight: 800; color: var(--text);
+    transition: border-color var(--transition);
+}
+.pform-hero__name:focus { outline: none; border-color: var(--prod, var(--primary)); }
+.pform-hero__name::placeholder { color: var(--text-soft); font-weight: 600; }
+.pform-hero__row { display: flex; align-items: center; gap: .55rem; }
+.pform-hero__row .select { flex: 1; }
+.pform-hero__swatch {
+    flex: none;
+    display: grid; place-items: center;
+    width: 2.5rem; height: 2.5rem;
+    border-radius: 999px;
+    border: 2px solid var(--card);
+    box-shadow: 0 0 0 1px var(--border), var(--shadow-sm);
+    background: var(--prod, var(--primary));
+    cursor: pointer;
+    overflow: hidden;
+}
+.pform-hero__swatch input { width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.pform-hero__price { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: .3rem; }
+.pform-hero__price-label { font-size: .68rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .05em; }
+.pform-hero__price-input {
+    display: flex; align-items: baseline; gap: .2rem;
+    padding: .4rem .8rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--prod, var(--primary)) 12%, var(--card-2));
+    border: 1px solid color-mix(in srgb, var(--prod, var(--primary)) 30%, var(--border));
+}
+.pform-hero__price-input::before {
+    content: "€";
+    font-weight: 700;
+    color: color-mix(in srgb, var(--prod, var(--primary)) 80%, var(--text));
+}
+.pform-hero__price-input input {
+    width: 5rem; border: none; background: transparent;
+    font: inherit; font-size: 1.2rem; font-weight: 800;
+    color: color-mix(in srgb, var(--prod, var(--primary)) 80%, var(--text));
+    text-align: right;
+}
+.pform-hero__price-input input:focus { outline: none; }
+
+/* Stat row: VAT / prep time / display order as compact inline-edit tiles instead of another
+   row of bordered .field inputs. */
+.pform-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .7rem; }
+.pform-stat {
+    display: flex; flex-direction: column; gap: .3rem;
+    padding: .55rem .75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card-2);
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+.pform-stat:focus-within { border-color: color-mix(in srgb, var(--prod, var(--primary)) 40%, var(--border)); box-shadow: var(--shadow-sm); }
+.pform-stat label { font-size: .66rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .04em; }
+.pform-stat .input { padding: .1rem 0; border: none; background: transparent; font-size: .95rem; font-weight: 700; }
+.pform-stat .input:focus { box-shadow: none; }
+
+/* Remaining sections: description / extras / allergens, each a labelled block instead of the
+   dense .field stack. */
+.pform-section { display: flex; flex-direction: column; gap: .5rem; }
+.pform-section > label { font-size: .8rem; font-weight: 700; color: var(--text); }
+.product-form .input, .product-form .select, .product-form textarea.input {
+    padding: .55rem .8rem;
+    font-size: .82rem;
+}
+.product-form .select { padding-right: 2rem; background-size: 16px; }
+.product-form textarea.input { min-height: 4.5rem; }
+.product-form .muted { font-size: .78rem; }
+.product-form .allergen-pick { gap: .4rem; }
+.product-form .allergen-chip { padding: .3rem .7rem .3rem .3rem; font-size: .74rem; }
+.product-form .allergen-chip__thumb { width: 20px; height: 20px; }
+.product-form .extra-dd__trigger, .product-form .extra-dd__opt { font-size: .78rem; }
+.product-form .field-error { margin-top: -.2rem; }
+
+/* Save button in the modal header: a filled pill with a label, replacing the bare icon button
+   every other modal on this page uses — this modal is the deliberately "premium" one. */
+.pform-save {
+    padding: .5rem 1.1rem;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: .8rem;
+    box-shadow: var(--shadow-sm);
+}
+.pform-save:hover { box-shadow: var(--shadow); }
+
+@media (max-width: 560px) {
+    /* The header wrap/collision fix for phone widths lives in app.css next to the rest of the
+       ".modal:has(.product-form)" chrome override — see the comment above. */
+    .pform-hero { flex-direction: column; align-items: stretch; }
+    /* flex-basis 14rem (sized for a *width* in the row layout above) would otherwise be read as
+       a minimum *height* once the axis flips to column, leaving a tall empty gap under the name/
+       category fields. */
+    .pform-hero__fields { flex: none; }
+    .pform-hero__price { align-items: flex-start; }
+    .pform-stats { grid-template-columns: 1fr 1fr; }
+}
 
 /* --- Extra edit modal: same compact field/chip treatment as .product-form, plus a bordered
    panel around the product picker so the category-filter + product-chip flow reads as one

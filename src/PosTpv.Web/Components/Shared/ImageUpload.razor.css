@@ -14,8 +14,12 @@
 
 .imgpick__side { display: flex; flex-direction: column; align-items: flex-start; gap: .35rem; }
 .imgpick__pick { position: relative; overflow: hidden; cursor: pointer; }
-.imgpick__input {
+/* ::deep is required: InputFile is a framework component, so the <input> it renders never
+   carries this component's Blazor scope attribute — an unscoped rule silently never matches,
+   leaving the native "Choose File" control visible instead of overlaid invisibly on the label. */
+.imgpick__pick ::deep .imgpick__input {
     position: absolute; inset: 0;
+    width: 100%; height: 100%;
     opacity: 0;
     cursor: pointer;
 }

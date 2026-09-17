@@ -256,6 +256,43 @@ a { color: var(--primary); text-decoration: none; }
 .modal__body { padding: 1.25rem; }
 .modal__foot { display: flex; justify-content: flex-end; gap: .6rem; padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
 
+/* ---- Product edit modal: roomier "modern" chrome, scoped to the one modal that renders a
+   .product-form (Products.razor) — every other modal keeps the rules above untouched. This has
+   to live here rather than in Products.razor.css: Modal.razor has no .razor.css of its own, so
+   none of its markup (.modal/.modal__head/h2/...) ever carries Products' scope attribute, and
+   Blazor's ::deep combinator still requires a scoped element to its left — there isn't one to
+   anchor to from a page-scoped stylesheet. */
+.modal:has(.product-form) {
+    width: min(720px, 100%);
+    border-radius: calc(var(--radius) + 8px);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+}
+.modal:has(.product-form) .modal__head {
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--card) 96%, white 4%), var(--card));
+    padding: 1.1rem 1.4rem;
+}
+.modal:has(.product-form) .modal__head-title h2 {
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: -.01em;
+    color: var(--text);
+}
+.modal:has(.product-form) .modal-switches .switch span {
+    font-size: .72rem;
+    font-weight: 600;
+}
+.modal:has(.product-form) .modal__body {
+    padding: 1.3rem 1.4rem 1.5rem;
+}
+@media (max-width: 560px) {
+    /* The header's title (a real heading now, not the page's usual tiny caps) collides with the
+       row of move/duplicate/save buttons at phone widths — wrap it onto its own line instead. */
+    .modal:has(.product-form) .modal__head { flex-wrap: wrap; row-gap: .5rem; }
+    .modal:has(.product-form) .modal__head-title { flex: 1 1 100%; }
+    .modal:has(.product-form) .modal__head-actions { flex: 1 1 100%; justify-content: flex-end; }
+}
+
 /* ---- Full-screen modal: an edge-to-edge page instead of a floating dialog -- */
 .modal-backdrop--full { padding: 0; }
 .modal--full {

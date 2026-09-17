@@ -14,45 +14,15 @@
 
 <PageTitle>Products · @Branding.Current.Title</PageTitle>
 
-<PageHero Title="@Loc.T("Products")">
-    <div class="page-hero__row">
-        <span></span>
-        <div class="tabs" role="tablist">
-            <button class="tabs__opt @(!_viewingAllergens && !_viewingExtras ? "tabs__opt--on" : "")" @onclick="SelectProductsView"><LucideIcon Name="utensils-crossed" Size="16" /> @Loc.T("Products")</button>
-            <button class="tabs__opt @(_viewingAllergens ? "tabs__opt--on" : "")" @onclick="SelectAllergensView"><LucideIcon Name="triangle-alert" Size="16" /> @Loc.T("Allergens")</button>
-            <button class="tabs__opt @(_viewingExtras ? "tabs__opt--on" : "")" @onclick="SelectExtrasView"><LucideIcon Name="tag" Size="16" /> @Loc.T("Extras")</button>
-        </div>
-        <div class="page-hero__actions">
-            @if (_viewingAllergens)
-            {
-                <div class="toolbar__search">
-                    <LucideIcon Name="search" Size="13" />
-                    <input class="input search" placeholder="@Loc.T("Search…")" @bind="_allergenSearch" @bind:event="oninput" />
-                </div>
-                <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("New allergen")" @onclick="() => OpenAllergenForm(null)"><LucideIcon Name="plus" Size="14" /></button>
-            }
-            else if (_viewingExtras)
-            {
-                <div class="toolbar__search">
-                    <LucideIcon Name="search" Size="13" />
-                    <input class="input search" placeholder="@Loc.T("Search…")" @bind="_extraSearch" @bind:event="oninput" />
-                </div>
-                <button class="btn btn--icon btn--neutral btn--sm" title="@Loc.T("New extra")" @onclick="() => OpenExtraForm(null)"><LucideIcon Name="plus" Size="14" /></button>
-            }
-            else if (_selected is not null)
-            {
-                <div class="toolbar__search">
-                    <LucideIcon Name="search" Size="13" />
-                    <input class="input search" placeholder="@Loc.T("Search…")" @bind="_search" @bind:event="oninput" />
-                </div>
-                <button class="btn btn--icon btn--neutral btn--sm" title="@Loc.T("New product")" @onclick="() => OpenProductForm(null)"><LucideIcon Name="plus" Size="14" /></button>
-            }
-        </div>
-    </div>
-</PageHero>
+<PageHero Title="@Loc.T("Products")" />
 
 <div class="catalog" @onclick="ClearExpandedCatRows">
-    @* ---- Left rail: categories ---------------------------------------------- *@
+    @* ---- Left column: section switcher + categories -------------------------- *@
+    <div class="catalog__col">
+    <nav class="catalog__sections" role="tablist" @onclick:stopPropagation="true">
+        <button class="catalog__section @(_viewingAllergens ? "catalog__section--on" : "")" @onclick="SelectAllergensView"><LucideIcon Name="triangle-alert" Size="14" /> @Loc.T("Allergens")</button>
+        <button class="catalog__section @(_viewingExtras ? "catalog__section--on" : "")" @onclick="SelectExtrasView"><LucideIcon Name="tag" Size="14" /> @Loc.T("Extras")</button>
+    </nav>
     <section class="catalog__cats surface" @onclick:stopPropagation="true">
         <div class="catalog__cats-head">
             <h2 class="catalog__eyebrow">@Loc.T("Categories")</h2>
@@ -101,9 +71,39 @@
             @if (_categories.Count == 0) { <p class="empty">@Loc.T("No categories yet.")</p> }
         </div>
     </section>
+    </div>
 
     @* ---- Right panel: products of the selected category ---------------------- *@
     <section class="catalog__products">
+        @if (_viewingAllergens || _viewingExtras || _selected is not null)
+        {
+            <div class="catalog__toolbar">
+                @if (_viewingAllergens)
+                {
+                    <div class="toolbar__search">
+                        <LucideIcon Name="search" Size="13" />
+                        <input class="input search" placeholder="@Loc.T("Search…")" @bind="_allergenSearch" @bind:event="oninput" />
+                    </div>
+                    <button class="btn btn--icon btn--primary btn--sm" title="@Loc.T("New allergen")" @onclick="() => OpenAllergenForm(null)"><LucideIcon Name="plus" Size="14" /></button>
+                }
+                else if (_viewingExtras)
+                {
+                    <div class="toolbar__search">
+                        <LucideIcon Name="search" Size="13" />
+                        <input class="input search" placeholder="@Loc.T("Search…")" @bind="_extraSearch" @bind:event="oninput" />
+                    </div>
+                    <button class="btn btn--icon btn--neutral btn--sm" title="@Loc.T("New extra")" @onclick="() => OpenExtraForm(null)"><LucideIcon Name="plus" Size="14" /></button>
+                }
+                else if (_selected is not null)
+                {
+                    <div class="toolbar__search">
+                        <LucideIcon Name="search" Size="13" />
+                        <input class="input search" placeholder="@Loc.T("Search…")" @bind="_search" @bind:event="oninput" />
+                    </div>
+                    <button class="btn btn--icon btn--neutral btn--sm" title="@Loc.T("New product")" @onclick="() => OpenProductForm(null)"><LucideIcon Name="plus" Size="14" /></button>
+                }
+            </div>
+        }
         @if (_viewingAllergens)
         {
             <div class="allergenManager">
@@ -244,96 +244,113 @@
                 <button class="btn btn--icon btn--ghost" title="@Loc.T("Move to category")" type="button" @onclick="() => OpenMove(forMove)"><LucideIcon Name="arrow-right-left" Size="16" /></button>
             }
         }
-        <button class="btn btn--icon btn--primary" title="@Loc.T("Save")" @onclick="SaveProduct" type="button"><LucideIcon Name="check" Size="18" /></button>
+        <button class="btn btn--primary pform-save" title="@Loc.T("Save")" @onclick="SaveProduct" type="button"><LucideIcon Name="check" Size="16" /> <span>@Loc.T("Save")</span></button>
     </HeaderActions>
     <ChildContent>
         @if (_product is not null)
         {
-            <div class="product-form">
-            <div class="row-2">
-                <div class="field"><label>@Loc.T("Name")</label><input class="input" @bind="_product.Name" /></div>
-                <div class="field"><label>@Loc.T("Category")</label>
-                    <select class="select" @bind="_product.CategoryId">
-                        <option value="0">@Loc.T("— select —")</option>
-                        @foreach (var c in _categories)
-                        {
-                            <option value="@c.Id">@c.Name</option>
-                        }
-                    </select>
-                </div>
-            </div>
-            <div class="field">
-                <label>@Loc.T("Extras")</label>
-                @if (_extras.Count > 0)
-                {
-                    <div class="extra-dd">
-                        <button type="button" class="input extra-dd__trigger" @onclick="() => _extraDropdownOpen = !_extraDropdownOpen">
-                            <span class="extra-dd__summary">@ExtraSummary()</span>
-                            <LucideIcon Name="chevron-down" Size="14" />
-                        </button>
-                        @if (_extraDropdownOpen)
-                        {
-                            <div class="extra-dd__backdrop" @onclick="() => _extraDropdownOpen = false"></div>
-                            <div class="extra-dd__menu" @onclick:stopPropagation="true">
-                                @foreach (var e in _extras)
+            <div class="product-form" style="--prod:@_product.Color">
+                <div class="pform-hero">
+                    <div class="pform-hero__media">
+                        <ImageUpload Value="_product.ImageUrl" ValueChanged="v => _product.ImageUrl = v" Folder="products" />
+                    </div>
+                    <div class="pform-hero__fields">
+                        <input class="pform-hero__name" placeholder="@Loc.T("Name")" @bind="_product.Name" />
+                        <div class="pform-hero__row">
+                            <select class="select" @bind="_product.CategoryId">
+                                <option value="0">@Loc.T("— select —")</option>
+                                @foreach (var c in _categories)
                                 {
-                                    <button type="button" class="extra-dd__opt @(_product.ExtraIds.Contains(e.Id) ? "extra-dd__opt--on" : "")"
-                                            @onclick="() => ToggleProductExtra(e.Id)">
-                                        <span class="extra-dd__check">@(_product.ExtraIds.Contains(e.Id) ? "✓" : "")</span>
-                                        <span class="extra-dd__name">@e.Name</span>
-                                        <span class="extra-dd__price">+@e.Price.ToString("N2")</span>
-                                    </button>
+                                    <option value="@c.Id">@c.Name</option>
                                 }
-                            </div>
-                        }
+                            </select>
+                            <label class="pform-hero__swatch" title="@Loc.T("Colour")">
+                                <input type="color" @bind="_product.Color" />
+                            </label>
+                        </div>
                     </div>
-                }
-                else
-                {
-                    <p class="muted">@Loc.T("No extras defined yet.") <button type="button" class="btn btn--ghost btn--sm" @onclick="GoToExtras">@Loc.T("Add one")</button></p>
-                }
-            </div>
-            <div class="row-narrow">
-                <div class="field"><label>@Loc.T("Price")</label><input type="number" step="0.01" class="input" @bind="_product.Price" /></div>
-                <div class="field"><label>@Loc.T("VAT %")</label><input type="number" step="0.5" class="input" @bind="_product.VatRate" /></div>
-                <div class="field"><label>@Loc.T("Prep. minutes")</label><input type="number" class="input" @bind="_product.PreparationMinutes" /></div>
-                <div class="field"><label>@Loc.T("Display order")</label><input type="number" class="input" @bind="_product.DisplayOrder" /></div>
-            </div>
-            <div class="field"><label>@Loc.T("Description")</label><textarea class="input" rows="2" @bind="_product.Description"></textarea></div>
-            <div class="field">
-                <label>@Loc.T("Image")</label>
-                <ImageUpload Value="_product.ImageUrl" ValueChanged="v => _product.ImageUrl = v" Folder="products" />
-            </div>
-            <div class="field">
-                <label>@Loc.T("Allergens")</label>
-                @if (_allergens.Count > 0)
-                {
-                    <div class="allergen-pick">
-                        @foreach (var a in _allergens)
-                        {
-                            <button type="button" class="allergen-chip @(_product.AllergenIds.Contains(a.Id) ? "allergen-chip--on" : "")"
-                                    @onclick="() => ToggleProductAllergen(a.Id)">
-                                <span class="allergen-chip__thumb">
-                                    @if (!string.IsNullOrWhiteSpace(a.ImageUrl))
-                                    {
-                                        <img src="@a.ImageUrl" alt="" />
-                                    }
-                                    else
-                                    {
-                                        <LucideIcon Name="triangle-alert" Size="12" />
-                                    }
-                                </span>
-                                @a.Name
+                    <div class="pform-hero__price">
+                        <span class="pform-hero__price-label">@Loc.T("Price")</span>
+                        <div class="pform-hero__price-input">
+                            <input type="number" step="0.01" @bind="_product.Price" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pform-stats">
+                    <div class="pform-stat"><label>@Loc.T("VAT %")</label><input type="number" step="0.5" class="input" @bind="_product.VatRate" /></div>
+                    <div class="pform-stat"><label>@Loc.T("Prep. minutes")</label><input type="number" class="input" @bind="_product.PreparationMinutes" /></div>
+                    <div class="pform-stat"><label>@Loc.T("Display order")</label><input type="number" class="input" @bind="_product.DisplayOrder" /></div>
+                </div>
+
+                <div class="pform-section">
+                    <label>@Loc.T("Description")</label>
+                    <textarea class="input" rows="2" @bind="_product.Description"></textarea>
+                </div>
+
+                <div class="pform-section">
+                    <label>@Loc.T("Extras")</label>
+                    @if (_extras.Count > 0)
+                    {
+                        <div class="extra-dd">
+                            <button type="button" class="input extra-dd__trigger" @onclick="() => _extraDropdownOpen = !_extraDropdownOpen">
+                                <span class="extra-dd__summary">@ExtraSummary()</span>
+                                <LucideIcon Name="chevron-down" Size="14" />
                             </button>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <p class="muted">@Loc.T("No allergens defined yet.") <button type="button" class="btn btn--ghost btn--sm" @onclick="GoToAllergens">@Loc.T("Add one")</button></p>
-                }
-            </div>
-            @if (_productError is not null) { <div class="field-error">@_productError</div> }
+                            @if (_extraDropdownOpen)
+                            {
+                                <div class="extra-dd__backdrop" @onclick="() => _extraDropdownOpen = false"></div>
+                                <div class="extra-dd__menu" @onclick:stopPropagation="true">
+                                    @foreach (var e in _extras)
+                                    {
+                                        <button type="button" class="extra-dd__opt @(_product.ExtraIds.Contains(e.Id) ? "extra-dd__opt--on" : "")"
+                                                @onclick="() => ToggleProductExtra(e.Id)">
+                                            <span class="extra-dd__check">@(_product.ExtraIds.Contains(e.Id) ? "✓" : "")</span>
+                                            <span class="extra-dd__name">@e.Name</span>
+                                            <span class="extra-dd__price">+@e.Price.ToString("N2")</span>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="muted">@Loc.T("No extras defined yet.") <button type="button" class="btn btn--ghost btn--sm" @onclick="GoToExtras">@Loc.T("Add one")</button></p>
+                    }
+                </div>
+
+                <div class="pform-section">
+                    <label>@Loc.T("Allergens")</label>
+                    @if (_allergens.Count > 0)
+                    {
+                        <div class="allergen-pick">
+                            @foreach (var a in _allergens)
+                            {
+                                <button type="button" class="allergen-chip @(_product.AllergenIds.Contains(a.Id) ? "allergen-chip--on" : "")"
+                                        @onclick="() => ToggleProductAllergen(a.Id)">
+                                    <span class="allergen-chip__thumb">
+                                        @if (!string.IsNullOrWhiteSpace(a.ImageUrl))
+                                        {
+                                            <img src="@a.ImageUrl" alt="" />
+                                        }
+                                        else
+                                        {
+                                            <LucideIcon Name="triangle-alert" Size="12" />
+                                        }
+                                    </span>
+                                    @a.Name
+                                </button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="muted">@Loc.T("No allergens defined yet.") <button type="button" class="btn btn--ghost btn--sm" @onclick="GoToAllergens">@Loc.T("Add one")</button></p>
+                    }
+                </div>
+
+                @if (_productError is not null) { <div class="field-error">@_productError</div> }
             </div>
         }
     </ChildContent>
@@ -556,7 +573,6 @@
 
     private List<AllergenDto> _allergens = new();
     private bool _viewingAllergens;
-    private int? _lastSelectedId;
     private AllergenFormDto? _allergen;
     private string? _allergenError;
     private string _allergenSearch = "";
@@ -819,21 +835,8 @@
         await LoadProducts();
     }
 
-    private async Task SelectProductsView()
-    {
-        if (!_viewingAllergens && !_viewingExtras) return;
-        _viewingAllergens = false;
-        _viewingExtras = false;
-        var id = _lastSelectedId ?? _categories.FirstOrDefault()?.Id;
-        _lastSelectedId = null;
-        if (id == _selectedId) return;
-        _selectedId = id;
-        _search = "";
-        await LoadProducts();
-    }
-
     // ---- Allergens ----------------------------------------------------------
-    private void SelectAllergensView() { _lastSelectedId ??= _selectedId; _viewingAllergens = true; _viewingExtras = false; _selectedId = null; _allergenSearch = ""; }
+    private void SelectAllergensView() { _viewingAllergens = true; _viewingExtras = false; _selectedId = null; _allergenSearch = ""; }
 
     /// <summary>Same as <see cref="SelectAllergensView"/>, but also closes the product form —
     /// for the "Add one" link inside it, which needs to leave that modal to reach the section.</summary>
@@ -883,7 +886,7 @@
     }
 
     // ---- Extras ---------------------------------------------------------------
-    private void SelectExtrasView() { _lastSelectedId ??= _selectedId; _viewingExtras = true; _viewingAllergens = false; _selectedId = null; _extraSearch = ""; }
+    private void SelectExtrasView() { _viewingExtras = true; _viewingAllergens = false; _selectedId = null; _extraSearch = ""; }
 
     /// <summary>Same as <see cref="SelectExtrasView"/>, but also closes the product form —
     /// for the "Add one" link inside it, which needs to leave that modal to reach the section.</summary>
