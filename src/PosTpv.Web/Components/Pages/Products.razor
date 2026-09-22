@@ -145,7 +145,7 @@
                 else if (_selected is not null)
                 {
                     <div class="toolbar__filters">
-                        <button type="button" class="btn btn--icon @(_toolbarFiltersOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="() => _toolbarFiltersOpen = !_toolbarFiltersOpen"><LucideIcon Name="sliders-horizontal" Size="13" /></button>
+                        <button type="button" class="btn btn--icon @(_toolbarFiltersOpen || HasActiveProductFilters ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="() => _toolbarFiltersOpen = !_toolbarFiltersOpen"><LucideIcon Name="sliders-horizontal" Size="13" /></button>
                         @if (_toolbarFiltersOpen)
                         {
                             <div class="toolbar__filters-backdrop" @onclick="() => _toolbarFiltersOpen = false"></div>
@@ -162,6 +162,41 @@
                                     <span class="extra-dd__check">@(_toolbarSort == ToolbarSort.CreatedDesc ? "✓" : "")</span>
                                     <span class="extra-dd__name">@Loc.T("Newest first")</span>
                                 </button>
+                                @if (_allergens.Count > 0)
+                                {
+                                    <div class="toolbar__filters-divider"></div>
+                                    <span class="toolbar__filters-label">@Loc.T("Allergens")</span>
+                                    <div class="toolbar__filters-scroll">
+                                        @foreach (var a in _allergens)
+                                        {
+                                            <button type="button" class="extra-dd__opt @(_filterAllergenIds.Contains(a.Id) ? "extra-dd__opt--on" : "")" @onclick="() => ToggleFilterAllergen(a.Id)">
+                                                <span class="extra-dd__check">@(_filterAllergenIds.Contains(a.Id) ? "✓" : "")</span>
+                                                <span class="extra-dd__name">@a.Name</span>
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                                @if (_extras.Count > 0)
+                                {
+                                    <div class="toolbar__filters-divider"></div>
+                                    <span class="toolbar__filters-label">@Loc.T("Extras")</span>
+                                    <div class="toolbar__filters-scroll">
+                                        @foreach (var e in _extras)
+                                        {
+                                            <button type="button" class="extra-dd__opt @(_filterExtraIds.Contains(e.Id) ? "extra-dd__opt--on" : "")" @onclick="() => ToggleFilterExtra(e.Id)">
+                                                <span class="extra-dd__check">@(_filterExtraIds.Contains(e.Id) ? "✓" : "")</span>
+                                                <span class="extra-dd__name">@e.Name</span>
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                                @if (HasActiveProductFilters)
+                                {
+                                    <div class="toolbar__filters-divider"></div>
+                                    <button type="button" class="extra-dd__opt toolbar__filters-clear" @onclick="ClearProductFilters">
+                                        <LucideIcon Name="x" Size="12" /> <span class="extra-dd__name">@Loc.T("Clear filters")</span>
+                                    </button>
+                                }
                             </div>
                         }
                     </div>
@@ -197,9 +232,10 @@
                                     <span class="allergenRow__desc muted">@a.Description</span>
                                 }
                             </div>
-                            <span class="spacer"></span>
-                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")" @onclick="() => OpenAllergenForm(a.Id)"><LucideIcon Name="pencil" Size="16" /></button>
-                            <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")" @onclick="() => DeleteAllergen(a.Id)"><LucideIcon Name="trash-2" Size="16" /></button>
+                            <div class="allergenRow__actions">
+                                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")" @onclick="() => OpenAllergenForm(a.Id)"><LucideIcon Name="pencil" Size="16" /></button>
+                                <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")" @onclick="() => DeleteAllergen(a.Id)"><LucideIcon Name="trash-2" Size="16" /></button>
+                            </div>
                         </div>
                     }
                     @if (_allergens.Count == 0) { <p class="empty">@Loc.T("No allergens yet.")</p> }
@@ -224,12 +260,13 @@
                                     <LucideIcon Name="tag" Size="14" />
                                 }
                             </div>
-                            <div class="extraRow__main">
-                                <span class="extraRow__name">@e.Name</span>
-                            </div>
+                            <span class="extraRow__name">@e.Name</span>
+                            <span class="extraRow__leader"></span>
                             <span class="extraRow__price">+@e.Price.ToString("N2")</span>
-                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")" @onclick="() => OpenExtraForm(e.Id)"><LucideIcon Name="pencil" Size="14" /></button>
-                            <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")" @onclick="() => DeleteExtra(e.Id)"><LucideIcon Name="trash-2" Size="14" /></button>
+                            <div class="extraRow__actions">
+                                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")" @onclick="() => OpenExtraForm(e.Id)"><LucideIcon Name="pencil" Size="14" /></button>
+                                <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")" @onclick="() => DeleteExtra(e.Id)"><LucideIcon Name="trash-2" Size="14" /></button>
+                            </div>
                         </div>
                     }
                     @if (FilteredExtras.Count == 0) { <p class="empty">@Loc.T("No extras yet.")</p> }
@@ -286,7 +323,7 @@
                             <div class="mgmt-card__extras">
                                 @foreach (var e in p.Extras)
                                 {
-                                    <span class="extra-tag" title="@e.Name">@e.Name <b>+@e.Price.ToString("N2")</b></span>
+                                    <span class="extra-tag" title="@e.Name">@e.Name</span>
                                 }
                             </div>
                         }
@@ -646,6 +683,8 @@
     private string _search = "";
     private bool _toolbarFiltersOpen;
     private ToolbarSort _toolbarSort = ToolbarSort.Manual;
+    private readonly HashSet<int> _filterAllergenIds = new();
+    private readonly HashSet<int> _filterExtraIds = new();
 
     private enum ToolbarSort { Manual, NameAsc, CreatedDesc }
 
@@ -788,9 +827,28 @@
                 .Where(p => string.IsNullOrWhiteSpace(_extraProductSearch) || p.Name.Contains(_extraProductSearch, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-    private List<ProductDto> Filtered => ApplyToolbarSort(string.IsNullOrWhiteSpace(_search)
-        ? _products
-        : _products.Where(p => p.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)),
+    private bool HasActiveProductFilters => _filterAllergenIds.Count > 0 || _filterExtraIds.Count > 0;
+
+    private void ToggleFilterAllergen(int allergenId)
+    {
+        if (!_filterAllergenIds.Remove(allergenId)) _filterAllergenIds.Add(allergenId);
+    }
+
+    private void ToggleFilterExtra(int extraId)
+    {
+        if (!_filterExtraIds.Remove(extraId)) _filterExtraIds.Add(extraId);
+    }
+
+    private void ClearProductFilters()
+    {
+        _filterAllergenIds.Clear();
+        _filterExtraIds.Clear();
+    }
+
+    private List<ProductDto> Filtered => ApplyToolbarSort(_products
+        .Where(p => string.IsNullOrWhiteSpace(_search) || p.Name.Contains(_search, StringComparison.OrdinalIgnoreCase))
+        .Where(p => _filterAllergenIds.Count == 0 || p.Allergens.Any(a => _filterAllergenIds.Contains(a.Id)))
+        .Where(p => _filterExtraIds.Count == 0 || p.Extras.Any(e => _filterExtraIds.Contains(e.Id))),
         p => p.Name, p => p.CreatedAt);
 
     protected override async Task OnInitializedAsync()

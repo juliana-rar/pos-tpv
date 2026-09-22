@@ -6,6 +6,9 @@
     height: calc(100vh - var(--topbar-h) - 2.8rem);
 }
 
+/* Drag-to-reorder toggle in the page-hero nav: keep it readable against the topbar. */
+.page-hero__left .btn--icon.btn--ghost { background: #fff; width: 22px; height: 22px; padding: 0; }
+
 /* Search+new-item actions moved out of the page-hero row and into their own toolbar, docked
    above the products/allergens/extras panel instead of the nav — spans the full width of the
    right panel (from the sidebar over to the right edge), with its own card surface, and keeps
@@ -226,6 +229,7 @@
 .toolbar__filters-menu {
     position: absolute; top: calc(100% + .3rem); left: 0; z-index: 21;
     min-width: 11rem;
+    max-height: 24rem; overflow-y: auto;
     display: flex; flex-direction: column; gap: .1rem;
     padding: .35rem;
     background: var(--card);
@@ -235,6 +239,20 @@
     animation: pop var(--transition);
     font-size: .66rem;
 }
+/* Separates the sort options from the allergen/extra facet lists below them. */
+.toolbar__filters-divider { flex: none; height: 1px; margin: .25rem .1rem; background: var(--border); }
+.toolbar__filters-label {
+    flex: none;
+    padding: 0 .4rem .1rem;
+    font-size: .56rem; font-weight: 700;
+    letter-spacing: .05em; text-transform: uppercase;
+    color: var(--text-soft);
+}
+/* Each facet (allergens, extras) scrolls on its own past a handful of rows, instead of one
+   long allergen list pushing the extras section (and the clear-filters action) out of view. */
+.toolbar__filters-scroll { display: flex; flex-direction: column; gap: .1rem; max-height: 7.5rem; overflow-y: auto; }
+.toolbar__filters-clear { color: var(--danger); }
+.toolbar__filters-clear:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
 
 /* Focused inputs on this page (search bar + every form inside its modals) get a neutral
    light-grey ring instead of the app-wide blue --primary one, on request — keeps this
@@ -376,43 +394,67 @@
 /* --- Extra tags on a product card --- */
 /* Unlike .mgmt-card__allergens above, this row only renders when the product actually has
    extras (see the @if in Products.razor) — extras aren't safety info, so cards without any
-   don't need a reserved empty slot. */
-.mgmt-card__extras { display: flex; flex-wrap: wrap; gap: .2rem; }
+   don't need a reserved empty slot. One extra per line, centered, styled as a small tracked-
+   uppercase label flanked by diamond ornaments — an elegant "menu supplement" treatment,
+   distinct from the bold left-aligned warning pills above it. Price is dropped here, this is
+   just a "this product can be extended" marker, not a price list. */
+.mgmt-card__extras { display: flex; flex-direction: column; align-items: center; gap: .12rem; text-align: center; }
 .extra-tag {
-    display: inline-flex; align-items: center; gap: .15rem;
-    padding: .03rem .28rem;
-    border-radius: 999px;
-    background: transparent;
-    border: 1px solid color-mix(in srgb, var(--secondary) 40%, var(--border));
-    color: color-mix(in srgb, var(--secondary) 85%, var(--text));
-    font-size: .46rem; font-weight: 700;
+    display: inline-flex; align-items: center; gap: .3rem;
+    max-width: 100%; overflow: hidden;
+    color: color-mix(in srgb, var(--secondary) 78%, var(--text-soft));
+    font-size: .5rem; font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    white-space: nowrap; text-overflow: ellipsis;
 }
-.extra-tag b { font-weight: 800; }
+.extra-tag::before, .extra-tag::after {
+    content: "◆"; flex: none;
+    font-size: .34rem; color: var(--secondary); opacity: .55;
+}
 
-/* --- Allergen manager modal: list of allergens with a thumbnail image --- */
-/* No longer inside a modal (the section lives inline in .catalog__products now, switched to
-   via the page-hero tabs); top spacing comes from .catalog__products' own padding-top. */
-.allergenManager__list { display: flex; flex-direction: column; gap: .5rem; max-width: 32rem; }
+/* --- Allergen manager: same refined single-panel "menu list" treatment as .extraManager__list
+   above — one allergen per line inside one bordered surface, separated by hairlines instead of
+   each getting its own boxed card, with the edit/delete pair only revealing on hover/focus. No
+   dotted leader here (there's no price to justify it against): the description simply trails
+   the name and the row can wrap, unlike the fixed-width extras row. */
+.allergenManager__list {
+    display: flex; flex-direction: column;
+    max-width: 32rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
 .allergenRow {
     display: flex; align-items: center; gap: .6rem;
     padding: .5rem .7rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--card-2);
+    border-bottom: 1px solid var(--border);
+    transition: background var(--transition);
 }
+.allergenManager__list .allergenRow:last-child { border-bottom: none; }
+.allergenRow:hover { background: var(--card-2); }
 .allergenRow__thumb {
     display: grid; place-items: center;
     flex: none;
-    width: 34px; height: 34px;
+    width: 30px; height: 30px;
     border-radius: 50%;
-    background: color-mix(in srgb, var(--warning) 15%, transparent);
+    background: linear-gradient(155deg, color-mix(in srgb, var(--warning) 22%, var(--card-2)), color-mix(in srgb, var(--warning) 4%, var(--card-2)));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 25%, var(--border));
     color: var(--warning);
     overflow: hidden;
 }
 .allergenRow__thumb img { width: 100%; height: 100%; object-fit: cover; }
-.allergenRow__main { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.allergenRow__main { flex: 1; display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
 .allergenRow__name { font-weight: 700; }
 .allergenRow__desc { font-size: .66rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.allergenRow__actions { display: flex; align-items: center; gap: .1rem; flex: none; }
+@media (hover: hover) and (pointer: fine) {
+    .allergenRow__actions .btn--icon { opacity: 0; transition: opacity var(--transition); }
+    .allergenRow:hover .allergenRow__actions .btn--icon,
+    .allergenRow:focus-within .allergenRow__actions .btn--icon { opacity: 1; }
+}
 
 /* --- Allergen multi-select on the product form: toggle chips with a thumbnail --- */
 .allergen-pick { display: flex; flex-wrap: wrap; gap: .4rem; }
@@ -442,37 +484,66 @@
     font-weight: 800;
 }
 
-/* --- Extra manager: list of extras with name + price — kept dense (small thumb, tight
-   padding) since a pizzeria's extra list tends to run long and each row carries little
-   information, unlike a product card. */
-.extraManager__list { display: flex; flex-direction: column; gap: .35rem; max-width: 20rem; }
-.extraRow {
-    display: flex; align-items: center; gap: .5rem;
-    padding: .32rem .5rem;
+/* --- Extra manager: one extra per line, styled like a printed menu — a dotted leader rule
+   connects the name to its price (the classic fine-dining-menu trick for a long variable-width
+   list) instead of a settings-style row or a card grid, for a more refined, editorial read.
+   Rows sit inside a single bordered surface, separated by hairlines rather than each getting
+   its own boxed card. */
+.extraManager__list {
+    display: flex; flex-direction: column;
+    max-width: 26rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    background: var(--card-2);
+    background: var(--card);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
 }
+.extraRow {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .5rem .7rem;
+    border-bottom: 1px solid var(--border);
+    transition: background var(--transition);
+}
+.extraManager__list .extraRow:last-child { border-bottom: none; }
+.extraRow:hover { background: var(--card-2); }
 .extraRow__thumb {
     display: grid; place-items: center;
     flex: none;
-    width: 24px; height: 24px;
+    width: 26px; height: 26px;
     border-radius: 50%;
-    background: color-mix(in srgb, var(--secondary) 15%, transparent);
+    background: linear-gradient(155deg, color-mix(in srgb, var(--secondary) 20%, var(--card-2)), color-mix(in srgb, var(--secondary) 4%, var(--card-2)));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--secondary) 22%, var(--border));
     color: var(--secondary);
     overflow: hidden;
 }
 .extraRow__thumb img { width: 100%; height: 100%; object-fit: cover; }
-.extraRow__main { display: flex; flex-direction: column; gap: .1rem; min-width: 0; flex: 1; }
-.extraRow__name { font-weight: 600; font-size: .66rem; }
+.extraRow__name {
+    flex: none;
+    font-weight: 700; font-size: .68rem;
+    color: var(--text);
+    white-space: nowrap;
+}
+/* The leader: a zero-height flex item, so its bottom border sits exactly on the row's
+   vertical centre without any manual offset. */
+.extraRow__leader {
+    flex: 1;
+    min-width: 1rem;
+    margin: 0 .15rem;
+    border-bottom: 1px dotted color-mix(in srgb, var(--text-soft) 50%, transparent);
+}
 .extraRow__price {
     flex: none;
-    font-weight: 700;
-    font-size: .66rem;
-    color: var(--secondary);
+    font-weight: 800; font-size: .68rem;
+    color: color-mix(in srgb, var(--secondary) 85%, var(--text));
     font-variant-numeric: tabular-nums;
 }
-.extraRow .btn--icon { width: 26px; height: 26px; padding: 0; }
+.extraRow__actions { display: flex; align-items: center; gap: .1rem; flex: none; }
+.extraRow .btn--icon { width: 22px; height: 22px; padding: 0; }
+@media (hover: hover) and (pointer: fine) {
+    .extraRow__actions .btn--icon { opacity: 0; transition: opacity var(--transition); }
+    .extraRow:hover .extraRow__actions .btn--icon,
+    .extraRow:focus-within .extraRow__actions .btn--icon { opacity: 1; }
+}
 
 /* --- Extra multi-select on the product form: a closed-by-default dropdown instead of an
    always-open chip grid, so a long extras catalogue doesn't add its own height to the form —

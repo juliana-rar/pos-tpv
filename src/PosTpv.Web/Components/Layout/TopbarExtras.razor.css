@@ -25,9 +25,9 @@
 .nav__logo {
     display: grid; place-items: center;
     width: 1.6rem; height: 1.6rem;
-    color: var(--on-primary);
+    color: var(--primary);
     border-radius: 8px;
-    background: var(--primary);
+    background: #fff;
 }
 .nav__title { font-size: .88rem; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
 
