@@ -220,6 +220,10 @@
                             {
                                 <button class="extra-chip @(_selectedExtraIds.Contains(ex.Id) ? "extra-chip--on" : "")"
                                         @onclick="() => ToggleExtra(ex.Id)" type="button">
+                                    @if (!string.IsNullOrWhiteSpace(ex.ImageUrl))
+                                    {
+                                        <span class="extra-chip__thumb"><img src="@ex.ImageUrl" alt="" /></span>
+                                    }
                                     <span>@ex.Name</span>
                                     <span class="extra-chip__price">＋@ex.Price.ToString("N2")</span>
                                 </button>

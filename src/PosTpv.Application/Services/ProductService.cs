@@ -72,7 +72,7 @@ public class ProductService : IProductService
 
         return product?.Extras
             .OrderBy(e => e.Name)
-            .Select(e => new ExtraDto(e.Id, e.Name, e.Price))
+            .Select(e => new ExtraDto(e.Id, e.Name, e.Price, e.ImageUrl))
             .ToList() ?? new();
     }
 

@@ -51,15 +51,16 @@
 }
 .page-hero__left .btn--icon { width: 18px; height: 18px; padding: 0; border-radius: 999px; }
 /* .btn--ghost is background:transparent by default, which let the hairline show through behind
-   the icon — a flat var(--card) fill read as a stray white/near-black square against the
-   surrounding tones, so this uses a theme-relative tint (a % of --text) instead: it reads as a
-   soft neutral chip in both light and dark mode rather than a hardcoded colour that only works
-   in one. Scoped to --ghost specifically so it doesn't fight --primary's own colour once the
-   button is toggled active. */
+   the icon. A color-mix() tint over --card-2 was tried here before but still isn't fully solid
+   in every browser, so this uses the same plain, guaranteed-opaque --card fill as .btn--neutral
+   (see Products.razor.css) — the pattern this codebase already uses whenever an icon control
+   needs to sit solidly on top of other content. Scoped to --ghost specifically so it doesn't
+   fight --primary's own colour once the button is toggled active. */
 .page-hero__left .btn--ghost.btn--icon {
-    background: color-mix(in srgb, var(--text) 10%, transparent);
-    border-color: transparent;
+    background: var(--card);
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
 }
 .page-hero__left .btn--ghost.btn--icon:hover {
-    background: color-mix(in srgb, var(--text) 16%, transparent);
+    background: var(--card-2);
 }

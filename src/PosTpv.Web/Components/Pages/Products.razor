@@ -214,7 +214,16 @@
                     @foreach (var e in FilteredExtras)
                     {
                         <div class="extraRow">
-                            <div class="extraRow__thumb"><LucideIcon Name="tag" Size="14" /></div>
+                            <div class="extraRow__thumb">
+                                @if (!string.IsNullOrWhiteSpace(e.ImageUrl))
+                                {
+                                    <img src="@e.ImageUrl" alt="" />
+                                }
+                                else
+                                {
+                                    <LucideIcon Name="tag" Size="14" />
+                                }
+                            </div>
                             <div class="extraRow__main">
                                 <span class="extraRow__name">@e.Name</span>
                             </div>
@@ -324,7 +333,7 @@
                 </div>
                 <div class="pform-hero">
                     <div class="pform-hero__media">
-                        <ImageUpload Value="_product.ImageUrl" ValueChanged="v => _product.ImageUrl = v" Folder="products" />
+                        <ImageUpload Value="@_product.ImageUrl" ValueChanged="v => _product.ImageUrl = v" Folder="products" />
                     </div>
                     <div class="pform-hero__fields">
                         <input class="pform-hero__name" placeholder="@Loc.T("Name")" @bind="_product.Name" />
@@ -360,6 +369,38 @@
                     <textarea class="input" rows="2" @bind="_product.Description"></textarea>
                 </div>
 
+                <div class="pform-section-row">
+                <div class="pform-section">
+                    <label>@Loc.T("Allergens")</label>
+                    @if (_allergens.Count > 0)
+                    {
+                        <div class="extra-dd">
+                            <button type="button" class="input extra-dd__trigger" @onclick="() => _allergenDropdownOpen = !_allergenDropdownOpen">
+                                <span class="extra-dd__summary">@AllergenSummary()</span>
+                                <LucideIcon Name="chevron-down" Size="14" />
+                            </button>
+                            @if (_allergenDropdownOpen)
+                            {
+                                <div class="extra-dd__backdrop" @onclick="() => _allergenDropdownOpen = false"></div>
+                                <div class="extra-dd__menu" @onclick:stopPropagation="true">
+                                    @foreach (var a in _allergens)
+                                    {
+                                        <button type="button" class="extra-dd__opt @(_product.AllergenIds.Contains(a.Id) ? "extra-dd__opt--on" : "")"
+                                                @onclick="() => ToggleProductAllergen(a.Id)">
+                                            <span class="extra-dd__check">@(_product.AllergenIds.Contains(a.Id) ? "✓" : "")</span>
+                                            <span class="extra-dd__name">@a.Name</span>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="muted">@Loc.T("No allergens defined yet.") <button type="button" class="btn btn--ghost btn--sm" @onclick="GoToAllergens">@Loc.T("Add one")</button></p>
+                    }
+                </div>
+
                 <div class="pform-section">
                     <label>@Loc.T("Extras")</label>
                     @if (_extras.Count > 0)
@@ -391,35 +432,6 @@
                         <p class="muted">@Loc.T("No extras defined yet.") <button type="button" class="btn btn--ghost btn--sm" @onclick="GoToExtras">@Loc.T("Add one")</button></p>
                     }
                 </div>
-
-                <div class="pform-section">
-                    <label>@Loc.T("Allergens")</label>
-                    @if (_allergens.Count > 0)
-                    {
-                        <div class="allergen-pick">
-                            @foreach (var a in _allergens)
-                            {
-                                <button type="button" class="allergen-chip @(_product.AllergenIds.Contains(a.Id) ? "allergen-chip--on" : "")"
-                                        @onclick="() => ToggleProductAllergen(a.Id)">
-                                    <span class="allergen-chip__thumb">
-                                        @if (!string.IsNullOrWhiteSpace(a.ImageUrl))
-                                        {
-                                            <img src="@a.ImageUrl" alt="" />
-                                        }
-                                        else
-                                        {
-                                            <LucideIcon Name="triangle-alert" Size="12" />
-                                        }
-                                    </span>
-                                    @a.Name
-                                </button>
-                            }
-                        </div>
-                    }
-                    else
-                    {
-                        <p class="muted">@Loc.T("No allergens defined yet.") <button type="button" class="btn btn--ghost btn--sm" @onclick="GoToAllergens">@Loc.T("Add one")</button></p>
-                    }
                 </div>
 
                 @if (_productError is not null) { <div class="field-error">@_productError</div> }
@@ -440,7 +452,7 @@
             </div>
             <div class="field">
                 <label>@Loc.T("Image")</label>
-                <ImageUpload Value="_category.ImageUrl" ValueChanged="v => _category.ImageUrl = v" Folder="categories" />
+                <ImageUpload Value="@_category.ImageUrl" ValueChanged="v => _category.ImageUrl = v" Folder="categories" />
             </div>
             <div class="field">
                 <label>@Loc.T("Type")</label>
@@ -537,7 +549,7 @@
             </div>
             <div class="field">
                 <label>@Loc.T("Image")</label>
-                <ImageUpload Value="_allergen.ImageUrl" ValueChanged="v => _allergen.ImageUrl = v" Folder="allergens" />
+                <ImageUpload Value="@_allergen.ImageUrl" ValueChanged="v => _allergen.ImageUrl = v" Folder="allergens" />
             </div>
             @if (_allergenError is not null) { <div class="field-error">@_allergenError</div> }
         }
@@ -560,6 +572,10 @@
             <div class="row-2">
                 <div class="field"><label>@Loc.T("Name")</label><input class="input" @bind="_extra.Name" /></div>
                 <div class="field"><label>@Loc.T("Price")</label><input type="number" step="0.01" class="input" @bind="_extra.Price" /></div>
+            </div>
+            <div class="field">
+                <label>@Loc.T("Image")</label>
+                <ImageUpload Value="@_extra.ImageUrl" ValueChanged="v => _extra.ImageUrl = v" Folder="extras" />
             </div>
             <div class="field">
                 <label>@Loc.T("Categories")</label>
@@ -722,6 +738,7 @@
     private ProductFormDto? _product;
     private string? _productError;
     private bool _extraDropdownOpen;
+    private bool _allergenDropdownOpen;
 
     private CategoryFormDto? _category;
     private string? _categoryError;
@@ -931,6 +948,7 @@
     {
         _productError = null;
         _extraDropdownOpen = false;
+        _allergenDropdownOpen = false;
         _product = id is null
             ? new ProductFormDto { CategoryId = _selectedId ?? 0 }
             : await Service.GetForEditAsync(id.Value) ?? new ProductFormDto();
@@ -942,6 +960,13 @@
     {
         if (_product is null || _product.ExtraIds.Count == 0) return Loc.T("— select —");
         var names = _extras.Where(e => _product.ExtraIds.Contains(e.Id)).Select(e => e.Name).ToList();
+        return names.Count <= 2 ? string.Join(", ", names) : $"{names.Count} {Loc.T("selected")}";
+    }
+
+    private string AllergenSummary()
+    {
+        if (_product is null || _product.AllergenIds.Count == 0) return Loc.T("— select —");
+        var names = _allergens.Where(a => _product.AllergenIds.Contains(a.Id)).Select(a => a.Name).ToList();
         return names.Count <= 2 ? string.Join(", ", names) : $"{names.Count} {Loc.T("selected")}";
     }
 

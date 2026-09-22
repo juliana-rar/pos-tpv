@@ -151,6 +151,13 @@
     right: .6rem;
     z-index: 4;
     margin: 0;
+    width: fit-content;
+}
+/* Card chrome (background/border/padding/shadow) only when the row actually has buttons to
+   show — Edit/Select/Reassign/Paint/Filters (see .toolbar--tables-row in Tables.razor). In the
+   idle default state none of those render, so without this gate the bar still painted an empty
+   rectangle (just its own padding box) floating above the gear, with nothing inside it. */
+.floor-wrap > .toolbar--tables.toolbar--tables-row {
     padding: .3rem .5rem;
     /* Overrides the base .toolbar's own .75rem flex gap (app.css) — with that gap, the space
        between .toolbar-actions (New table/Join/Assign/Edit layout, its own .5rem internal gap)
@@ -170,7 +177,6 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     box-shadow: var(--shadow-sm);
-    width: fit-content;
 }
 /* While the gear's dropdown is open, its own curved bottom-right corner sits just past this
    bar's real (rounded) bottom edge — since the two shapes don't share a radius, that leaves a

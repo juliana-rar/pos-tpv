@@ -271,15 +271,19 @@ a { color: var(--primary); text-decoration: none; }
 .modal:has(.product-form) {
     width: min(720px, 100%);
     border-radius: calc(var(--radius) + 8px);
-    overflow: hidden;
     box-shadow: var(--shadow-lg);
 }
 /* Header is now a plain, edge-to-edge close/save bar (title, switches and the row/duplicate
    actions all moved down into .pform-toolbar, inside the body — see Products.razor) so it stays
-   slim instead of the roomy title bar this used to be. */
+   slim instead of the roomy title bar this used to be. Its top corners are rounded to match the
+   modal (instead of relying on the modal's own overflow:hidden to clip them), because the modal
+   can no longer clip overflow: the Extras/Allergens pickers below render an absolutely positioned
+   dropdown that must overlay past the form's bottom edge, and overflow:hidden on an ancestor
+   would crop it. */
 .modal:has(.product-form) .modal__head {
     background: linear-gradient(to bottom, color-mix(in srgb, var(--card) 96%, white 4%), var(--card));
     padding: .55rem 1.1rem;
+    border-radius: calc(var(--radius) + 8px) calc(var(--radius) + 8px) 0 0;
 }
 .modal:has(.product-form) .modal__body {
     padding: 1rem 1.4rem 1.4rem;

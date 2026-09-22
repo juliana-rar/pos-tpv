@@ -374,7 +374,7 @@
     </div>
     @* Floats over the map's top-right corner instead of taking its own row, so the map
        fills the whole panel height. *@
-    <div class="toolbar toolbar--tables @(_showFilters ? "toolbar--tables-menu-open" : "")">
+    <div class="toolbar toolbar--tables @(_editing || _selecting || _reassigning || _paintMode || _showFilters ? "toolbar--tables-row" : "") @(_showFilters ? "toolbar--tables-menu-open" : "")">
         <span class="spacer"></span>
         @* Rendered unconditionally (outside the Edit/Select/Reassign/default branches below) and
            absolutely positioned (.floor-settings) so it always sits in the map's top-right corner —

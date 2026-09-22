@@ -17,13 +17,14 @@ public class UserFormDto
     public string? Pin { get; set; }
 }
 
-public record ExtraDto(int Id, string Name, decimal Price, DateTime CreatedAt = default);
+public record ExtraDto(int Id, string Name, decimal Price, string? ImageUrl, DateTime CreatedAt = default);
 
 public class ExtraFormDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; }
+    public string? ImageUrl { get; set; }
     public List<int> ProductIds { get; set; } = new();
 }
 
