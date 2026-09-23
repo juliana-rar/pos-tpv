@@ -497,79 +497,91 @@
     </ChildContent>
 </Modal>
 
-@* ---- Category form modal ------------------------------------------------- *@
-<Modal Visible="_category is not null" Title="@(_category?.Id > 0 ? "" : Loc.T("New category"))" OnClose="CloseCategory">
+@* ---- Category form modal (same .product-form chrome/layout as the product modal above) --- *@
+<Modal Visible="_category is not null"
+       OnClose="CloseCategory" Wide="true" CloseLeft="true">
+    <HeaderActions>
+        <button class="btn btn--icon btn--primary" title="@Loc.T("Save")" @onclick="SaveCategory" type="button"><LucideIcon Name="check" Size="18" /></button>
+    </HeaderActions>
     <ChildContent>
         @if (_category is not null)
         {
-            <div class="field"><label>@Loc.T("Name")</label><input class="input" @bind="_category.Name" /></div>
-            <div class="row-2">
-                <div class="field"><label>@Loc.T("Icon (emoji)")</label><input class="input" @bind="_category.Icon" /></div>
-                <div class="field"><label>@Loc.T("Colour")</label><input type="color" class="input" @bind="_category.Color" /></div>
-            </div>
-            <div class="field">
-                <label>@Loc.T("Image")</label>
-                <ImageUpload Value="@_category.ImageUrl" ValueChanged="v => _category.ImageUrl = v" Folder="categories" />
-            </div>
-            <div class="field">
-                <label>@Loc.T("Type")</label>
-                <select class="input" @bind="_category.Kind">
-                    <option value="@CategoryKind.Food">@Loc.T("Food")</option>
-                    <option value="@CategoryKind.Drink">@Loc.T("Drinks")</option>
-                </select>
-            </div>
-            @if (_category.Kind == CategoryKind.Food)
-            {
-                <div class="field">
-                    <label>@Loc.T("Course")</label>
-                    <select class="input" @bind="_category.Course">
-                        @foreach (var course in Enum.GetValues<CourseType>())
-                        {
-                            <option value="@course">@Loc.T(CourseLabel(course))</option>
-                        }
-                    </select>
+            <div class="product-form" style="--prod:@_category.Color">
+                <div class="pform-toolbar">
+                    <span class="pform-toolbar__eyebrow">@(_category.Id > 0 ? Loc.T("Edit category") : Loc.T("New category"))</span>
+                    <div class="pform-toolbar__switches">
+                        <label class="switch" title="@Loc.T("Visible")"><input type="checkbox" @bind="_category.IsVisible" /><span>@Loc.T("Visible")</span></label>
+                    </div>
                 </div>
-            }
-            <div class="row-2">
-                <div class="field"><label>@Loc.T("Display order")</label><input type="number" class="input" @bind="_category.DisplayOrder" /></div>
-                <label class="switch"><input type="checkbox" @bind="_category.IsVisible" /><span>@Loc.T("Visible")</span></label>
-            </div>
-            <div class="field">
-                <label>@Loc.T("Quick comments")</label>
-                @if (_category.Id > 0)
-                {
-                    <div class="commentEditor">
-                        @foreach (var (cm, i) in _categoryComments.Select((cm, i) => (cm, i)))
-                        {
-                            <div class="commentEditor__row">
-                                <input class="input" @bind="cm.Text" @bind:event="onchange" @bind:after="() => SaveCommentText(cm)" />
-                                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
-                                        disabled="@(i == 0)" @onclick="() => MoveComment(cm.Id, -1)"><LucideIcon Name="chevron-up" Size="14" /></button>
-                                <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
-                                        disabled="@(i == _categoryComments.Count - 1)" @onclick="() => MoveComment(cm.Id, 1)"><LucideIcon Name="chevron-down" Size="14" /></button>
-                                <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")"
-                                        @onclick="() => DeleteComment(cm.Id)"><LucideIcon Name="trash-2" Size="14" /></button>
-                            </div>
-                        }
-                        @if (_categoryComments.Count == 0) { <p class="empty">@Loc.T("No quick comments yet.")</p> }
+                <div class="pform-hero">
+                    <div class="pform-hero__media">
+                        <ImageUpload Value="@_category.ImageUrl" ValueChanged="v => _category.ImageUrl = v" Folder="categories" />
                     </div>
-                    <div class="commentEditor__add">
-                        <input class="input" @bind="_newCommentText" @bind:event="oninput" placeholder="@Loc.T("e.g. Well done, No cheese…")" />
-                        <button class="btn btn--ghost btn--sm" type="button" disabled="@string.IsNullOrWhiteSpace(_newCommentText)" @onclick="AddComment">+ @Loc.T("Add")</button>
+                    <div class="pform-hero__fields">
+                        <input class="pform-hero__name" placeholder="@Loc.T("Name")" @bind="_category.Name" />
+                        <div class="pform-hero__row">
+                            <select class="select" @bind="_category.Kind">
+                                <option value="@CategoryKind.Food">@Loc.T("Food")</option>
+                                <option value="@CategoryKind.Drink">@Loc.T("Drinks")</option>
+                            </select>
+                            <label class="pform-hero__swatch" title="@Loc.T("Colour")">
+                                <input type="color" @bind="_category.Color" />
+                            </label>
+                        </div>
                     </div>
-                }
-                else
-                {
-                    <p class="muted">@Loc.T("Save the category first to add quick comments.")</p>
-                }
+                </div>
+
+                <div class="pform-stats">
+                    <div class="pform-stat"><label>@Loc.T("Icon (emoji)")</label><input class="input" @bind="_category.Icon" /></div>
+                    @if (_category.Kind == CategoryKind.Food)
+                    {
+                        <div class="pform-stat">
+                            <label>@Loc.T("Course")</label>
+                            <select class="input" @bind="_category.Course">
+                                @foreach (var course in Enum.GetValues<CourseType>())
+                                {
+                                    <option value="@course">@Loc.T(CourseLabel(course))</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                    <div class="pform-stat"><label>@Loc.T("Display order")</label><input type="number" class="input" @bind="_category.DisplayOrder" /></div>
+                </div>
+
+                <div class="pform-section">
+                    <label>@Loc.T("Quick comments")</label>
+                    @if (_category.Id > 0)
+                    {
+                        <div class="commentEditor">
+                            @foreach (var (cm, i) in _categoryComments.Select((cm, i) => (cm, i)))
+                            {
+                                <div class="commentEditor__row">
+                                    <input class="input" @bind="cm.Text" @bind:event="onchange" @bind:after="() => SaveCommentText(cm)" />
+                                    <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
+                                            disabled="@(i == 0)" @onclick="() => MoveComment(cm.Id, -1)"><LucideIcon Name="chevron-up" Size="14" /></button>
+                                    <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
+                                            disabled="@(i == _categoryComments.Count - 1)" @onclick="() => MoveComment(cm.Id, 1)"><LucideIcon Name="chevron-down" Size="14" /></button>
+                                    <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")"
+                                            @onclick="() => DeleteComment(cm.Id)"><LucideIcon Name="trash-2" Size="14" /></button>
+                                </div>
+                            }
+                            @if (_categoryComments.Count == 0) { <p class="empty">@Loc.T("No quick comments yet.")</p> }
+                        </div>
+                        <div class="commentEditor__add">
+                            <input class="input" @bind="_newCommentText" @bind:event="oninput" placeholder="@Loc.T("e.g. Well done, No cheese…")" />
+                            <button class="btn btn--ghost btn--sm" type="button" disabled="@string.IsNullOrWhiteSpace(_newCommentText)" @onclick="AddComment">+ @Loc.T("Add")</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="muted">@Loc.T("Save the category first to add quick comments.")</p>
+                    }
+                </div>
+
+                @if (_categoryError is not null) { <div class="field-error">@_categoryError</div> }
             </div>
-            @if (_categoryError is not null) { <div class="field-error">@_categoryError</div> }
         }
     </ChildContent>
-    <Footer>
-        <button class="btn btn--ghost" @onclick="CloseCategory">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" @onclick="SaveCategory">@Loc.T("Save")</button>
-    </Footer>
 </Modal>
 
 @* ---- Change-category modal ----------------------------------------------- *@
