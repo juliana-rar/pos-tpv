@@ -145,10 +145,10 @@
                 else if (_selected is not null)
                 {
                     <div class="toolbar__filters">
-                        <button type="button" class="btn btn--icon @(_toolbarFiltersOpen || HasActiveProductFilters ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="() => _toolbarFiltersOpen = !_toolbarFiltersOpen"><LucideIcon Name="sliders-horizontal" Size="13" /></button>
+                        <button type="button" class="btn btn--icon @(_toolbarFiltersOpen || HasActiveProductFilters ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Filters")" @onclick="ToggleToolbarFilters"><LucideIcon Name="sliders-horizontal" Size="13" /></button>
                         @if (_toolbarFiltersOpen)
                         {
-                            <div class="toolbar__filters-backdrop" @onclick="() => _toolbarFiltersOpen = false"></div>
+                            <div class="toolbar__filters-backdrop" @onclick="CloseToolbarFilters"></div>
                             <div class="toolbar__filters-menu" @onclick:stopPropagation="true">
                                 <button type="button" class="extra-dd__opt @(_toolbarSort == ToolbarSort.Manual ? "extra-dd__opt--on" : "")" @onclick="() => SetToolbarSort(ToolbarSort.Manual)">
                                     <span class="extra-dd__check">@(_toolbarSort == ToolbarSort.Manual ? "✓" : "")</span>
@@ -166,13 +166,23 @@
                                 {
                                     <div class="toolbar__filters-divider"></div>
                                     <span class="toolbar__filters-label">@Loc.T("Allergens")</span>
-                                    <div class="toolbar__filters-scroll">
-                                        @foreach (var a in _allergens)
+                                    <div class="extra-dd toolbar__filters-dd">
+                                        <button type="button" class="input extra-dd__trigger" @onclick="() => _filterAllergenDropdownOpen = !_filterAllergenDropdownOpen">
+                                            <span class="extra-dd__summary">@FilterAllergenSummary()</span>
+                                            <LucideIcon Name="chevron-down" Size="14" />
+                                        </button>
+                                        @if (_filterAllergenDropdownOpen)
                                         {
-                                            <button type="button" class="extra-dd__opt @(_filterAllergenIds.Contains(a.Id) ? "extra-dd__opt--on" : "")" @onclick="() => ToggleFilterAllergen(a.Id)">
-                                                <span class="extra-dd__check">@(_filterAllergenIds.Contains(a.Id) ? "✓" : "")</span>
-                                                <span class="extra-dd__name">@a.Name</span>
-                                            </button>
+                                            <div class="extra-dd__backdrop" @onclick="() => _filterAllergenDropdownOpen = false"></div>
+                                            <div class="extra-dd__menu" @onclick:stopPropagation="true">
+                                                @foreach (var a in _allergens)
+                                                {
+                                                    <button type="button" class="extra-dd__opt @(_filterAllergenIds.Contains(a.Id) ? "extra-dd__opt--on" : "")" @onclick="() => ToggleFilterAllergen(a.Id)">
+                                                        <span class="extra-dd__check">@(_filterAllergenIds.Contains(a.Id) ? "✓" : "")</span>
+                                                        <span class="extra-dd__name">@a.Name</span>
+                                                    </button>
+                                                }
+                                            </div>
                                         }
                                     </div>
                                 }
@@ -180,13 +190,23 @@
                                 {
                                     <div class="toolbar__filters-divider"></div>
                                     <span class="toolbar__filters-label">@Loc.T("Extras")</span>
-                                    <div class="toolbar__filters-scroll">
-                                        @foreach (var e in _extras)
+                                    <div class="extra-dd toolbar__filters-dd">
+                                        <button type="button" class="input extra-dd__trigger" @onclick="() => _filterExtraDropdownOpen = !_filterExtraDropdownOpen">
+                                            <span class="extra-dd__summary">@FilterExtraSummary()</span>
+                                            <LucideIcon Name="chevron-down" Size="14" />
+                                        </button>
+                                        @if (_filterExtraDropdownOpen)
                                         {
-                                            <button type="button" class="extra-dd__opt @(_filterExtraIds.Contains(e.Id) ? "extra-dd__opt--on" : "")" @onclick="() => ToggleFilterExtra(e.Id)">
-                                                <span class="extra-dd__check">@(_filterExtraIds.Contains(e.Id) ? "✓" : "")</span>
-                                                <span class="extra-dd__name">@e.Name</span>
-                                            </button>
+                                            <div class="extra-dd__backdrop" @onclick="() => _filterExtraDropdownOpen = false"></div>
+                                            <div class="extra-dd__menu" @onclick:stopPropagation="true">
+                                                @foreach (var e in _extras)
+                                                {
+                                                    <button type="button" class="extra-dd__opt @(_filterExtraIds.Contains(e.Id) ? "extra-dd__opt--on" : "")" @onclick="() => ToggleFilterExtra(e.Id)">
+                                                        <span class="extra-dd__check">@(_filterExtraIds.Contains(e.Id) ? "✓" : "")</span>
+                                                        <span class="extra-dd__name">@e.Name</span>
+                                                    </button>
+                                                }
+                                            </div>
                                         }
                                     </div>
                                 }
@@ -685,6 +705,8 @@
     private ToolbarSort _toolbarSort = ToolbarSort.Manual;
     private readonly HashSet<int> _filterAllergenIds = new();
     private readonly HashSet<int> _filterExtraIds = new();
+    private bool _filterAllergenDropdownOpen;
+    private bool _filterExtraDropdownOpen;
 
     private enum ToolbarSort { Manual, NameAsc, CreatedDesc }
 
@@ -762,7 +784,22 @@
     private void SetToolbarSort(ToolbarSort sort)
     {
         _toolbarSort = sort;
+        CloseToolbarFilters();
+    }
+
+    private void ToggleToolbarFilters()
+    {
+        if (_toolbarFiltersOpen) CloseToolbarFilters();
+        else _toolbarFiltersOpen = true;
+    }
+
+    /// <summary>Also collapses the nested allergen/extra dropdowns — otherwise closing and
+    /// reopening the filters menu could leave one stuck open from a previous visit.</summary>
+    private void CloseToolbarFilters()
+    {
         _toolbarFiltersOpen = false;
+        _filterAllergenDropdownOpen = false;
+        _filterExtraDropdownOpen = false;
     }
 
     /// <summary>Manual keeps the caller's own order (category/display-order from the service);
@@ -843,6 +880,20 @@
     {
         _filterAllergenIds.Clear();
         _filterExtraIds.Clear();
+    }
+
+    private string FilterAllergenSummary()
+    {
+        if (_filterAllergenIds.Count == 0) return Loc.T("All");
+        var names = _allergens.Where(a => _filterAllergenIds.Contains(a.Id)).Select(a => a.Name).ToList();
+        return names.Count <= 2 ? string.Join(", ", names) : $"{names.Count} {Loc.T("selected")}";
+    }
+
+    private string FilterExtraSummary()
+    {
+        if (_filterExtraIds.Count == 0) return Loc.T("All");
+        var names = _extras.Where(e => _filterExtraIds.Contains(e.Id)).Select(e => e.Name).ToList();
+        return names.Count <= 2 ? string.Join(", ", names) : $"{names.Count} {Loc.T("selected")}";
     }
 
     private List<ProductDto> Filtered => ApplyToolbarSort(_products
