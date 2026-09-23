@@ -548,36 +548,6 @@
                     <div class="pform-stat"><label>@Loc.T("Display order")</label><input type="number" class="input" @bind="_category.DisplayOrder" /></div>
                 </div>
 
-                <div class="pform-section">
-                    <label>@Loc.T("Quick comments")</label>
-                    @if (_category.Id > 0)
-                    {
-                        <div class="commentEditor">
-                            @foreach (var (cm, i) in _categoryComments.Select((cm, i) => (cm, i)))
-                            {
-                                <div class="commentEditor__row">
-                                    <input class="input" @bind="cm.Text" @bind:event="onchange" @bind:after="() => SaveCommentText(cm)" />
-                                    <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
-                                            disabled="@(i == 0)" @onclick="() => MoveComment(cm.Id, -1)"><LucideIcon Name="chevron-up" Size="14" /></button>
-                                    <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
-                                            disabled="@(i == _categoryComments.Count - 1)" @onclick="() => MoveComment(cm.Id, 1)"><LucideIcon Name="chevron-down" Size="14" /></button>
-                                    <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")"
-                                            @onclick="() => DeleteComment(cm.Id)"><LucideIcon Name="trash-2" Size="14" /></button>
-                                </div>
-                            }
-                            @if (_categoryComments.Count == 0) { <p class="empty">@Loc.T("No quick comments yet.")</p> }
-                        </div>
-                        <div class="commentEditor__add">
-                            <input class="input" @bind="_newCommentText" @bind:event="oninput" placeholder="@Loc.T("e.g. Well done, No cheese…")" />
-                            <button class="btn btn--ghost btn--sm" type="button" disabled="@string.IsNullOrWhiteSpace(_newCommentText)" @onclick="AddComment">+ @Loc.T("Add")</button>
-                        </div>
-                    }
-                    else
-                    {
-                        <p class="muted">@Loc.T("Save the category first to add quick comments.")</p>
-                    }
-                </div>
-
                 @if (_categoryError is not null) { <div class="field-error">@_categoryError</div> }
             </div>
         }
@@ -856,8 +826,6 @@
 
     private CategoryFormDto? _category;
     private string? _categoryError;
-    private List<CategoryCommentDto> _categoryComments = new();
-    private string _newCommentText = "";
 
     private ProductDto? _moving;
     private int _moveTargetId;
@@ -998,43 +966,9 @@
         _category = id is null
             ? new CategoryFormDto { DisplayOrder = _categories.Count }
             : await CategoryService.GetForEditAsync(id.Value) ?? new CategoryFormDto();
-        _newCommentText = "";
-        _categoryComments = _category.Id > 0 ? await CategoryService.GetCommentsAsync(_category.Id) : new();
     }
 
-    private void CloseCategory()
-    {
-        _category = null;
-        _categoryComments = new();
-        _newCommentText = "";
-    }
-
-    private async Task LoadComments()
-    {
-        if (_category is not null) _categoryComments = await CategoryService.GetCommentsAsync(_category.Id);
-    }
-
-    private async Task AddComment()
-    {
-        if (_category is null || string.IsNullOrWhiteSpace(_newCommentText)) return;
-        await CategoryService.AddCommentAsync(_category.Id, _newCommentText.Trim());
-        _newCommentText = "";
-        await LoadComments();
-    }
-
-    private Task SaveCommentText(CategoryCommentDto cm) => CategoryService.UpdateCommentAsync(cm.Id, cm.Text);
-
-    private async Task MoveComment(int id, int direction)
-    {
-        await CategoryService.MoveCommentAsync(id, direction);
-        await LoadComments();
-    }
-
-    private async Task DeleteComment(int id)
-    {
-        await CategoryService.DeleteCommentAsync(id);
-        await LoadComments();
-    }
+    private void CloseCategory() => _category = null;
 
     // Localisation key for a course, shared with the /orders block headers.
     private static string CourseLabel(CourseType course) => course switch

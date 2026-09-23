@@ -608,14 +608,6 @@
     color: var(--danger);
 }
 
-/* --- Category quick comments --- */
-.commentEditor { display: flex; flex-direction: column; gap: .35rem; margin-bottom: .5rem; }
-.commentEditor__row { display: flex; align-items: center; gap: .3rem; }
-.commentEditor__row .input { flex: 1; }
-.commentEditor__row .btn--icon { width: 30px; height: 30px; padding: 0; flex: none; }
-.commentEditor__add { display: flex; gap: .3rem; }
-.commentEditor__add .input { flex: 1; }
-
 @media (max-width: 900px) {
     .catalog { grid-template-columns: 1fr; height: auto; }
 }
