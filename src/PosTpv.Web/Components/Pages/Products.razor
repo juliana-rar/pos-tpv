@@ -599,106 +599,118 @@
     </Footer>
 </Modal>
 
-@* ---- Extra create/edit form (nested over the inline Extras section) --------- *@
-<Modal Visible="_extra is not null" Title="@(_extra?.Id > 0 ? Loc.T("Edit extra") : Loc.T("New extra"))" OnClose="CloseExtraForm" Wide="true">
+@* ---- Extra create/edit form (same .product-form chrome/layout as the product/category modals) --------- *@
+<Modal Visible="_extra is not null"
+       OnClose="CloseExtraForm" Wide="true" CloseLeft="true">
     <HeaderActions>
         <button class="btn btn--icon btn--primary" title="@Loc.T("Save")" @onclick="SaveExtra" type="button"><LucideIcon Name="check" Size="18" /></button>
     </HeaderActions>
     <ChildContent>
         @if (_extra is not null)
         {
-            <div class="extra-form">
-            <div class="row-2">
-                <div class="field"><label>@Loc.T("Name")</label><input class="input" @bind="_extra.Name" /></div>
-                <div class="field"><label>@Loc.T("Price")</label><input type="number" step="0.01" class="input" @bind="_extra.Price" /></div>
-            </div>
-            <div class="field">
-                <label>@Loc.T("Image")</label>
-                <ImageUpload Value="@_extra.ImageUrl" ValueChanged="v => _extra.ImageUrl = v" Folder="extras" />
-            </div>
-            <div class="field">
-                <label>@Loc.T("Categories")</label>
-                @if (_categories.Count > 0)
-                {
-                    <div class="allergen-pick">
-                        @foreach (var c in _categories)
-                        {
-                            <button type="button" class="allergen-chip @(_extra.CategoryIds.Contains(c.Id) ? "allergen-chip--on" : "")"
-                                    @onclick="() => ToggleExtraCategory(c.Id)">
-                                @c.Name
-                            </button>
-                        }
-                    </div>
-                    <p class="muted">@Loc.T("Applies to every product in the selected categories — add exceptions below to opt specific products out.")</p>
-                }
-                else
-                {
-                    <p class="muted">@Loc.T("No categories yet.")</p>
-                }
-            </div>
-            @if (_extra.CategoryIds.Count > 0)
-            {
-                <div class="field">
-                    <label>@Loc.T("Exceptions")</label>
-                    <input class="input" placeholder="@Loc.T("Search…")" @bind="_extraExceptionSearch" @bind:event="oninput" />
-                    <div class="product-pick">
-                        @foreach (var grp in FilteredExtraExceptionProducts.GroupBy(p => p.CategoryName))
-                        {
-                            <div class="product-pick__group">
-                                <span class="product-pick__group-label">@grp.Key</span>
-                                <div class="product-pick__chips">
-                                    @foreach (var p in grp)
-                                    {
-                                        <button type="button" class="product-chip product-chip--exception @(_extra.ExcludedProductIds.Contains(p.Id) ? "product-chip--on" : "")"
-                                                @onclick="() => ToggleExtraException(p.Id)">
-                                            @p.Name
-                                        </button>
-                                    }
-                                </div>
-                            </div>
-                        }
-                        @if (FilteredExtraExceptionProducts.Count == 0)
-                        {
-                            <p class="empty">@Loc.T("No products found.")</p>
-                        }
-                    </div>
-                    <p class="muted">@Loc.T("Checked products do NOT get this extra, even though their category is selected above.")</p>
+            <div class="product-form">
+                <div class="pform-toolbar">
+                    <span class="pform-toolbar__eyebrow">@(_extra.Id > 0 ? Loc.T("Edit extra") : Loc.T("New extra"))</span>
                 </div>
-            }
-            <div class="field">
-                <label>@Loc.T("Individual products")</label>
-                @if (_allProducts.Count > 0)
-                {
-                    <input class="input" placeholder="@Loc.T("Search…")" @bind="_extraProductSearch" @bind:event="oninput" />
-                    <div class="product-pick">
-                        @foreach (var grp in FilteredExtraProducts.GroupBy(p => p.CategoryName))
-                        {
-                            <div class="product-pick__group">
-                                <span class="product-pick__group-label">@grp.Key</span>
-                                <div class="product-pick__chips">
-                                    @foreach (var p in grp)
-                                    {
-                                        <button type="button" class="product-chip @(_extra.ProductIds.Contains(p.Id) ? "product-chip--on" : "")"
-                                                @onclick="() => ToggleExtraProduct(p.Id)">
-                                            @p.Name
-                                        </button>
-                                    }
-                                </div>
-                            </div>
-                        }
-                        @if (FilteredExtraProducts.Count == 0)
-                        {
-                            <p class="empty">@Loc.T("No products found.")</p>
-                        }
+                <div class="pform-hero">
+                    <div class="pform-hero__media">
+                        <ImageUpload Value="@_extra.ImageUrl" ValueChanged="v => _extra.ImageUrl = v" Folder="extras" />
                     </div>
-                    <p class="muted">@Loc.T("Ad-hoc products, on top of any category assignment above.")</p>
-                }
-                else
+                    <div class="pform-hero__fields">
+                        <input class="pform-hero__name" placeholder="@Loc.T("Name")" @bind="_extra.Name" />
+                    </div>
+                    <div class="pform-hero__price">
+                        <span class="pform-hero__price-label">@Loc.T("Price")</span>
+                        <div class="pform-hero__price-input">
+                            <input type="number" step="0.01" @bind="_extra.Price" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pform-section">
+                    <label>@Loc.T("Categories")</label>
+                    @if (_categories.Count > 0)
+                    {
+                        <div class="allergen-pick">
+                            @foreach (var c in _categories)
+                            {
+                                <button type="button" class="allergen-chip @(_extra.CategoryIds.Contains(c.Id) ? "allergen-chip--on" : "")"
+                                        @onclick="() => ToggleExtraCategory(c.Id)">
+                                    @c.Name
+                                </button>
+                            }
+                        </div>
+                        <p class="muted">@Loc.T("Applies to every product in the selected categories — add exceptions below to opt specific products out.")</p>
+                    }
+                    else
+                    {
+                        <p class="muted">@Loc.T("No categories yet.")</p>
+                    }
+                </div>
+                @if (_extra.CategoryIds.Count > 0)
                 {
-                    <p class="muted">@Loc.T("No products yet.")</p>
+                    <div class="pform-section">
+                        <label>@Loc.T("Exceptions")</label>
+                        <input class="input" placeholder="@Loc.T("Search…")" @bind="_extraExceptionSearch" @bind:event="oninput" />
+                        <div class="product-pick">
+                            @foreach (var grp in FilteredExtraExceptionProducts.GroupBy(p => p.CategoryName))
+                            {
+                                <div class="product-pick__group">
+                                    <span class="product-pick__group-label">@grp.Key</span>
+                                    <div class="product-pick__chips">
+                                        @foreach (var p in grp)
+                                        {
+                                            <button type="button" class="product-chip product-chip--exception @(_extra.ExcludedProductIds.Contains(p.Id) ? "product-chip--on" : "")"
+                                                    @onclick="() => ToggleExtraException(p.Id)">
+                                                @p.Name
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            @if (FilteredExtraExceptionProducts.Count == 0)
+                            {
+                                <p class="empty">@Loc.T("No products found.")</p>
+                            }
+                        </div>
+                        <p class="muted">@Loc.T("Checked products do NOT get this extra, even though their category is selected above.")</p>
+                    </div>
                 }
-            </div>
-            @if (_extraError is not null) { <div class="field-error">@_extraError</div> }
+                <div class="pform-section">
+                    <label>@Loc.T("Individual products")</label>
+                    @if (_allProducts.Count > 0)
+                    {
+                        <input class="input" placeholder="@Loc.T("Search…")" @bind="_extraProductSearch" @bind:event="oninput" />
+                        <div class="product-pick">
+                            @foreach (var grp in FilteredExtraProducts.GroupBy(p => p.CategoryName))
+                            {
+                                <div class="product-pick__group">
+                                    <span class="product-pick__group-label">@grp.Key</span>
+                                    <div class="product-pick__chips">
+                                        @foreach (var p in grp)
+                                        {
+                                            <button type="button" class="product-chip @(_extra.ProductIds.Contains(p.Id) ? "product-chip--on" : "")"
+                                                    @onclick="() => ToggleExtraProduct(p.Id)">
+                                                @p.Name
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            @if (FilteredExtraProducts.Count == 0)
+                            {
+                                <p class="empty">@Loc.T("No products found.")</p>
+                            }
+                        </div>
+                        <p class="muted">@Loc.T("Ad-hoc products, on top of any category assignment above.")</p>
+                    }
+                    else
+                    {
+                        <p class="muted">@Loc.T("No products yet.")</p>
+                    }
+                </div>
+
+                @if (_extraError is not null) { <div class="field-error">@_extraError</div> }
             </div>
         }
     </ChildContent>

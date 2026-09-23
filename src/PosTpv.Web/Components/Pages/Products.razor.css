@@ -767,19 +767,14 @@
     .pform-stats { grid-template-columns: 1fr 1fr; }
 }
 
-/* --- Extra edit modal: same compact field/chip treatment as .product-form, plus a bordered
-   panel around the product picker so the category-filter + product-chip flow reads as one
-   connected control instead of two loose lists floating on the page background. */
-.extra-form .field { gap: .15rem; margin-bottom: .5rem; }
-.extra-form .field > label { font-size: .6rem; }
-.extra-form .row-2 { gap: .4rem; }
-.extra-form .input { padding: .35rem .5rem; font-size: .68rem; }
-.extra-form .allergen-pick { gap: .3rem; }
-.extra-form .allergen-chip { padding: .22rem .5rem; font-size: .6rem; }
-.extra-form .product-pick {
+/* --- Extra edit modal's category/exceptions/individual-products pickers: a bordered panel
+   around the product-chip lists (they now live in the shared .product-form, same as the
+   product/category modals) so the category-filter + product-chip flow reads as one connected
+   control instead of a loose list floating on the form background. */
+.product-form .product-pick {
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--card-2);
     padding: .6rem .7rem;
 }
-.extra-form .product-pick .empty { margin: .3rem 0; }
+.product-form .product-pick .empty { margin: .3rem 0; }
