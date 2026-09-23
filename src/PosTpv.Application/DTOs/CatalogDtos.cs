@@ -26,6 +26,12 @@ public class ExtraFormDto
     public decimal Price { get; set; }
     public string? ImageUrl { get; set; }
     public List<int> ProductIds { get; set; } = new();
+
+    /// <summary>Categories this extra applies to in bulk (every product in them, minus <see cref="ExcludedProductIds"/>).</summary>
+    public List<int> CategoryIds { get; set; } = new();
+
+    /// <summary>Products that opt out of a category assignment above.</summary>
+    public List<int> ExcludedProductIds { get; set; } = new();
 }
 
 public record AllergenDto(int Id, string Name, string? Description, string? ImageUrl, DateTime CreatedAt = default);

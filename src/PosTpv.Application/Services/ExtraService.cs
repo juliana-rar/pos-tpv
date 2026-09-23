@@ -36,6 +36,8 @@ public class ExtraService : IExtraService
     {
         var entity = await _uow.Repository<Extra>().QueryNoTracking()
             .Include(e => e.Products)
+            .Include(e => e.Categories)
+            .Include(e => e.ExcludedProducts)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
         return entity is null ? null : _mapper.Map<ExtraFormDto>(entity);
     }
@@ -45,6 +47,8 @@ public class ExtraService : IExtraService
         var entity = _mapper.Map<Extra>(form);
         entity.Id = 0;
         entity.Products = await ResolveProductsAsync(form.ProductIds, ct);
+        entity.Categories = await ResolveCategoriesAsync(form.CategoryIds, ct);
+        entity.ExcludedProducts = await ResolveProductsAsync(form.ExcludedProductIds, ct);
         await _uow.Repository<Extra>().AddAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
         return entity.Id;
@@ -54,10 +58,14 @@ public class ExtraService : IExtraService
     {
         var entity = await _uow.Repository<Extra>().Query()
             .Include(e => e.Products)
+            .Include(e => e.Categories)
+            .Include(e => e.ExcludedProducts)
             .FirstOrDefaultAsync(e => e.Id == form.Id, ct)
             ?? throw new KeyNotFoundException($"Extra {form.Id} not found.");
         _mapper.Map(form, entity);
         entity.Products = await ResolveProductsAsync(form.ProductIds, ct);
+        entity.Categories = await ResolveCategoriesAsync(form.CategoryIds, ct);
+        entity.ExcludedProducts = await ResolveProductsAsync(form.ExcludedProductIds, ct);
         _uow.Repository<Extra>().Update(entity);
         await _uow.SaveChangesAsync(ct);
     }
@@ -67,6 +75,13 @@ public class ExtraService : IExtraService
         var ids = productIds.Distinct().ToList();
         if (ids.Count == 0) return new List<Product>();
         return await _uow.Repository<Product>().Query().Where(p => ids.Contains(p.Id)).ToListAsync(ct);
+    }
+
+    private async Task<List<Category>> ResolveCategoriesAsync(IEnumerable<int> categoryIds, CancellationToken ct)
+    {
+        var ids = categoryIds.Distinct().ToList();
+        if (ids.Count == 0) return new List<Category>();
+        return await _uow.Repository<Category>().Query().Where(c => ids.Contains(c.Id)).ToListAsync(ct);
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)

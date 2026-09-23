@@ -641,21 +641,50 @@
                     <div class="allergen-pick">
                         @foreach (var c in _categories)
                         {
-                            <button type="button" class="allergen-chip @(_extraCategoryFilter.Contains(c.Id) ? "allergen-chip--on" : "")"
-                                    @onclick="() => ToggleExtraCategoryFilter(c.Id)">
+                            <button type="button" class="allergen-chip @(_extra.CategoryIds.Contains(c.Id) ? "allergen-chip--on" : "")"
+                                    @onclick="() => ToggleExtraCategory(c.Id)">
                                 @c.Name
                             </button>
                         }
                     </div>
-                    <p class="muted">@Loc.T("Filters the product list below by category — pick which products get the extra.")</p>
+                    <p class="muted">@Loc.T("Applies to every product in the selected categories — add exceptions below to opt specific products out.")</p>
                 }
                 else
                 {
                     <p class="muted">@Loc.T("No categories yet.")</p>
                 }
             </div>
+            @if (_extra.CategoryIds.Count > 0)
+            {
+                <div class="field">
+                    <label>@Loc.T("Exceptions")</label>
+                    <input class="input" placeholder="@Loc.T("Search…")" @bind="_extraExceptionSearch" @bind:event="oninput" />
+                    <div class="product-pick">
+                        @foreach (var grp in FilteredExtraExceptionProducts.GroupBy(p => p.CategoryName))
+                        {
+                            <div class="product-pick__group">
+                                <span class="product-pick__group-label">@grp.Key</span>
+                                <div class="product-pick__chips">
+                                    @foreach (var p in grp)
+                                    {
+                                        <button type="button" class="product-chip product-chip--exception @(_extra.ExcludedProductIds.Contains(p.Id) ? "product-chip--on" : "")"
+                                                @onclick="() => ToggleExtraException(p.Id)">
+                                            @p.Name
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        @if (FilteredExtraExceptionProducts.Count == 0)
+                        {
+                            <p class="empty">@Loc.T("No products found.")</p>
+                        }
+                    </div>
+                    <p class="muted">@Loc.T("Checked products do NOT get this extra, even though their category is selected above.")</p>
+                </div>
+            }
             <div class="field">
-                <label>@Loc.T("Products")</label>
+                <label>@Loc.T("Individual products")</label>
                 @if (_allProducts.Count > 0)
                 {
                     <input class="input" placeholder="@Loc.T("Search…")" @bind="_extraProductSearch" @bind:event="oninput" />
@@ -675,15 +704,12 @@
                                 </div>
                             </div>
                         }
-                        @if (_extraCategoryFilter.Count == 0)
-                        {
-                            <p class="empty">@Loc.T("Pick a category above to see its products.")</p>
-                        }
-                        else if (FilteredExtraProducts.Count == 0)
+                        @if (FilteredExtraProducts.Count == 0)
                         {
                             <p class="empty">@Loc.T("No products found.")</p>
                         }
                     </div>
+                    <p class="muted">@Loc.T("Ad-hoc products, on top of any category assignment above.")</p>
                 }
                 else
                 {
@@ -839,10 +865,7 @@
     private string _extraSearch = "";
     private List<ProductDto> _allProducts = new();
     private string _extraProductSearch = "";
-
-    /// <summary>UI-only scope for the extra's product picker below — narrows it to the
-    /// selected categories' products, it is not persisted on the extra itself.</summary>
-    private HashSet<int> _extraCategoryFilter = new();
+    private string _extraExceptionSearch = "";
 
     private CategoryDto? _selected => _categories.FirstOrDefault(c => c.Id == _selectedId);
 
@@ -857,11 +880,16 @@
         e => e.Name, e => e.CreatedAt);
 
     private List<ProductDto> FilteredExtraProducts =>
-        _extraCategoryFilter.Count == 0
+        _allProducts
+            .Where(p => string.IsNullOrWhiteSpace(_extraProductSearch) || p.Name.Contains(_extraProductSearch, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    private List<ProductDto> FilteredExtraExceptionProducts =>
+        _extra is null
             ? new List<ProductDto>()
             : _allProducts
-                .Where(p => _extraCategoryFilter.Contains(p.CategoryId))
-                .Where(p => string.IsNullOrWhiteSpace(_extraProductSearch) || p.Name.Contains(_extraProductSearch, StringComparison.OrdinalIgnoreCase))
+                .Where(p => _extra.CategoryIds.Contains(p.CategoryId))
+                .Where(p => string.IsNullOrWhiteSpace(_extraExceptionSearch) || p.Name.Contains(_extraExceptionSearch, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
     private bool HasActiveProductFilters => _filterAllergenIds.Count > 0 || _filterExtraIds.Count > 0;
@@ -1207,9 +1235,16 @@
         if (!_extra.ProductIds.Remove(productId)) _extra.ProductIds.Add(productId);
     }
 
-    private void ToggleExtraCategoryFilter(int categoryId)
+    private void ToggleExtraCategory(int categoryId)
     {
-        if (!_extraCategoryFilter.Remove(categoryId)) _extraCategoryFilter.Add(categoryId);
+        if (_extra is null) return;
+        if (!_extra.CategoryIds.Remove(categoryId)) _extra.CategoryIds.Add(categoryId);
+    }
+
+    private void ToggleExtraException(int productId)
+    {
+        if (_extra is null) return;
+        if (!_extra.ExcludedProductIds.Remove(productId)) _extra.ExcludedProductIds.Add(productId);
     }
 
     private void OpenExtraForm(int? id) => _ = OpenExtraFormAsync(id);
@@ -1218,7 +1253,7 @@
     {
         _extraError = null;
         _extraProductSearch = "";
-        _extraCategoryFilter.Clear();
+        _extraExceptionSearch = "";
         _allProducts = await Service.GetAllAsync();
         _extra = id is null
             ? new ExtraFormDto()

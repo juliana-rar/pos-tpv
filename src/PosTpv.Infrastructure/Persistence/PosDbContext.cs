@@ -74,6 +74,10 @@ public class PosDbContext : DbContext
         {
             e.Property(x => x.Name).HasMaxLength(80).IsRequired();
             e.Property(x => x.Price).HasPrecision(10, 2);
+            // Both unidirectional (no inverse nav property) — distinct join tables so they don't
+            // collide with each other or with the existing Extra<->Product "ExtraProduct" table.
+            e.HasMany(x => x.Categories).WithMany().UsingEntity(j => j.ToTable("ExtraCategory"));
+            e.HasMany(x => x.ExcludedProducts).WithMany().UsingEntity(j => j.ToTable("ExtraProductException"));
         });
 
         b.Entity<Allergen>(e =>

@@ -48,6 +48,7 @@ public class ProductService : IProductService
             .Include(p => p.Allergens)
             .OrderBy(p => p.Category.DisplayOrder).ThenBy(p => p.DisplayOrder).ThenBy(p => p.Name)
             .ToListAsync(ct);
+        await ApplyCategoryExtrasAsync(list, ct);
         return _mapper.Map<List<ProductDto>>(list);
     }
 
@@ -61,6 +62,7 @@ public class ProductService : IProductService
         if (!includeHidden) query = query.Where(p => p.IsVisible);
         if (onlyAvailable) query = query.Where(p => p.IsAvailable);
         var list = await query.OrderBy(p => p.DisplayOrder).ThenBy(p => p.Name).ToListAsync(ct);
+        await ApplyCategoryExtrasAsync(list, ct);
         return _mapper.Map<List<ProductDto>>(list);
     }
 
@@ -69,11 +71,41 @@ public class ProductService : IProductService
         var product = await _uow.Repository<Product>().QueryNoTracking()
             .Include(p => p.Extras)
             .FirstOrDefaultAsync(p => p.Id == productId, ct);
+        if (product is null) return new();
 
-        return product?.Extras
+        await ApplyCategoryExtrasAsync(new[] { product }, ct);
+
+        return product.Extras
             .OrderBy(e => e.Name)
             .Select(e => new ExtraDto(e.Id, e.Name, e.Price, e.ImageUrl))
-            .ToList() ?? new();
+            .ToList();
+    }
+
+    /// <summary>Extras assigned to a whole category (Extra.Categories) apply to every product in
+    /// it — minus per-product exceptions (Extra.ExcludedProducts) — in addition to whatever's
+    /// directly linked via Extra.Products. Computed fresh on every read (not materialized into the
+    /// ExtraProduct join table) so moving a product between categories or adding a new product to
+    /// an assigned category picks up the right extras immediately. Mutates each product's already-
+    /// loaded (no-tracking) Extras collection in place, which every caller here maps to a DTO right
+    /// after — safe since these entities are never attached to the change tracker.</summary>
+    private async Task ApplyCategoryExtrasAsync(IReadOnlyCollection<Product> products, CancellationToken ct)
+    {
+        if (products.Count == 0) return;
+        var categoryExtras = await _uow.Repository<Extra>().QueryNoTracking()
+            .Include(e => e.Categories)
+            .Include(e => e.ExcludedProducts)
+            .Where(e => e.Categories.Any())
+            .ToListAsync(ct);
+        if (categoryExtras.Count == 0) return;
+
+        foreach (var product in products)
+        {
+            var inherited = categoryExtras.Where(e =>
+                e.Categories.Any(c => c.Id == product.CategoryId) &&
+                !e.ExcludedProducts.Any(p => p.Id == product.Id) &&
+                !product.Extras.Any(x => x.Id == e.Id));
+            foreach (var extra in inherited) product.Extras.Add(extra);
+        }
     }
 
     public async Task<ProductFormDto?> GetForEditAsync(int id, CancellationToken ct = default)

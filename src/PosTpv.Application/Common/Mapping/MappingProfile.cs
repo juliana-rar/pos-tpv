@@ -44,9 +44,13 @@ public class MappingProfile : Profile
 
         CreateMap<Extra, ExtraDto>();
         CreateMap<Extra, ExtraFormDto>()
-            .ForMember(d => d.ProductIds, o => o.MapFrom(s => s.Products.Select(p => p.Id)));
+            .ForMember(d => d.ProductIds, o => o.MapFrom(s => s.Products.Select(p => p.Id)))
+            .ForMember(d => d.CategoryIds, o => o.MapFrom(s => s.Categories.Select(c => c.Id)))
+            .ForMember(d => d.ExcludedProductIds, o => o.MapFrom(s => s.ExcludedProducts.Select(p => p.Id)));
         CreateMap<ExtraFormDto, Extra>()
             .ForMember(d => d.Products, o => o.Ignore())
+            .ForMember(d => d.Categories, o => o.Ignore())
+            .ForMember(d => d.ExcludedProducts, o => o.Ignore())
             .ForMember(d => d.CreatedAt, o => o.Ignore())
             .ForMember(d => d.UpdatedAt, o => o.Ignore());
 

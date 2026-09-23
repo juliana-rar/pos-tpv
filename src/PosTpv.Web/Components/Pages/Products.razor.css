@@ -600,6 +600,13 @@
     color: var(--secondary);
     font-weight: 800;
 }
+/* Exception chips mean the opposite of a normal pick (this product is excluded, not included),
+   so a checked one gets the danger tone instead of --secondary to read as "opted out". */
+.product-chip--exception.product-chip--on {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 14%, var(--card));
+    color: var(--danger);
+}
 
 /* --- Category quick comments --- */
 .commentEditor { display: flex; flex-direction: column; gap: .35rem; margin-bottom: .5rem; }
