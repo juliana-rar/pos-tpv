@@ -576,27 +576,37 @@
     </Footer>
 </Modal>
 
-@* ---- Allergen create/edit form (nested over the inline Allergens section) --------- *@
-<Modal Visible="_allergen is not null" Title="@(_allergen?.Id > 0 ? Loc.T("Edit allergen") : Loc.T("New allergen"))" OnClose="CloseAllergenForm">
+@* ---- Allergen create/edit form (same .product-form chrome/layout as the other catalogue modals) --------- *@
+<Modal Visible="_allergen is not null"
+       OnClose="CloseAllergenForm" Wide="true" CloseLeft="true">
+    <HeaderActions>
+        <button class="btn btn--icon btn--primary" title="@Loc.T("Save")" @onclick="SaveAllergen" type="button"><LucideIcon Name="check" Size="18" /></button>
+    </HeaderActions>
     <ChildContent>
         @if (_allergen is not null)
         {
-            <div class="field"><label>@Loc.T("Name")</label><input class="input" @bind="_allergen.Name" /></div>
-            <div class="field">
-                <label>@Loc.T("Description / ingredients")</label>
-                <textarea class="input" rows="2" placeholder="@Loc.T("e.g. Contains gluten from wheat flour")" @bind="_allergen.Description"></textarea>
+            <div class="product-form">
+                <div class="pform-toolbar">
+                    <span class="pform-toolbar__eyebrow">@(_allergen.Id > 0 ? Loc.T("Edit allergen") : Loc.T("New allergen"))</span>
+                </div>
+                <div class="pform-hero">
+                    <div class="pform-hero__media">
+                        <ImageUpload Value="@_allergen.ImageUrl" ValueChanged="v => _allergen.ImageUrl = v" Folder="allergens" />
+                    </div>
+                    <div class="pform-hero__fields">
+                        <input class="pform-hero__name" placeholder="@Loc.T("Name")" @bind="_allergen.Name" />
+                    </div>
+                </div>
+
+                <div class="pform-section">
+                    <label>@Loc.T("Description / ingredients")</label>
+                    <textarea class="input" rows="2" placeholder="@Loc.T("e.g. Contains gluten from wheat flour")" @bind="_allergen.Description"></textarea>
+                </div>
+
+                @if (_allergenError is not null) { <div class="field-error">@_allergenError</div> }
             </div>
-            <div class="field">
-                <label>@Loc.T("Image")</label>
-                <ImageUpload Value="@_allergen.ImageUrl" ValueChanged="v => _allergen.ImageUrl = v" Folder="allergens" />
-            </div>
-            @if (_allergenError is not null) { <div class="field-error">@_allergenError</div> }
         }
     </ChildContent>
-    <Footer>
-        <button class="btn btn--ghost" @onclick="CloseAllergenForm">@Loc.T("Cancel")</button>
-        <button class="btn btn--primary" @onclick="SaveAllergen">@Loc.T("Save")</button>
-    </Footer>
 </Modal>
 
 @* ---- Extra create/edit form (same .product-form chrome/layout as the product/category modals) --------- *@
