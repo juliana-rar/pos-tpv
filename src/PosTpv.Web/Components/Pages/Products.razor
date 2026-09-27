@@ -20,7 +20,7 @@
     </LeftContent>
 </PageHero>
 
-<div class="catalog" @onclick="ClearExpandedCatRows">
+<div class="catalog">
     @* ---- Left column: section switcher + categories -------------------------- *@
     <div class="catalog__col">
     <nav class="catalog__sections" role="tablist" @onclick:stopPropagation="true">
@@ -39,7 +39,7 @@
         }
 
         <div class="catalog__cats-list">
-            @foreach (var (c, i) in _categories.Select((c, i) => (c, i)))
+            @foreach (var c in _categories)
             {
                 <div class="catRow" data-active="@(c.Id == _selectedId ? "true" : null)"
                      data-reorder="@(_reorderMode ? "true" : null)" data-dragging="@(_draggedCategoryId == c.Id ? "true" : null)"
@@ -58,19 +58,8 @@
                         <span class="catRow__name">@c.Name</span>
                     </div>
                     <div class="catRow__actions" @onclick:stopPropagation="true">
-                        @if (_expandedCatRows.Contains(c.Id))
-                        {
-                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move up")"
-                                    disabled="@(i == 0)" @onclick="() => MoveCategory(c.Id, -1)"><LucideIcon Name="chevron-up" Size="16" /></button>
-                            <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Move down")"
-                                    disabled="@(i == _categories.Count - 1)" @onclick="() => MoveCategory(c.Id, 1)"><LucideIcon Name="chevron-down" Size="16" /></button>
-                            <button class="btn btn--icon btn--ghost btn--sm" title="@(c.IsVisible ? Loc.T("Hide") : Loc.T("Show"))"
-                                    @onclick="() => ToggleCategoryVisibility(c)"><LucideIcon Name="@(c.IsVisible ? "eye-off" : "eye")" Size="16" /></button>
-                            <button class="btn btn--icon btn--danger btn--sm" title="@Loc.T("Delete")"
-                                    @onclick="() => DeleteCategory(c)"><LucideIcon Name="trash-2" Size="16" /></button>
-                        }
                         <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")"
-                                @onclick="() => ToggleCatRow(c.Id)"><LucideIcon Name="pencil" Size="16" /></button>
+                                @onclick="() => OpenCategoryForm(c.Id)"><LucideIcon Name="pencil" Size="16" /></button>
                     </div>
                 </div>
             }
@@ -509,6 +498,17 @@
             <div class="product-form" style="--prod:@_category.Color">
                 <div class="pform-toolbar">
                     <span class="pform-toolbar__eyebrow">@(_category.Id > 0 ? Loc.T("Edit category") : Loc.T("New category"))</span>
+                    @if (_category.Id > 0)
+                    {
+                        var idx = _categories.FindIndex(x => x.Id == _category.Id);
+                        <div class="pform-toolbar__actions">
+                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Move up")" type="button"
+                                    disabled="@(idx <= 0)" @onclick="() => MoveCategory(_category.Id, -1)"><LucideIcon Name="chevron-up" Size="14" /></button>
+                            <button class="btn btn--icon btn--ghost" title="@Loc.T("Move down")" type="button"
+                                    disabled="@(idx < 0 || idx == _categories.Count - 1)" @onclick="() => MoveCategory(_category.Id, 1)"><LucideIcon Name="chevron-down" Size="14" /></button>
+                            <button class="btn btn--icon btn--danger" title="@Loc.T("Delete")" type="button" @onclick="DeleteCategory"><LucideIcon Name="trash-2" Size="14" /></button>
+                        </div>
+                    }
                     <div class="pform-toolbar__switches">
                         <label class="switch" title="@Loc.T("Visible")"><input type="checkbox" @bind="_category.IsVisible" /><span>@Loc.T("Visible")</span></label>
                     </div>
@@ -962,23 +962,6 @@
     }
 
     // ---- Categories -------------------------------------------------------
-    private readonly HashSet<int> _expandedCatRows = new();
-
-    private void ClearExpandedCatRows() => _expandedCatRows.Clear();
-
-    private void ToggleCatRow(int id)
-    {
-        if (_expandedCatRows.Contains(id))
-        {
-            _expandedCatRows.Remove(id);
-            OpenCategoryForm(id);
-        }
-        else
-        {
-            _expandedCatRows.Add(id);
-        }
-    }
-
     private void OpenCategoryForm(int? id) => _ = OpenCategoryFormAsync(id);
 
     private async Task OpenCategoryFormAsync(int? id)
@@ -1016,31 +999,27 @@
         await LoadProducts();
     }
 
-    private async Task ToggleCategoryVisibility(CategoryDto c)
-    {
-        await CategoryService.SetVisibilityAsync(c.Id, !c.IsVisible);
-        await LoadCategories();
-    }
-
     private async Task MoveCategory(int id, int direction)
     {
         await CategoryService.MoveAsync(id, direction);
         await LoadCategories();
     }
 
-    private async Task DeleteCategory(CategoryDto c)
+    private async Task DeleteCategory()
     {
+        if (_category is null) return;
         try
         {
-            await CategoryService.DeleteAsync(c.Id);
+            await CategoryService.DeleteAsync(_category.Id);
         }
         catch (InvalidOperationException)
         {
-            _notice = Loc.T("Cannot delete a category that still has products.");
+            _categoryError = Loc.T("Cannot delete a category that still has products.");
             return;
         }
 
-        if (_selectedId == c.Id) _selectedId = null;
+        if (_selectedId == _category.Id) _selectedId = null;
+        _category = null;
         await LoadCategories();
         _selectedId ??= _categories.FirstOrDefault()?.Id;
         await LoadProducts();

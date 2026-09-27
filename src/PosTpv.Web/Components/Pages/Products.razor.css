@@ -92,16 +92,16 @@
     cursor: pointer;
 }
 
-/* Caps the rail at exactly 4 rows tall (measured row height ~6.05rem, incl. the
-   wrapped meta line, + .5rem gap) so the list scrolls internally past 4 categories
-   instead of pushing the right panel taller. */
-.catalog__cats-list { display: flex; flex-direction: column; gap: .5rem; overflow-y: auto; padding-right: .2rem; max-height: calc(6.05rem * 4 + .5rem * 3); }
+/* Caps the rail at exactly 5 rows tall (measured row height ~2rem, no wrapped meta
+   line, + .08rem gap) so the list scrolls internally past 5 categories instead of
+   pushing the right panel taller. */
+.catalog__cats-list { display: flex; flex-direction: column; gap: .08rem; overflow-y: auto; padding-right: .2rem; max-height: calc(2rem * 5 + .08rem * 4); }
 
 /* Neutral card for every category row — a single consistent business-grey surface, with
    --primary for the active/selected state. */
 .catRow {
     display: flex; align-items: center; gap: .55rem;
-    padding: .55rem .6rem;
+    padding: .1rem .6rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--card);
