@@ -48,7 +48,6 @@
     {
         <div class="resv-col" @ref="_resvPanelEl">
         <aside class="resv card">
-        <div class="resv__drag-handle" @ref="_resvHandleEl" title="@Loc.T("Drag to move")"><LucideIcon Name="move" Size="12" /></div>
         <div class="tables-datebar" @ref="_resvHeaderEl">
             <div class="resv__day-nav">
                 <div class="resv__day-nav-side">
@@ -274,7 +273,7 @@
             <div class="resv__list">
                 @foreach (var r in FilteredReservations)
                 {
-                    <div class="resv-card @(_assignReservationId == r.Id ? "resv-card--active" : "")" style="border-left:4px solid @r.Color">
+                    <div class="resv-card @(_assignReservationId == r.Id ? "resv-card--active" : "")">
                         <div class="resv-card__top">
                             <span class="resv-card__period" title="@Loc.T(PeriodLabel(r.Time))"><LucideIcon Name="@PeriodIcon(r.Time)" Size="14" /></span>
                             <strong>@r.Time.ToString("HH:mm")</strong>
@@ -1079,7 +1078,6 @@
     // Floats over the map, anchored under the calendar toggle (see .resv-col in Tables.razor.css).
     private bool _resSidebarOpen = false;
     private ElementReference _resvPanelEl;
-    private ElementReference _resvHandleEl;
     private ElementReference _resvResizeEl;
     private ElementReference _resvHeaderEl;
     private bool _resvDragBound;
@@ -1262,13 +1260,14 @@
         }
         if (_resSidebarOpen && !_resvDragBound && RendererInfo.IsInteractive)
         {
-            // Client-only drag (grab the .resv__drag-handle grip) — position isn't persisted
+            // Client-only drag by the panel's own header (its empty space, not its buttons) —
+            // no separate grip icon needed. Position isn't persisted
             // anywhere, it just resets to the default corner-anchored spot next time the panel
             // is opened. Sizing uses its own explicit handle (.resv__resize-handle) driven by
             // pointer events rather than native CSS `resize`, which needs a fiddly 15px corner
             // grab-zone that's easy to miss/mis-hit and doesn't work on touch at all — the
             // camarero screens are touch-first, so this has to work with a finger too.
-            await JS.InvokeVoidAsync("posPanelDrag", _resvHandleEl, _resvPanelEl);
+            await JS.InvokeVoidAsync("posPanelDrag", _resvHeaderEl, _resvPanelEl);
             // Width floor is read live from the header row's own natural (unwrapped) width
             // rather than a guessed constant, so the panel can never be shrunk narrower than
             // what the date-nav icons need — they'd otherwise start wrapping/overlapping.

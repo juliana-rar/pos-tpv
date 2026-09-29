@@ -67,8 +67,9 @@ window.posOrderResize = function (handleEl, containerEl, min, max) {
     });
 };
 
-// Drag-to-move the floating reservations panel on the Tables map (Tables.razor) by its grip
-// handle. panelEl is `position: absolute`, placed by CSS relative to its corner toggle by
+// Drag-to-move the floating reservations panel on the Tables map (Tables.razor) by its header.
+// Presses that land on one of the header's own controls (buttons, links, inputs, menus) are left
+// alone so they still click normally; only the header's empty space starts a drag. panelEl is `position: absolute`, placed by CSS relative to its corner toggle by
 // default (no inline left/top yet) — the first drag reads its current on-screen position via
 // getBoundingClientRect and switches it to an explicit inline left/top (in the offsetParent's
 // own coordinate space) that pointermove then just keeps nudging by the cursor's delta.
@@ -87,6 +88,7 @@ window.posPanelDrag = function (handleEl, panelEl) {
         document.removeEventListener('pointerup', onUp);
     }
     handleEl.addEventListener('pointerdown', function (e) {
+        if (e.button !== 0 || e.target.closest('button, a, input, select, textarea, label, [role="button"], [role="menu"]')) return;
         e.preventDefault();
         const panelRect = panelEl.getBoundingClientRect();
         const parentRect = panelEl.offsetParent.getBoundingClientRect();

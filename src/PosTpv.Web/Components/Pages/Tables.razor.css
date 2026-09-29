@@ -576,12 +576,17 @@
    map's bottom edge instead of each taking its own row. Positioned as one unit so the zoom
    controls stay put whether or not the zone-filter pill underneath is currently rendered
    (it's hidden during Edit/Select/Reassign — see Tables.razor). */
+/* Spans the map's full width (minus a gutter) rather than hanging off left:50%, so the zone
+   pill can use the whole width before it has to scroll — with only half the map to grow into it
+   used to wrap two-word zone names onto two lines. The dock itself lets clicks through to the
+   map; only its pills catch them. */
 .floor-wrap > .floor-zoom-dock {
     position: absolute;
-    left: 50%;
+    left: .7rem;
+    right: .7rem;
     bottom: .7rem;
-    transform: translateX(-50%);
     z-index: 4;
+    pointer-events: none;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -597,7 +602,14 @@
 /* Zone filter as a floating segmented control (not tucked behind the Filters toggle): a pill
    floating over the map, matching the "floating over content" style already used for
    .floor-hint--floating above. */
+.floor-zoom-dock > * { pointer-events: auto; }
+/* Every zone name stays on a single line; when they don't all fit the pill scrolls sideways
+   instead of wrapping. */
 .floor-zoom-dock > .zone-filter {
+    max-width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
     margin: 0;
     padding: 4px;
     gap: .15rem;
@@ -611,6 +623,8 @@
    buttons' skeuomorphic gradient/emboss treatment, so this reads as a clean modern segmented
    control instead of a row of physical buttons. */
 .zone-filter .tabs__opt {
+    flex: none;
+    white-space: nowrap;
     border-radius: 999px;
     color: var(--text-soft);
     transition: background 130ms ease, color 130ms ease, transform 110ms ease;
@@ -1386,17 +1400,28 @@
    to see/grab — same visual treatment as .tbl__handle--resize on the floor plan's own table
    resize handle, for a consistent affordance across the page. posPanelResize (pos.js) drives
    it via pointer events, so it works with touch as well as mouse. */
+/* Resize grip: three short diagonal strokes tucked inside the panel's bottom-right corner (the
+   familiar window-corner grip), faint until hovered, instead of a bordered box hanging off the
+   edge. The hit area is larger than the drawing so it's still easy to grab with a finger. */
 .resv__resize-handle {
     position: absolute;
-    right: -6px; bottom: -6px;
-    width: 16px; height: 16px;
-    border: 2px solid var(--text);
-    border-radius: 4px;
-    background: var(--card);
+    right: 2px; bottom: 2px;
+    width: 22px; height: 22px;
+    border-radius: 0 0 var(--radius-sm) 0;
+    background:
+        linear-gradient(135deg,
+            transparent 0 52%, currentColor 52% 57%,
+            transparent 57% 67%, currentColor 67% 72%,
+            transparent 72% 82%, currentColor 82% 87%,
+            transparent 87%) right 4px bottom 4px / 12px 12px no-repeat;
+    color: var(--text-soft);
+    opacity: .55;
     cursor: nwse-resize;
     touch-action: none;
     z-index: 6;
+    transition: opacity var(--transition), color var(--transition);
 }
+.resv__resize-handle:hover, .resv__resize-handle:active { opacity: 1; color: var(--primary); }
 @keyframes floor-resv-unfold {
     from { opacity: 0; transform: scaleY(.7); }
     to   { opacity: 1; transform: scaleY(1); }
@@ -1404,17 +1429,10 @@
 /* Grip strip above the date bar — grabbing it (not the header buttons themselves) is what
    .resv-col's drag JS (posPanelDrag, see pos.js) binds to, so dragging never fights clicks on
    the prev/next-date or new-reservation buttons right below it. */
-.resv__drag-handle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 1.1rem;
-    color: var(--text-soft);
-    cursor: grab;
-    touch-action: none;
-    flex: none;
-}
-.resv__drag-handle:active { cursor: grabbing; }
+/* The header doubles as the panel's drag handle (see posPanelDrag in pos.js). */
+.resv-col .tables-datebar { cursor: grab; touch-action: none; }
+.resv-col .tables-datebar:active { cursor: grabbing; }
+.resv-col .tables-datebar :is(button, a, input, select) { cursor: pointer; }
 .resv {
     flex: 1 1 auto;
     min-height: 0;
