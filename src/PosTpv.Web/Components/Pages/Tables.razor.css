@@ -1482,25 +1482,74 @@
 /* .resv-date__backdrop / .resv-date__menu (the Calendar dropdown) now live in app.css —
    shared with the Billing date-range filter. */
 
-.resv__list { flex: 1 1 auto; overflow: auto; padding: .5rem .8rem .8rem; display: flex; flex-direction: column; gap: .35rem; }
+.resv__list { flex: 1 1 auto; overflow: auto; padding: .6rem .7rem .8rem; display: flex; flex-direction: column; gap: .45rem; }
 
+/* Reservation card — laid out like a modern agenda entry: the time in its own column on the
+   left (tabular figures, service icon underneath, a hairline divider), the guest's name and
+   status on the first line and the party details as soft pills on the second. White card with a
+   hairline border that lifts on hover; finished/cancelled bookings fade back via data-status. */
 .resv-card {
-    padding: .35rem .55rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--card-2);
-    transition: box-shadow var(--transition);
+    display: grid;
+    grid-template-columns: 3.1rem 1fr;
+    column-gap: .65rem;
+    row-gap: .35rem;
+    align-items: center;
+    padding: .55rem .6rem .55rem .45rem;
+    border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+    border-radius: 12px;
+    background: var(--card);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+    transition: box-shadow var(--transition), border-color var(--transition), opacity var(--transition);
     font-size: .95em;
 }
-.resv-card--active { box-shadow: 0 0 0 2px var(--text); }
-.resv-card__top { display: flex; align-items: center; gap: .35rem; font-size: .8rem; }
-.resv-card__top .btn--icon { flex: none; width: 22px; height: 22px; padding: 0; }
-.resv-card__period { display: inline-flex; color: var(--text-soft); }
-.resv-card__name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.resv-card__meta { display: flex; align-items: center; gap: .2rem; flex-wrap: wrap; font-size: .7rem; margin: .18rem 0 .3rem; }
-.resv-card__stat { display: inline-flex; align-items: center; gap: .1rem; }
-.resv-card__meta .btn--sm { padding: .22rem .5rem; font-size: .72rem; }
-.resv-card .badge { padding: .18rem .48rem; font-size: .7rem; }
+.resv-card:hover {
+    border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
+    box-shadow: 0 6px 16px -8px rgba(0, 0, 0, .18);
+}
+.resv-card--active { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
+.resv-card:is([data-status="finished"], [data-status="cancelled"]) { opacity: .6; }
+.resv-card:is([data-status="finished"], [data-status="cancelled"]):hover { opacity: 1; }
+
+.resv-card__time {
+    grid-row: span 2;
+    align-self: stretch;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15rem;
+    border-right: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    padding-right: .2rem;
+}
+.resv-card__time strong { font-size: .92rem; font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.resv-card__period { display: inline-flex; color: var(--text-soft); opacity: .8; }
+
+.resv-card__top { display: flex; align-items: center; gap: .35rem; min-width: 0; font-size: .82rem; }
+.resv-card__top .btn--icon { flex: none; width: 24px; height: 24px; padding: 0; border-radius: 8px; color: var(--text-soft); }
+.resv-card__name { flex: 1 1 auto; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The edit pencil only shows up on hover where there is hover (desktop); touch keeps it visible. */
+@media (hover: hover) {
+    .resv-card__top > .btn--icon { opacity: 0; transition: opacity var(--transition); }
+    .resv-card:hover .resv-card__top > .btn--icon, .resv-card__top > .btn--icon:focus-visible { opacity: 1; }
+}
+
+.resv-card__meta { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; min-width: 0; font-size: .72rem; color: var(--text-soft); }
+.resv-card__stat {
+    display: inline-flex; align-items: center; gap: .25rem;
+    padding: .14rem .45rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text) 6%, transparent);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+/* Seat / Mark-as-left: a soft tinted action that fills in on hover, rather than a solid
+   primary block on every card competing for attention. */
+.resv-card__meta .btn--sm { padding: .24rem .6rem; font-size: .72rem; border-radius: 999px; gap: .25rem; }
+.resv-card__meta .btn--primary {
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    color: var(--primary);
+    border-color: transparent;
+    box-shadow: none;
+}
+.resv-card__meta .btn--primary:hover:not(:disabled) { background: var(--primary); color: var(--on-primary); }
+.resv-card__meta .btn--primary:disabled { opacity: .45; }
+.resv-card .badge { padding: .16rem .5rem; font-size: .68rem; }
 /* Status badge doubles as a <select> so it can be changed right from the card,
    without opening the edit modal — same pill look as .badge, no native chrome. */
 .resv-card__status {
@@ -1518,16 +1567,19 @@
     outline: none;
     box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 35%, transparent);
 }
-/* "Pending" has no semantic badge color (unlike Confirmed/Seated/Finished/Cancelled), so on
-   its own it read as flat muted text rather than something clickable. A visible border + resting
-   shadow gives it the same tappable-button weight as the rest of the card's controls. */
-.badge--pending {
-    background: var(--card);
-    color: var(--text);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
+/* Every status pill leads with a small dot in its own colour. "Pending" has no semantic colour
+   of its own, so it gets a neutral tint rather than a bordered box. */
+.resv-card__status::before, .resv-status__opt .badge::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
 }
-.resv-card__status.badge--pending:hover { filter: none; background: var(--card-2); }
+.badge--pending {
+    background: color-mix(in srgb, var(--text) 8%, transparent);
+    color: var(--text-soft);
+}
+.resv-card__status.badge--pending:hover { filter: none; background: color-mix(in srgb, var(--text) 12%, transparent); }
 
 /* Custom status dropdown: a plain <select>'s option list is native browser chrome and can't
    follow the app's light/dark theme, so this is a small card-styled menu instead (same pattern

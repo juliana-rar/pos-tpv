@@ -273,10 +273,12 @@
             <div class="resv__list">
                 @foreach (var r in FilteredReservations)
                 {
-                    <div class="resv-card @(_assignReservationId == r.Id ? "resv-card--active" : "")">
-                        <div class="resv-card__top">
-                            <span class="resv-card__period" title="@Loc.T(PeriodLabel(r.Time))"><LucideIcon Name="@PeriodIcon(r.Time)" Size="14" /></span>
+                    <div class="resv-card @(_assignReservationId == r.Id ? "resv-card--active" : "")" data-status="@r.Status.ToString().ToLowerInvariant()">
+                        <div class="resv-card__time">
                             <strong>@r.Time.ToString("HH:mm")</strong>
+                            <span class="resv-card__period" title="@Loc.T(PeriodLabel(r.Time))"><LucideIcon Name="@PeriodIcon(r.Time)" Size="13" /></span>
+                        </div>
+                        <div class="resv-card__top">
                             <span class="resv-card__name">@r.CustomerName</span>
                             <span class="spacer"></span>
                             <div class="resv-status">
@@ -297,15 +299,15 @@
                             </div>
                             <button class="btn btn--icon btn--ghost btn--sm" title="@Loc.T("Edit")" @onclick="() => OpenResForm(r.Id)"><LucideIcon Name="pencil" Size="14" /></button>
                         </div>
-                        <div class="resv-card__meta muted">
-                            <LucideIcon Name="users" Size="14" /> @(r.PartySize + r.ChildrenCount)
+                        <div class="resv-card__meta">
+                            <span class="resv-card__stat" title="@Loc.T("Guests")"><LucideIcon Name="users" Size="13" /> @(r.PartySize + r.ChildrenCount)</span>
                             @if (r.ChildrenCount > 0)
                             {
-                                <span class="resv-card__stat"><LucideIcon Name="baby" Size="14" /> @r.ChildrenCount</span>
+                                <span class="resv-card__stat"><LucideIcon Name="baby" Size="13" /> @r.ChildrenCount</span>
                             }
                             @if (r.HighChairCount > 0)
                             {
-                                <span class="resv-card__stat"><LucideIcon Name="armchair" Size="14" /> @r.HighChairCount</span>
+                                <span class="resv-card__stat"><LucideIcon Name="armchair" Size="13" /> @r.HighChairCount</span>
                             }
                             @if (r.TableNames.Count > 0)
                             {
