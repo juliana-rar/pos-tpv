@@ -9,6 +9,7 @@ using PosTpv.Application.DTOs;
 using PosTpv.Application.Services;
 using PosTpv.Domain.Enums;
 using PosTpv.Infrastructure;
+using PosTpv.Infrastructure.Persistence;
 using PosTpv.Web.Components;
 using PosTpv.Web.Hubs;
 using PosTpv.Web.Localization;
@@ -104,6 +105,27 @@ app.MapGet("/culture/set", (string culture, string? redirect, HttpContext http) 
     }
     return Results.LocalRedirect(string.IsNullOrWhiteSpace(redirect) ? "/" : redirect);
 }).AllowAnonymous();
+
+// Catalogue/table images are named by content hash (ImageUrlExternalizer) or a fresh GUID
+// (ImageUpload), so a given URL never changes content: let browsers cache them for good instead
+// of revalidating each one on every page. Set as the response starts rather than via
+// StaticFileOptions, because depending on the environment and whether the file existed at build
+// time it's served by MapStaticAssets or by UseStaticFiles below. Supplier documents and albarán
+// scans keep the default, since the demo seeder rewrites those under fixed names.
+app.Use((ctx, next) =>
+{
+    var path = ctx.Request.Path.Value ?? "";
+    if (ImmutableUploadFolders.Any(f => path.StartsWith(f, StringComparison.OrdinalIgnoreCase)))
+    {
+        ctx.Response.OnStarting(() =>
+        {
+            if (ctx.Response.StatusCode == StatusCodes.Status200OK)
+                ctx.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+            return Task.CompletedTask;
+        });
+    }
+    return next(ctx);
+});
 
 // MapStaticAssets only serves files known at build time (via its manifest), so
 // uploaded product/category images (written to wwwroot at runtime) need the
@@ -216,6 +238,13 @@ using (var scope = app.Services.CreateScope())
     var seeder = scope.ServiceProvider.GetRequiredService<IDbSeeder>();
     await seeder.SeedAsync();
 
+    // Development-only bulk demo content (menu, suppliers, history...). Toggle with Seed:DemoContent.
+    if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("Seed:DemoContent"))
+        await scope.ServiceProvider.GetRequiredService<DemoContentSeeder>().SeedAsync(app.Environment.WebRootPath);
+
+    // After both seeders, so whatever inline images they just wrote get moved to files too.
+    await scope.ServiceProvider.GetRequiredService<ImageUrlExternalizer>().ExternalizeAsync(app.Environment.WebRootPath);
+
     // Warm the in-memory app-settings cache so branding/schedule are available from the
     // very first page render, without every component needing its own DB round-trip.
     var settings = scope.ServiceProvider.GetRequiredService<ISettingsService>();
@@ -223,3 +252,9 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+public partial class Program
+{
+    private static readonly string[] ImmutableUploadFolders =
+        ["/uploads/products/", "/uploads/categories/", "/uploads/extras/", "/uploads/allergens/", "/uploads/tables/", "/uploads/zones/"];
+}

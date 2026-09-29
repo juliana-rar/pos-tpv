@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "postpv-web",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/PosTpv.Web", "--launch-profile", "http"],
+      "port": 5209
+    },
+    {
+      "name": "postpv-web-release",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "-c", "Release", "--project", "src/PosTpv.Web", "--launch-profile", "http"],
+      "port": 5209
+    }
+  ]
+}

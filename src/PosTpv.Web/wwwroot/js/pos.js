@@ -1,4 +1,7 @@
 // Small client-side helpers. The app is Blazor Server, so this stays intentionally tiny.
+
+// Tab title for pages rendered without prerendering, where <PageTitle> can't update <head>.
+window.posSetTitle = (title) => { document.title = title; };
 window.posTheme = {
     get() {
         return document.documentElement.getAttribute('data-theme') || 'light';

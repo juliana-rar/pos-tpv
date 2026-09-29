@@ -15,7 +15,9 @@ public enum TableShape
     Square = 0,
     Round = 1,
     Rectangular = 2,
-    Oval = 3
+    Oval = 3,
+    /// <summary>Long, narrow bar-height table with stools along one side only.</summary>
+    BarTable = 4
 }
 
 /// <summary>Lifecycle state of a table on the floor.</summary>
@@ -128,5 +130,25 @@ public enum FloorDecorType
     Window = 7,
     Bush = 8,
     SmallTree = 9,
-    Fern = 10
+    Fern = 10,
+    /// <summary>Floor-to-ceiling glazed partition (e.g. between the dining room and the terrace).</summary>
+    GlassWall = 11,
+    /// <summary>Upholstered bench seating along a wall.</summary>
+    Banquette = 12,
+    /// <summary>Area rug, drawn underneath tables.</summary>
+    Rug = 13,
+    /// <summary>Long planter box, e.g. to separate a terrace from the street.</summary>
+    Planter = 14,
+    /// <summary>Terrace umbrella seen from above.</summary>
+    Parasol = 15,
+    /// <summary>Wall-mounted bottle rack.</summary>
+    WineRack = 16,
+    /// <summary>Kitchen block (stainless steel, cooking range, prep island).</summary>
+    Kitchen = 17,
+    /// <summary>Toilets block.</summary>
+    Restrooms = 18,
+    /// <summary>Staircase.</summary>
+    Stairs = 19,
+    /// <summary>Host / reception stand by the entrance.</summary>
+    HostStand = 20
 }

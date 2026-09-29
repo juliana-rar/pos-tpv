@@ -53,7 +53,7 @@
                             <div class="product-grid">
                                 @foreach (var p in _products)
                                 {
-                                    <button class="productCard @(p.IsAvailable ? "" : "productCard--off") @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? "productCard--img" : "") @(_pressedProductId == p.Id || _closingProductId == p.Id ? "productCard--pressed" : "")"
+                                    <button class="productCard @(p.IsAvailable ? "" : "productCard--off") @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? "productCard--img" : "") @(_pressedProductId == p.Id || _closingProductId == p.Id ? "productCard--pressed" : "") @(_addedProductId == p.Id ? "productCard--added" : "")"
                                             style="--pc:@p.Color; @(!string.IsNullOrWhiteSpace(p.ImageUrl) ? $"background-image:url('{p.ImageUrl}')" : "")"
                                             disabled="@(!p.IsAvailable || _busy)" @onclick="() => OnProductClick(p)" type="button"
                                             @onpointerdown="() => StartProductPress(p)" @onpointerdown:preventDefault="true"
@@ -76,7 +76,7 @@
                                                                   @onclick="() => TogglePressedExtra(ex)" @onclick:stopPropagation="true"
                                                                   @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true">
                                                                 <span class="productCard__extra-check">
-                                                                    @if (_pressedSelectedExtraIds.Contains(ex.Id)) { <LucideIcon Name="check" Size="10" /> }
+                                                                    @if (_pressedSelectedExtraIds.Contains(ex.Id)) { <LucideIcon Name="check" Size="12" /> }
                                                                 </span>
                                                                 <span class="productCard__extra-name">@ex.Name</span>
                                                                 <span class="productCard__extra-price">＋@ex.Price.ToString("N2")</span>
@@ -123,16 +123,22 @@
                                                snapshot of its extras taken at the moment it closed (see ClosePressedPreview). *@
                                             <span class="productCard__extras productCard__extras--closing">
                                                 <span class="productCard__extras-inner">
-                                                    @if (_closingExtras.Count > 0)
+                                                    @foreach (var ex in _closingExtras)
                                                     {
-                                                        @foreach (var ex in _closingExtras)
-                                                        {
-                                                            <span class="productCard__extra-row">
-                                                                <span class="productCard__extra-name">@ex.Name</span>
-                                                                <span class="productCard__extra-price">＋@ex.Price.ToString("N2")</span>
+                                                        <span class="productCard__extra-row @(_closingSelectedIds.Contains(ex.Id) ? "productCard__extra-row--on" : "")">
+                                                            <span class="productCard__extra-check">
+                                                                @if (_closingSelectedIds.Contains(ex.Id)) { <LucideIcon Name="check" Size="12" /> }
                                                             </span>
-                                                        }
+                                                            <span class="productCard__extra-name">@ex.Name</span>
+                                                            <span class="productCard__extra-price">＋@ex.Price.ToString("N2")</span>
+                                                        </span>
                                                     }
+                                                    <span class="productCard__extras-footer">
+                                                        <span class="productCard__extras-total">
+                                                            <span class="productCard__extras-count">＋@_closingExtras.Where(ex => _closingSelectedIds.Contains(ex.Id)).Sum(ex => ex.Price).ToString("N2")</span>
+                                                            <span class="productCard__extras-price">@_closingPrice.ToString("N2")</span>
+                                                        </span>
+                                                    </span>
                                                 </span>
                                             </span>
                                         }
@@ -538,7 +544,15 @@
     // even though _pressedProductId/_pressedExtras have already moved on to the next product.
     private int? _closingProductId;
     private List<ExtraDto> _closingExtras = new();
-    private const int ProductPressCloseAnimMs = 220;
+    private HashSet<int> _closingSelectedIds = new();
+    private decimal _closingPrice;
+    // Must match the productCardExtrasClose keyframes' duration in OrderEditor.razor.css.
+    private const int ProductPressCloseAnimMs = 280;
+
+    // Card that just got a product added via the tick button — plays a short confirmation pulse
+    // (.productCard--added in OrderEditor.razor.css) once the preview has folded away.
+    private int? _addedProductId;
+    private const int ProductAddedPulseMs = 520;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -813,14 +827,28 @@
         var invited = _invitationMode;
         var extraIds = _pressedSelectedExtraIds.ToList();
         int? newItemId = null;
+        // Fold the preview away straight away rather than after the server round-trip, so the
+        // closing animation plays the moment the tick is tapped.
+        ClosePressedPreview();
+        _ = PulseAddedCard(p.Id);
         await Mutate(async () =>
         {
             var afterAdd = await Orders.AddItemAsync(new AddItemRequest(orderId, p.Id, Merge: false, Invited: invited));
             newItemId = afterAdd.Items.Where(i => i.ProductId == p.Id).OrderByDescending(i => i.Id).FirstOrDefault()?.Id;
             return newItemId is null || extraIds.Count == 0 ? afterAdd : await Orders.SetItemExtrasAsync(newItemId.Value, extraIds);
         });
-        ClosePressedPreview();
         _scrollToItemId = newItemId;
+    }
+
+    private async Task PulseAddedCard(int productId)
+    {
+        await Task.Delay(ProductPressCloseAnimMs);
+        _addedProductId = productId;
+        StateHasChanged();
+        await Task.Delay(ProductAddedPulseMs);
+        if (_addedProductId != productId) return;
+        _addedProductId = null;
+        StateHasChanged();
     }
 
     // Closes whichever product's extras preview is currently pinned open, handing it off to the
@@ -834,6 +862,8 @@
         if (_pressedProductId is not { } closingId) return;
         _closingProductId = closingId;
         _closingExtras = _pressedExtras;
+        _closingSelectedIds = _pressedSelectedExtraIds.ToHashSet();
+        _closingPrice = _products.FirstOrDefault(x => x.Id == closingId) is { } closingProduct ? GetDisplayPrice(closingProduct) : 0;
         _pressedProductId = null;
         _pressedExtras = new();
         _pressedExtrasLoading = false;

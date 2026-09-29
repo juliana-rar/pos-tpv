@@ -13,6 +13,13 @@
     </PackageReference>
   </ItemGroup>
 
+  <!-- The /tables floor is rendered by a child component (FloorMap) but styled by Tables.razor.css:
+       giving both the same CSS isolation scope keeps every floor rule matching its markup. -->
+  <ItemGroup>
+    <None Update="Components\Pages\Tables.razor.css" CssScope="b-tables-floor" />
+    <None Update="Components\Shared\FloorMap.razor.css" CssScope="b-tables-floor" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>

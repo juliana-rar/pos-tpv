@@ -362,8 +362,31 @@
    (border/background included, since .productCard__extras-inner's box lives entirely inside that
    row) back down to nothing instead of the @if just yanking it out of the DOM instantly.
    pointer-events:none so a stray tap on the fading-out list can't fire OnExtraClick. */
-.productCard__extras--closing { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
-.productCard__extras-empty { font-size: .58rem; color: var(--text-soft); }
+/* The closing snapshot is a freshly inserted element (a different @if branch from the open panel),
+   so a transition would have no "before" state to animate from — a keyframe animation plays from
+   the open look (1fr, fully visible) down to nothing regardless. Keep the 280ms in sync with
+   ProductPressCloseAnimMs in OrderEditor.razor. */
+.productCard__extras--closing {
+    grid-template-rows: 0fr; opacity: 0; pointer-events: none;
+    animation: productCardExtrasClose 280ms cubic-bezier(.4, 0, .2, 1);
+}
+@keyframes productCardExtrasClose {
+    from { grid-template-rows: 1fr; opacity: 1; transform: none; }
+    60% { opacity: .85; }
+    to { grid-template-rows: 0fr; opacity: 0; transform: translateY(-4px); }
+}
+/* Short "added" pulse once the preview has folded back into the plain product card. */
+.productCard--added { animation: productCardAdded 520ms cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes productCardAdded {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 55%, transparent); }
+    35% { transform: scale(.96); }
+    70% { transform: scale(1.02); box-shadow: 0 0 0 6px color-mix(in srgb, var(--success) 0%, transparent); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .productCard__extras--closing, .productCard--added { animation: none; }
+}
+.productCard__extras-empty { font-size: .78rem; color: var(--text-soft); }
 /* Row pinning the running total (base price + ticked extras) at the far right — in-flow with the
    rest of .productCard__extras-inner's content (not position:absolute) so it sits at the true
    bottom of the panel whatever height the panel grows to, and never overlaps/gets hidden the way
@@ -372,9 +395,9 @@
 .productCard__extras-footer { display: flex; align-items: center; gap: .3rem; margin-top: .05rem; }
 /* Extras-only sum stays flush-right with a small gap to the running-total pill next to it. */
 .productCard__extras-total { display: flex; align-items: center; gap: .12rem; margin-left: auto; }
-.productCard__extras-count { font-size: .54rem; font-weight: 700; color: var(--text-soft); }
+.productCard__extras-count { font-size: .74rem; font-weight: 700; color: var(--text-soft); }
 .productCard__extras-price {
-    font-size: .54rem; font-weight: 700;
+    font-size: .74rem; font-weight: 700;
     padding: .06rem .32rem; border-radius: 999px;
     background: var(--card-2);
     color: var(--text-soft);
@@ -387,7 +410,7 @@
     border-radius: var(--radius-sm);
     background: var(--card-2);
     color: var(--text);
-    font-size: .5rem; font-weight: 600;
+    font-size: .74rem; font-weight: 600;
     line-height: 1.35;
     transition: background var(--transition), border-color var(--transition);
     border: 1px solid transparent;
@@ -407,7 +430,7 @@
 .productCard__extra-check {
     flex: none;
     display: grid; place-items: center;
-    width: 13px; height: 13px;
+    width: 16px; height: 16px;
     border-radius: 3px;
     border: 1px solid var(--border);
     background: var(--card);

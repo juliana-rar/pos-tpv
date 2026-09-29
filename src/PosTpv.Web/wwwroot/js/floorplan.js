@@ -14,10 +14,11 @@ let borderX = 0, borderY = 0; // .floor's own border (the wall frame) — getBou
 const GRID = 10;        // snap step in px
 const MIN = 50;         // minimum table size
 
-// Table shapes, indexed by the TableShape enum value (Square=0, Round=1, Rectangular=2, Oval=3).
-// Kept in sync with the CSS `.tbl--{name}` classes and the icons shown on the shape toggle button.
-const SHAPES = ['square', 'round', 'rectangular', 'oval'];
-const SHAPE_ICONS = ['◻', '○', '▭', '⬭'];
+// Table shapes, indexed by the TableShape enum value (Square=0, Round=1, Rectangular=2, Oval=3,
+// BarTable=4). Kept in sync with the CSS `.tbl--{name}` classes and the icons shown on the shape
+// toggle button (see ShapeIcon in FloorPlanHelpers.cs).
+const SHAPES = ['square', 'round', 'rectangular', 'oval', 'bartable'];
+const SHAPE_ICONS = ['◻', '○', '▭', '⬭', '▬'];
 
 export function init(el, currentZoom) {
     container = el;

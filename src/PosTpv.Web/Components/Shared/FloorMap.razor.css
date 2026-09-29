@@ -1,0 +1,4 @@
+/* Intentionally empty. FloorMap's markup is styled by Tables.razor.css: both files are given the
+   same CSS scope in PosTpv.Web.csproj (CssScope), so the floor rules there match this component's
+   elements exactly as they did when the markup lived inside Tables.razor. This file only exists so
+   Blazor stamps that shared scope attribute onto FloorMap's elements. */

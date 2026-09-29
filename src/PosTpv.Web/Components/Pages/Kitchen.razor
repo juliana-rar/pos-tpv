@@ -11,68 +11,105 @@
 
 <PageTitle>Kitchen · @Branding.Current.Title</PageTitle>
 
-@* Same quick-jump chip strip as /orders (.orders-quicknav in Orders.razor.css) — one chip per
-   ticket on screen, click to scroll straight to it instead of hunting across the board. *@
-<div class="orders-quicknav @(_showFilters ? "orders-quicknav--filters-open" : "")">
-    <div class="orders-quicknav__chips">
-        @foreach (var o in Filtered)
-        {
-            <button @key="o.Id" class="orders-quicknav__chip" data-status="@o.Status.ToString().ToLower()"
-                    title="@o.TableName · @Loc.T(o.Status.ToString())" @onclick="() => JumpToTicket(o.Id)" type="button">
-                <span class="orders-quicknav__chip-name">@o.TableName</span>
+@* Same quick-jump bar as /orders (.orders-quicknav, styles copied from Orders.razor.css) — one
+   chip per ticket on screen, click to scroll straight to it instead of hunting across the board. *@
+<div class="orders-quicknav">
+    <div class="orders-quicknav__row">
+        <div class="orders-quicknav__chips @(_chipsExpanded ? "orders-quicknav__chips--expanded" : "")">
+            @foreach (var o in Filtered)
+            {
+                <button @key="o.Id" class="orders-quicknav__chip" data-status="@o.Status.ToString().ToLower()"
+                        title="@o.TableName · @o.Number · @Loc.T(o.Status.ToString())" @onclick="() => JumpToTicket(o.Id)" type="button">
+                    <span class="orders-quicknav__chip-name">@o.TableName</span>
+                </button>
+            }
+        </div>
+        <div class="toolbar">
+            <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost")" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters">
+                <LucideIcon Name="settings" Size="16" />
             </button>
-        }
+            <button class="btn btn--icon btn--ghost" title="@Loc.T("Refresh")" @onclick="Reload"><LucideIcon Name="rotate-cw" Size="16" /></button>
+            <button class="btn btn--icon @(_chipsExpanded ? "btn--primary" : "btn--ghost")"
+                    title="@(_chipsExpanded ? Loc.T("Show fewer tables") : Loc.T("Show all tables"))"
+                    @onclick="() => _chipsExpanded = !_chipsExpanded">
+                <LucideIcon Name="@(_chipsExpanded ? "chevron-up" : "chevron-down")" Size="16" />
+            </button>
+        </div>
     </div>
-    <div class="kds__head toolbar">
-        @if (_showFilters)
-        {
-            <div class="dd">
-                <button type="button" class="select dd__trigger" style="max-width:130px" @onclick="ToggleStatusMenu">@StatusFilterLabel()</button>
-                @if (_statusMenuOpen)
+    @if (_showFilters)
+    {
+        <div class="orders-quicknav__filters">
+            <div class="orders-dd">
+                <button type="button" class="orders-dd__trigger" @onclick='() => ToggleDropdown("status")'>
+                    <span>@StatusFilterLabel()</span>
+                    <LucideIcon Name="chevron-down" Size="13" />
+                </button>
+                @if (_openDropdown == "status")
                 {
-                    <div class="dd__menu">
-                        <button type="button" class="dd__opt @(_statusFilterValue is null ? "dd__opt--on" : "")" @onclick='() => ChooseStatusFilter(null)'>@Loc.T("All statuses")</button>
+                    <div class="orders-dd__backdrop" @onclick="CloseDropdown"></div>
+                    <div class="orders-dd__menu">
+                        <button type="button" class="orders-dd__opt @(_statusFilterValue is null ? "orders-dd__opt--on" : "")" @onclick="() => ChooseStatusFilter(null)">@Loc.T("All statuses")</button>
                         @foreach (var s in new[] { OrderStatus.Open, OrderStatus.Sent, OrderStatus.InPreparation, OrderStatus.Ready, OrderStatus.Delivered })
                         {
-                            <button type="button" class="dd__opt @(_statusFilterValue == s ? "dd__opt--on" : "")" @onclick="() => ChooseStatusFilter(s)">@Loc.T(s.ToString())</button>
+                            <button type="button" class="orders-dd__opt @(_statusFilterValue == s ? "orders-dd__opt--on" : "")" @onclick="() => ChooseStatusFilter(s)">@Loc.T(s.ToString())</button>
                         }
                     </div>
                 }
             </div>
-            <div class="dd">
-                <button type="button" class="select dd__trigger" style="max-width:130px" @onclick="ToggleSortMenu">@SortLabel(_sortOrder)</button>
-                @if (_sortMenuOpen)
+            <div class="orders-dd">
+                <button type="button" class="orders-dd__trigger" @onclick='() => ToggleDropdown("sort")'>
+                    <span>@SortLabel(_sortOrder)</span>
+                    <LucideIcon Name="chevron-down" Size="13" />
+                </button>
+                @if (_openDropdown == "sort")
                 {
-                    <div class="dd__menu">
-                        <button type="button" class="dd__opt @(_sortOrder == "oldest" ? "dd__opt--on" : "")" @onclick='() => ChooseSort("oldest")'>@Loc.T("Oldest first")</button>
-                        <button type="button" class="dd__opt @(_sortOrder == "newest" ? "dd__opt--on" : "")" @onclick='() => ChooseSort("newest")'>@Loc.T("Newest first")</button>
-                        <button type="button" class="dd__opt @(_sortOrder == "number" ? "dd__opt--on" : "")" @onclick='() => ChooseSort("number")'>@Loc.T("Order number")</button>
+                    <div class="orders-dd__backdrop" @onclick="CloseDropdown"></div>
+                    <div class="orders-dd__menu">
+                        <button type="button" class="orders-dd__opt @(_sortOrder == "oldest" ? "orders-dd__opt--on" : "")" @onclick='() => ChooseSort("oldest")'>@Loc.T("Oldest first")</button>
+                        <button type="button" class="orders-dd__opt @(_sortOrder == "newest" ? "orders-dd__opt--on" : "")" @onclick='() => ChooseSort("newest")'>@Loc.T("Newest first")</button>
+                        <button type="button" class="orders-dd__opt @(_sortOrder == "number" ? "orders-dd__opt--on" : "")" @onclick='() => ChooseSort("number")'>@Loc.T("Order number")</button>
                     </div>
                 }
             </div>
             @if (Zones.Count > 0)
             {
-                <div class="dd">
-                    <button type="button" class="select dd__trigger" style="max-width:130px" @onclick="ToggleZoneMenu">@(string.IsNullOrEmpty(_zoneFilter) ? Loc.T("All zones") : _zoneFilter)</button>
-                    @if (_zoneMenuOpen)
+                <div class="orders-dd">
+                    <button type="button" class="orders-dd__trigger" @onclick='() => ToggleDropdown("zone")'>
+                        <span>@(string.IsNullOrEmpty(_zoneFilter) ? Loc.T("All zones") : _zoneFilter)</span>
+                        <LucideIcon Name="chevron-down" Size="13" />
+                    </button>
+                    @if (_openDropdown == "zone")
                     {
-                        <div class="dd__menu">
-                            <button type="button" class="dd__opt @(string.IsNullOrEmpty(_zoneFilter) ? "dd__opt--on" : "")" @onclick='() => ChooseZone("")'>@Loc.T("All zones")</button>
+                        <div class="orders-dd__backdrop" @onclick="CloseDropdown"></div>
+                        <div class="orders-dd__menu">
+                            <button type="button" class="orders-dd__opt @(string.IsNullOrEmpty(_zoneFilter) ? "orders-dd__opt--on" : "")" @onclick='() => ChooseZone("")'>@Loc.T("All zones")</button>
                             @foreach (var z in Zones)
                             {
-                                <button type="button" class="dd__opt @(_zoneFilter == z ? "dd__opt--on" : "")" @onclick="() => ChooseZone(z)">@z</button>
+                                <button type="button" class="orders-dd__opt @(_zoneFilter == z ? "orders-dd__opt--on" : "")" @onclick="() => ChooseZone(z)">@z</button>
                             }
                         </div>
                     }
                 </div>
             }
-            <input class="input" style="max-width:130px" placeholder="@Loc.T("Search table…")" @bind="_tableSearch" @bind:event="oninput" @bind:after="RefreshCaches" />
-        }
-        <button class="btn btn--icon btn--ghost" title="@Loc.T("Refresh")" @onclick="Reload"><LucideIcon Name="rotate-cw" Size="16" /></button>
-        <button class="btn btn--icon @(_showFilters ? "btn--primary" : "btn--ghost")" title="@Loc.T("Filters")" @onclick="() => _showFilters = !_showFilters">
-            <LucideIcon Name="settings" Size="16" />
-        </button>
-    </div>
+            <div class="orders-dd">
+                <button type="button" class="orders-dd__trigger" @onclick='() => ToggleDropdown("cols")'>
+                    <span>@ColsLabel(_cardsPerRow)</span>
+                    <LucideIcon Name="chevron-down" Size="13" />
+                </button>
+                @if (_openDropdown == "cols")
+                {
+                    <div class="orders-dd__backdrop" @onclick="CloseDropdown"></div>
+                    <div class="orders-dd__menu">
+                        @foreach (var n in new[] { 0, 2, 3, 4, 5, 6 })
+                        {
+                            <button type="button" class="orders-dd__opt @(_cardsPerRow == n ? "orders-dd__opt--on" : "")" @onclick="() => ChooseCols(n)">@ColsLabel(n)</button>
+                        }
+                    </div>
+                }
+            </div>
+            <input class="input orders-filters__search" placeholder="@Loc.T("Search table…")" @bind="_tableSearch" @bind:event="oninput" @bind:after="RefreshCaches" />
+        </div>
+    }
 </div>
 
 @if (Filtered.Count == 0)
@@ -81,7 +118,7 @@
 }
 else
 {
-    <div class="kds">
+    <div class="kds @(_cardsPerRow > 0 ? "kds--fixed-cols" : "")" style="--kds-cols: @_cardsPerRow">
         @foreach (var o in Filtered)
         {
             <KitchenTicket @key="o.Id" Order="o"
@@ -98,16 +135,20 @@ else
     private HubConnection? _hub;
 
     private bool _showFilters;
+    // Collapsed to two rows of table chips until the chevron expands it, same as /orders.
+    private bool _chipsExpanded;
+
+    // Custom dropdowns (status/sort/zone/per row) — only one open at a time, same as /orders.
+    private string? _openDropdown;
+    private void ToggleDropdown(string key) => _openDropdown = _openDropdown == key ? null : key;
+    private void CloseDropdown() => _openDropdown = null;
+
     private OrderStatus? _statusFilterValue;
-    private bool _statusMenuOpen;
-    private void ToggleStatusMenu() => _statusMenuOpen = !_statusMenuOpen;
-    private void ChooseStatusFilter(OrderStatus? value) { _statusFilterValue = value; _statusMenuOpen = false; RefreshCaches(); }
+    private void ChooseStatusFilter(OrderStatus? value) { _statusFilterValue = value; _openDropdown = null; RefreshCaches(); }
     private string StatusFilterLabel() => _statusFilterValue is null ? Loc.T("All statuses") : Loc.T(_statusFilterValue.ToString()!);
 
     private string _sortOrder = "oldest"; // "newest" | "oldest" | "number" — oldest first matches the kitchen's natural cook-order priority
-    private bool _sortMenuOpen;
-    private void ToggleSortMenu() => _sortMenuOpen = !_sortMenuOpen;
-    private void ChooseSort(string value) { _sortOrder = value; _sortMenuOpen = false; RefreshCaches(); }
+    private void ChooseSort(string value) { _sortOrder = value; _openDropdown = null; RefreshCaches(); }
     private string SortLabel(string value) => value switch
     {
         "newest" => Loc.T("Newest first"),
@@ -115,11 +156,14 @@ else
         _ => Loc.T("Oldest first"),
     };
 
-    private bool _zoneMenuOpen;
-    private void ToggleZoneMenu() => _zoneMenuOpen = !_zoneMenuOpen;
-    private void ChooseZone(string value) { _zoneFilter = value; _zoneMenuOpen = false; RefreshCaches(); }
+    private void ChooseZone(string value) { _zoneFilter = value; _openDropdown = null; RefreshCaches(); }
     private string _zoneFilter = "";
     private string _tableSearch = "";
+
+    // Tickets per row, same picker as /orders. 0 = "Auto" (the grid's own auto-fill layout).
+    private int _cardsPerRow;
+    private void ChooseCols(int value) { _cardsPerRow = value; _openDropdown = null; }
+    private string ColsLabel(int value) => value == 0 ? Loc.T("Auto") : $"{value} {Loc.T("per row")}";
 
     // Both were plain get-only properties re-running their LINQ pipeline on every access — up to
     // 3x per render for Filtered (quicknav strip, the empty-state check, and the ticket loop) even
@@ -174,8 +218,10 @@ else
         });
         _hub.Reconnected += OnReconnected;
 
-        await _hub.StartAsync();
+        // Paint the loaded data now rather than after the hub handshake below, which would
+        // otherwise hold back this page's first populated render.
         StateHasChanged();
+        await _hub.StartAsync();
     }
 
     // A reconnect may have missed several targeted events while disconnected, so this one still

@@ -1,66 +1,126 @@
-/* Same wrapping bar as .orders-quicknav in Orders.razor.css: table quick-jump chips on the
-   left, the existing filters/live/active toolbar on the right, one bordered box for the whole
-   row instead of two separate ones. */
+/* Quick-jump bar — copied from Orders.razor.css so /kitchen's table nav looks and behaves exactly
+   like /orders (CSS isolation scopes those rules to the Orders component only). Keep in sync. */
+
+/* Single full-width card bar: table quick-jump chips on the left, status/sort/refresh
+   controls on the right, pulled up close to the top of the page. One background/border for the
+   whole row (matches .pos__tablebar in Pos.razor.css) rather than two separate boxes, since the
+   toolbar controls now live inside it. The navbar lives at the bottom of the screen, so this
+   only needs to stick to the viewport's own top edge, not offset below a top navbar. */
 .orders-quicknav {
+    position: sticky;
+    top: 0;
+    z-index: 30;
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    flex-wrap: nowrap;
-    gap: 1rem;
-    /* Cancels .shell__content's own 1.4rem top padding (see MainLayout.razor.css) so this bar
-       sits flush against the page's top edge instead of floating below a visible gap — same
-       trick as .orders-quicknav in Orders.razor.css. */
+    flex-direction: column;
+    gap: .35rem;
     margin-top: -1.35rem;
-    margin-bottom: .4rem;
-    padding: .35rem .6rem;
+    margin-bottom: .25rem;
+    padding: .35rem .5rem;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     box-shadow: var(--shadow-sm);
 }
-@media (max-width: 640px) {
-    .orders-quicknav { flex-wrap: wrap; }
-}
 
-/* While the filter controls are open, the toolbar alone takes the first line and the table
-   chips drop to a second line below it, instead of squeezing into whatever space is left. */
-.orders-quicknav--filters-open { flex-wrap: wrap; justify-content: flex-end; }
-.orders-quicknav--filters-open .kds__head { order: 1; }
-/* Forces the chips onto exactly one row (scrolling sideways if there are too many) instead
-   of the base rule's up-to-2-rows wrap — otherwise, with the filters row above it, that 2nd
-   chip row reads as a whole extra ("3rd") line of the bar. */
-.orders-quicknav--filters-open .orders-quicknav__chips {
-    order: 2;
-    flex-basis: 100%;
+/* Chips on the left, gear/refresh/expand buttons on the right — the filters row (status/sort/
+   zone/search) renders as its own full-width row below this one instead of squeezing into it,
+   so opening filters never forces this row to overflow sideways and clip the order-card grid
+   underneath. */
+.orders-quicknav__row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
     flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    max-height: none;
+    gap: 1rem;
 }
 
-/* ---- Quick-jump strip: one small chip per ticket on screen, straight to it ---- */
-/* Capped to a couple of rows — matching the map's height (calc(100vh-160px)) made this take up
-   nearly the whole screen above the ticket board, which was way too tall for what's just a
-   row of small jump-chips. overflow-y:auto scrolls instead of growing further if there are
-   enough active tables to exceed that. */
+@media (max-width: 640px) {
+    .orders-quicknav__row { flex-wrap: wrap; }
+}
+
+/* ---- Filters row: status/sort/zone dropdowns + table search, revealed by the gear button ---- */
+.orders-quicknav__filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .4rem;
+}
+
+.toolbar { margin: 0; flex-wrap: nowrap; flex-shrink: 0; }
+.toolbar .select, .toolbar .btn, .toolbar .input { height: 1.85rem; font-size: .74rem; padding: 0 .5rem; box-sizing: border-box; }
+/* Keeps room for the custom dropdown arrow (app.css's .select) instead of letting the
+   compact toolbar padding above crop it against the text. */
+.toolbar .select { padding-right: 1.8rem; }
+
+/* Realistic "physical" button, built entirely from shadows rather than a flat colored
+   border-bottom (which read as a harsh drawn line, not a real edge). At rest: a soft ambient
+   shadow lifts it off the surface and a thin dark shadow hugging the bottom edge (blurred, not
+   a hard line) gives it rounded thickness, with a glossy top highlight. On press: the ambient
+   lift disappears, an inset shadow carves the surface inward, and the button drops 2px — so it
+   visibly sinks into the surface instead of just swapping color (matches
+   .order-card__actions .btn in OrderCard.razor.css). No blue/primary fill, even for the
+   toggled-on Filters gear or "show all tables" chevron — "on" state reads via the icon's own
+   color, not the button fill. */
+.toolbar .btn,
+.toolbar .btn--primary,
+.toolbar .btn--ghost {
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--card) 98%, white 2%), var(--card-2));
+    border: 1px solid var(--border);
+    color: var(--text-soft);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .65) inset,
+        0 -5px 7px -5px color-mix(in srgb, var(--text) 25%, transparent) inset,
+        0 2px 5px rgba(0, 0, 0, .1);
+    transform: translateY(0);
+    transition: transform 110ms ease, background 110ms ease, box-shadow 110ms ease;
+}
+.toolbar .btn--primary { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+
+.toolbar .btn:hover,
+.toolbar .btn--primary:hover,
+.toolbar .btn--ghost:hover {
+    background: linear-gradient(to bottom, var(--card), color-mix(in srgb, var(--card-2) 90%, black 6%));
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .65) inset,
+        0 -5px 7px -5px color-mix(in srgb, var(--text) 25%, transparent) inset,
+        0 3px 8px rgba(0, 0, 0, .14);
+}
+
+.toolbar .btn:active,
+.toolbar .btn--primary:active,
+.toolbar .btn--ghost:active {
+    background: color-mix(in srgb, var(--text) 20%, var(--card-2));
+    transform: translateY(2px);
+    box-shadow: inset 0 3px 6px rgba(0, 0, 0, .3), inset 0 1px 2px rgba(0, 0, 0, .16);
+    transition-duration: 40ms;
+}
+
+/* ---- Quick-jump strip: one small chip per open order, straight to its detail ---- */
+/* Wraps onto multiple lines, but is capped to two rows (scroll indicator via overflow:hidden)
+   until the "show all tables" toggle in .toolbar expands it — grows to fill the space left
+   of .toolbar (flex-shrink: 0), so it never overlaps it. */
 .orders-quicknav__chips {
     display: flex;
     flex-wrap: wrap;
-    align-items: flex-start;
-    align-content: flex-start;
-    gap: .4rem;
+    align-items: center;
+    gap: .3rem;
     flex: 1 1 auto;
     min-width: 0;
-    max-height: calc(2 * 2.15rem + .4rem);
-    overflow-y: auto;
+    max-height: calc(2 * 1.85rem + .3rem);
+    overflow: hidden;
+    transition: max-height var(--transition);
 }
+.orders-quicknav__chips--expanded { max-height: none; }
+/* Same box model as .tableChip in Pos.razor.css (flex, centered, same padding/min-width),
+   so the two screens' table chips read as the exact same-sized element. */
 .orders-quicknav__chip {
     flex: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 2.6rem;
-    padding: .4rem .7rem;
+    min-width: 2.3rem;
+    padding: .28rem .55rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--card);
@@ -74,9 +134,10 @@
 .orders-quicknav__chip:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
 .orders-quicknav__chip:active { transform: translateY(0); }
 .orders-quicknav__chip:focus, .orders-quicknav__chip:focus-visible { outline: none; }
-.orders-quicknav__chip-name { font-weight: 800; font-size: .85rem; }
+.orders-quicknav__chip-name { font-weight: 800; font-size: .78rem; }
 
-/* Status colouring mirrors Orders.razor.css's chips. */
+/* Status colouring mirrors .tableChip in Pos.razor.css: same border/hover shape, coloured
+   per order status using OrderCard's badge mapping (Sent/InPreparation/Ready). */
 .orders-quicknav__chip[data-status="sent"] { border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); }
 .orders-quicknav__chip[data-status="sent"] .orders-quicknav__chip-name { color: var(--primary); }
 
@@ -90,44 +151,37 @@
 }
 .orders-quicknav__chip[data-status="ready"] .orders-quicknav__chip-name { color: var(--success); }
 
-/* Same as .toolbar in Orders.razor.css: forces every filter control onto one row instead of
-   wrapping (the base .toolbar rule in app.css defaults to flex-wrap:wrap). */
-.kds__head { margin-bottom: 0; flex-wrap: nowrap; flex-shrink: 0; }
-
-/* Browsers give <input> and <select> slightly different intrinsic heights even with
-   identical padding/border/font — pin both explicitly so the search box and zone select
-   read as the exact same size (same fix as .toolbar .input/.select in Orders.razor.css). */
-.kds__head .input, .kds__head .select {
-    height: 1.7rem;
-    padding: 0 .45rem;
-    font-size: .72rem;
-    box-sizing: border-box;
+/* ---- Status/sort/zone filters: custom dropdowns instead of native <select> ----
+   A native select's closed control can be restyled, but its open options popup is drawn by the
+   OS/browser and barely themeable — it can end up looking nothing like the rest of the app (or
+   even the wrong light/dark palette). Built from the same tokens (--card/--border/--shadow-lg)
+   as .resv-status__menu in Tables.razor.css, so it reads as one design system and follows
+   light/dark automatically via those variables — no separate theme-detection needed. */
+.orders-dd { position: relative; flex: none; }
+.orders-dd__trigger {
+    display: flex; align-items: center; justify-content: space-between; gap: .4rem;
+    width: 100%; height: 1.85rem; min-width: 100px; max-width: 125px;
+    padding: 0 .4rem;
+    font: inherit; font-size: .68rem; color: var(--text);
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color var(--transition), box-shadow var(--transition);
 }
-/* Keeps room for the custom dropdown arrow (app.css's .select) instead of letting the
-   compact padding above crop it against the text. */
-.kds__head .select { padding-right: 1.6rem; background-size: 14px; }
+.orders-dd__trigger:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); box-shadow: var(--shadow-sm); }
+.orders-dd__trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.orders-dd__trigger .lucide { flex: none; opacity: .55; }
 
-/* Status/sort/zone filters: fully custom dropdowns (button + absolutely-positioned option
-   list) instead of native <select>s, since the browser's own open-list chrome (system font,
-   square corners, hard highlight colour) can't be restyled — matches the same pattern used
-   for the reservation status menu (.resv-status__menu in Tables.razor.css). The closed
-   trigger still borrows .select's look (border, chevron, sizing) so all three read
-   identically as a group. */
-.dd { position: relative; }
-/* Smaller than the other compact toolbar text (.kds__head .select's .72rem) because the
-   longest label here ("Todos los estados") otherwise wraps to 2 lines and gets clipped
-   inside the fixed-width trigger; the nowrap+ellipsis is just a safety net beyond that. */
-.dd__trigger { text-align: left; width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kds__head .dd__trigger { font-size: .66rem; }
-.dd__menu {
-    position: absolute;
-    top: calc(100% + .3rem);
-    left: 0;
-    min-width: 150px;
-    display: flex;
-    flex-direction: column;
-    gap: .15rem;
-    padding: .35rem;
+/* Invisible full-viewport layer behind the menu — a click anywhere outside it closes the menu,
+   same no-JS pattern as .phone-prefix__backdrop / .resv-policy__backdrop in Tables.razor. */
+.orders-dd__backdrop { position: fixed; inset: 0; z-index: 19; background: transparent; }
+.orders-dd__menu {
+    position: absolute; top: calc(100% + .3rem); left: 0;
+    min-width: 125px; max-height: 260px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: .1rem;
+    padding: .3rem;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -135,64 +189,30 @@
     z-index: 20;
     animation: pop var(--transition);
 }
-.dd__opt {
-    display: flex;
-    padding: .4rem .6rem;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--text);
-    font: inherit;
-    font-size: .8rem;
-    text-align: left;
+.orders-dd__opt {
+    display: block; width: 100%; text-align: left;
+    padding: .32rem .45rem;
+    border: none; border-radius: var(--radius-sm);
+    background: transparent; color: var(--text);
+    font: inherit; font-size: .68rem;
     cursor: pointer;
     transition: background var(--transition);
 }
-.dd__opt:hover { background: var(--card-2); }
-.dd__opt--on { box-shadow: inset 0 0 0 1px var(--border); font-weight: 700; }
+.orders-dd__opt:hover { background: var(--card-2); }
+.orders-dd__opt--on { background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary); font-weight: 700; }
 
-/* Realistic "physical" keycap button, same as .toolbar .btn in Orders.razor.css: a soft
-   ambient shadow lifts it at rest, and pressing it drops it 2px with an inset shadow — no
-   blue/primary fill, even for the toggled-on Filters gear. */
-.kds__head .btn,
-.kds__head .btn--primary,
-.kds__head .btn--ghost {
-    background: linear-gradient(to bottom, color-mix(in srgb, var(--card) 97%, white 3%), var(--card-2));
-    border: 1px solid var(--border);
-    color: var(--text-soft);
-    box-shadow:
-        0 1px 0 rgba(255, 255, 255, .6) inset,
-        0 -5px 7px -5px color-mix(in srgb, var(--text) 25%, transparent) inset,
-        0 2px 5px rgba(0, 0, 0, .1);
-    transform: translateY(0);
-    transition: transform 110ms ease, background 110ms ease, box-shadow 110ms ease;
-}
-.kds__head .btn--primary { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
-
-.kds__head .btn:hover,
-.kds__head .btn--primary:hover,
-.kds__head .btn--ghost:hover {
-    background: linear-gradient(to bottom, var(--card), color-mix(in srgb, var(--card-2) 90%, black 6%));
-    box-shadow:
-        0 1px 0 rgba(255, 255, 255, .6) inset,
-        0 -5px 7px -5px color-mix(in srgb, var(--text) 25%, transparent) inset,
-        0 3px 8px rgba(0, 0, 0, .14);
-}
-
-.kds__head .btn:active,
-.kds__head .btn--primary:active,
-.kds__head .btn--ghost:active {
-    background: color-mix(in srgb, var(--text) 20%, var(--card-2));
-    transform: translateY(2px);
-    box-shadow: inset 0 3px 6px rgba(0, 0, 0, .3), inset 0 1px 2px rgba(0, 0, 0, .16);
-    transition-duration: 40ms;
-}
+.orders-filters__search { width: 110px; flex: none; height: 1.85rem; font-size: .62rem; padding: 0 .45rem; box-sizing: border-box; }
 
 .kds {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
     gap: .6rem;
     align-items: start;
+}
+/* Fixed tickets-per-row picked from the filters' "per row" dropdown — like .orders on /orders,
+   only from 900px up so phones keep the auto-fill layout. */
+@media (min-width: 900px) {
+    .kds--fixed-cols { grid-template-columns: repeat(var(--kds-cols), minmax(0, 1fr)); }
 }
 
 /* Everything ticket/kitem-specific (.ticket, .kitem, etc.) lives in KitchenTicket.razor.css now —

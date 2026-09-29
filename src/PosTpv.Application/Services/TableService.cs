@@ -46,6 +46,7 @@ public class TableService : ITableService
         var activeOrders = await _uow.Repository<Order>().QueryNoTracking()
             .Where(o => ActiveStatuses.Contains(o.Status))
             .Include(o => o.Items).ThenInclude(i => i.Extras)
+            .AsSplitQuery()
             .ToListAsync(ct);
 
         var byTable = activeOrders.GroupBy(o => o.TableId).ToDictionary(g => g.Key, g => g.First());

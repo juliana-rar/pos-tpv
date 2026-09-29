@@ -638,7 +638,7 @@ else if (_tab == "estadisticas")
     private List<PurchaseDto> _purchases = new();
     private List<StockItemDto> _stock = new();
     private List<StockMovementDto> _stockMovements = new();
-    private List<ProductDto> _products = new();
+    private List<ProductLookupDto> _products = new();
     private string _stockSearch = "";
     private int _stockCategoryFilter;
     private bool _stockCategoryDropdownOpen;
@@ -888,7 +888,7 @@ else if (_tab == "estadisticas")
     protected override async Task OnInitializedAsync()
     {
         _suppliers = await SupplierService.GetAllAsync();
-        _products = await ProductService.GetAllAsync();
+        _products = await ProductService.GetLookupAsync();
 
         // Only open the real-time channel during the interactive render (not prerender).
         if (!RendererInfo.IsInteractive) return;
@@ -907,6 +907,9 @@ else if (_tab == "estadisticas")
             await InvokeAsync(StateHasChanged);
         });
 
+        // Paint the loaded data now rather than after the hub handshake below, which would
+        // otherwise hold back this page's first populated render.
+        StateHasChanged();
         await _suppliersHub.StartAsync();
     }
 

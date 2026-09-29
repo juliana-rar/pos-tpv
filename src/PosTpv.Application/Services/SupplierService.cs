@@ -32,12 +32,12 @@ public class SupplierService : ISupplierService
 
     public async Task<List<SupplierDto>> GetAllAsync(CancellationToken ct = default)
     {
-        var list = await _uow.Repository<Supplier>().QueryNoTracking()
-            .Include(s => s.Documents)
-            .Include(s => s.Purchases)
+        // Counts are computed in SQL instead of loading every document/purchase just to count them.
+        return await _uow.Repository<Supplier>().QueryNoTracking()
             .OrderBy(s => s.Name)
+            .Select(s => new SupplierDto(s.Id, s.Name, s.ContactName, s.Phone, s.Email, s.TaxId,
+                s.Address, s.Notes, s.IsActive, s.Documents.Count, s.Purchases.Count))
             .ToListAsync(ct);
-        return _mapper.Map<List<SupplierDto>>(list);
     }
 
     public async Task<SupplierFormDto?> GetForEditAsync(int id, CancellationToken ct = default)

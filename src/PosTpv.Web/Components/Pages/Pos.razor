@@ -434,6 +434,9 @@
             }
         });
 
+        // Paint the loaded data now rather than after the hub handshake below, which would
+        // otherwise hold back this page's first populated render.
+        StateHasChanged();
         await _hub.StartAsync();
 
         // Keyboard shortcuts (see the ? overlay).

@@ -213,6 +213,9 @@
         _hub.On<int>(KitchenHub.FirstCoursesServed, RefreshOrder);
         _hub.On<int>(KitchenHub.SecondCoursesServed, RefreshOrder);
         _hub.On<int>(KitchenHub.DessertCoursesServed, RefreshOrder);
+        // Paint the loaded data now rather than after the hub handshake below, which would
+        // otherwise hold back this page's first populated render.
+        StateHasChanged();
         await _hub.StartAsync();
     }
 

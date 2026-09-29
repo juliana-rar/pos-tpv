@@ -1,0 +1,267 @@
+@* Everything drawn inside the /tables floor canvas: zone boxes, tables (with their chairs), joined-
+   group badges and decor. Split out of Tables.razor so the rest of that page (toolbar, menus,
+   reservations sidebar, modals) can re-render on every click without re-diffing the whole floor —
+   see ShouldRender below. Shares Tables.razor.css's CSS scope (CssScope in PosTpv.Web.csproj), so
+   every existing floor rule keeps matching this markup unchanged. *@
+@using static PosTpv.Web.Components.Shared.FloorPlanHelpers
+@inject AppSettingsCache Branding
+
+@{
+    var groups = FloorGroupIndex.Build(AllTables);
+}
+@foreach (var z in Zones)
+{
+    <div @key="(0, z.Id, LayoutEpoch)" class="floor-zone @(!Editing && ZoneFilter == z.Name ? "floor-zone--on" : "") @(Editing && ZoneEditActive ? "floor-zone--btns-visible" : "") @(z.Color is not null && IsImageColor(z.Color) ? "floor-zone--img" : "")"
+         data-id="@z.Id"
+         data-x="@N(z.PositionX)" data-y="@N(z.PositionY)"
+         data-w="@N(z.Width)" data-h="@N(z.Height)" data-rot="0"
+         data-locked="false"
+         style="@ZoneStyle(z)"
+         title="@z.Name">
+        <span class="floor-zone__name">@z.Name</span>
+        @if (Editing)
+        {
+            @if (ZoneEditActive)
+            {
+                @* Rename/delete need a Blazor-rendered Modal (rename) or a live list
+                   update (delete) to actually show up — impossible while editing has
+                   frozen rendering for JS to own the DOM (see Tables.razor's ShouldRender/_suppressRender)
+                   — so both handlers step out of edit mode first (Save for rename,
+                   so a drag already in progress isn't silently thrown away; Cancel for
+                   delete, since the zone about to be removed has nothing worth keeping)
+                   before doing anything Blazor needs to re-render for. floorplan.js's
+                   onDown also has to ignore pointerdown on these two, or it arms a drag
+                   on the zone underneath before the click ever reaches these handlers. *@
+                <button class="floor-zone__rename" type="button" title="@Loc.T("Rename")" @onclick="() => OnEditZoneInLayout.InvokeAsync(z)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="12" /></button>
+            }
+            <button class="floor-zone__delete" type="button" title="@Loc.T("Remove")" @onclick="() => OnDeleteZoneInLayout.InvokeAsync(z)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
+            <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
+        }
+        else if (ZoneMenuOpen || ZoneFilter == z.Name)
+        {
+            @* Shown while the "Zones" toolbar button's own edit mode is on (see
+               ToggleZoneMenu) — otherwise these sat on every zone box all the time, so
+               modifying a zone only ever took clicking directly on it, never the button —
+               or, once a chip has narrowed the map down to that one zone (ZoneFilter),
+               on that single remaining zone box even after the dropdown itself has
+               closed, since it's now the only thing left to act on. *@
+            <button class="floor-zone__rename" type="button" title="@Loc.T("Rename")" @onclick="() => OnRenameZone.InvokeAsync(z)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="12" /></button>
+            <button class="floor-zone__delete" type="button" title="@Loc.T("Remove")" @onclick="() => OnRemoveZone.InvokeAsync(z.Id)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
+        }
+    </div>
+}
+@foreach (var t in Tables)
+{
+    ResByTable.TryGetValue(t.Id, out var rv);
+    <div @key="(1, t.Id, LayoutEpoch)" class="@TableClass(t, rv)"
+         data-id="@t.Id"
+         data-x="@N(t.PositionX)" data-y="@N(t.PositionY)"
+         data-w="@N(t.Width)" data-h="@N(t.Height)" data-rot="@N(t.Rotation)"
+         data-locked="@(t.IsLocked ? "true" : "false")"
+         data-shape="@((int)t.Shape)"
+         data-group="@(t.GroupId?.ToString() ?? "")"
+         data-seam="@groups.SeamAttr(t)"
+         style="@TableStyle(t)"
+         @onclick="() => OnTableClick.InvokeAsync(t)"
+         @oncontextmenu:preventDefault="true"
+         title="@(t.GroupId is not null ? (t.GroupName ?? t.Name) : t.Name)">
+        @if (!Editing)
+        {
+            var (hideLeft, hideRight) = groups.Seams(t);
+            @foreach (var chairStyle in ChairStyles(t, hideLeft, hideRight))
+            {
+                <span class="tbl__chair @(t.Shape == TableShape.BarTable ? "tbl__chair--stool" : "")" style="@chairStyle"></span>
+            }
+        }
+        <div class="tbl__content">
+            @if (t.GroupId is null)
+            {
+                <span class="tbl__name">@t.Name</span>
+                <span class="tbl__seats">@t.Seats<LucideIcon Name="user" Size="12" /></span>
+                @if (rv is not null)
+                {
+                    <span class="tbl__total">@rv.CustomerName</span>
+                }
+            }
+        </div>
+        @* Grouped tables skip this entirely — see the .tbl__resv--group badge below,
+           rendered once per group and centred on the whole joined row instead of hanging
+           off whichever member happens to be the anchor. *@
+        @if (!Editing && rv is not null && t.GroupId is null)
+        {
+            <span class="tbl__resv" title="@rv.CustomerName"><LucideIcon Name="@(rv.Status == ReservationStatus.Seated ? "armchair" : PeriodIconFor(rv.Time))" Size="14" /> @rv.Time.ToString("HH:mm")</span>
+        }
+        @* Revealed by a first click on this same assigned table (see OnTableClick) instead of
+           showing on every reserved table all the time — a second click on the table itself
+           still opens its comanda as usual; this X only removes the table from the reservation. *@
+        @if (!Editing && rv is not null && SelectedAssignedTableId == t.Id)
+        {
+            <button type="button" class="tbl__unassign" title="@Loc.T("Remove from reservation")" @onclick="() => OnRemoveTableFromReservation.InvokeAsync(t)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
+        }
+        @if (Editing)
+        {
+            @if (t.GroupId is null)
+            {
+                @* Grouped members skip shape: JoinTablesAsync already forces every member
+                   to share one Rotation/IsLocked/Height, so editing it individually while
+                   joined doesn't fit the "reads as one table" model — and, concretely,
+                   .tbl__shape sits bottom-left on its own table while .tbl__handle--resize
+                   sits bottom-right on the one before it, so for two tables snapped
+                   edge-to-edge those two controls land almost exactly on top of each other
+                   at the shared seam. Grabbing one member's resize handle there could land
+                   on its neighbour's shape button instead, silently cycling that neighbour
+                   from square to round. *@
+                <button class="tbl__shape" type="button" title="@Loc.T("Change shape")">@ShapeIcon(t.Shape)</button>
+            }
+            @* One edit button per group (on its anchor member), not one per table — a
+               joined block reads and is edited as a single unit, so its pencil opens the
+               shared group name instead of each member's own name in turn. *@
+            @if (t.GroupId is null || groups.IsAnchor(t))
+            {
+                <button class="tbl__rename" type="button" title="@Loc.T("Edit table")" @onclick="() => OnEditTableInLayout.InvokeAsync(t)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="14" /></button>
+            }
+            <button class="tbl__delete" type="button" title="@Loc.T("Remove")" @onclick="() => OnDeleteTable.InvokeAsync(t)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="14" /></button>
+            <span class="tbl__handle tbl__handle--rotate" title="@Loc.T("Rotate")"></span>
+            <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
+        }
+    </div>
+}
+@* One badge per group, centered on the bounding box of its member tables — rather
+   than pinned to a single anchor table — so it sits right where they join once
+   dragged, and carries the group's own name now that no single member shows it. *@
+@foreach (var gid in Tables.Where(t => t.GroupId.HasValue).Select(t => t.GroupId!.Value).Distinct())
+{
+    var grv = groups.Reservation(gid, ResByTable);
+    <span @key="(2, gid, LayoutEpoch)" class="tbl__group" data-group="@gid" style="@GroupCenterStyle(gid) --grp:@GroupColor(gid)">
+        @if (grv is not null)
+        {
+            <span class="tbl__total">@grv.CustomerName</span>
+        }
+        <span class="tbl__group-name">@groups.DisplayName(gid)</span>
+        <span class="tbl__group-seats"><LucideIcon Name="link" Size="15" /> @groups.Seats(gid)<LucideIcon Name="user" Size="14" /></span>
+    </span>
+    @if (!Editing && grv is not null)
+    {
+        <span @key="(3, gid, LayoutEpoch)" class="tbl__resv tbl__resv--group" data-group="@gid" style="@GroupBottomCenterStyle(gid)" title="@grv.CustomerName"><LucideIcon Name="@(grv.Status == ReservationStatus.Seated ? "armchair" : PeriodIconFor(grv.Time))" Size="14" /> @grv.Time.ToString("HH:mm")</span>
+    }
+}
+@foreach (var d in Decor)
+{
+    <div @key="(4, d.Id, LayoutEpoch)" class="decor decor--@DecorSlug(d.Type)"
+         data-id="@d.Id"
+         data-x="@N(d.PositionX)" data-y="@N(d.PositionY)"
+         data-w="@N(d.Width)" data-h="@N(d.Height)" data-rot="@N(d.Rotation)"
+         data-locked="@(d.IsLocked ? "true" : "false")"
+         style="@DecorStyle(d)"
+         title="@Loc.T(DecorLabel(d.Type))">
+        @if (Editing)
+        {
+            <button class="tbl__lock" type="button" title="@Loc.T("Lock / unlock")"><LucideIcon Name="@(d.IsLocked ? "lock" : "lock-open")" Size="14" /></button>
+            <button class="decor__delete" type="button" title="@Loc.T("Remove")" @onclick="() => OnDeleteDecor.InvokeAsync(d)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
+            <span class="tbl__handle tbl__handle--rotate" title="@Loc.T("Rotate")"></span>
+            <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
+        }
+    </div>
+}
+@if (!Loading)
+{
+    if (AllTables.Count == 0) { <p class="empty">@Loc.T("No tables yet. Create one to start.")</p> }
+    else if (Tables.Count == 0) { <p class="empty">@Loc.T("No tables in this zone.")</p> }
+}
+
+@code {
+    /// <summary>Every table (joined-group seams/anchors/seat counts need all members, even filtered-out ones).</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<TableDto> AllTables { get; set; } = [];
+    /// <summary>Tables to draw (after the zone filter).</summary>
+    [Parameter, EditorRequired] public List<TableDto> Tables { get; set; } = [];
+    [Parameter, EditorRequired] public List<FloorZoneDto> Zones { get; set; } = [];
+    [Parameter, EditorRequired] public List<FloorDecorDto> Decor { get; set; } = [];
+    [Parameter, EditorRequired] public Dictionary<int, ReservationDto> ResByTable { get; set; } = [];
+
+    [Parameter] public bool Editing { get; set; }
+    [Parameter] public bool ZoneEditActive { get; set; }
+    [Parameter] public bool ZoneMenuOpen { get; set; }
+    [Parameter] public string? ZoneFilter { get; set; }
+    [Parameter] public bool Selecting { get; set; }
+    [Parameter] public IReadOnlySet<int> Selection { get; set; } = new HashSet<int>();
+    [Parameter] public int? SelectedAssignedTableId { get; set; }
+    /// <summary>True until the page's first data load finishes — suppresses the empty-state messages.</summary>
+    [Parameter] public bool Loading { get; set; }
+
+    /// <summary>
+    /// Part of every element's @key (first item: which loop it belongs to, since all loops share
+    /// one parent). Bumped when a layout edit is cancelled: floorplan.js moved the elements
+    /// directly in the DOM, and the reloaded positions equal what Blazor last rendered, so a normal
+    /// diff would leave them where they were dragged — a new epoch recreates them instead.
+    /// </summary>
+    [Parameter] public int LayoutEpoch { get; set; }
+
+    /// <summary>
+    /// Snapshot of every input this map depends on (see FloorRenderKey). The parent rebuilds all
+    /// the collections above on each of its renders, so they can't be compared directly — this key
+    /// is what tells a real change apart from an unrelated click elsewhere on the page.
+    /// </summary>
+    [Parameter, EditorRequired] public FloorRenderKey RenderKey { get; set; }
+
+    [Parameter] public EventCallback<TableDto> OnTableClick { get; set; }
+    [Parameter] public EventCallback<TableDto> OnRemoveTableFromReservation { get; set; }
+    [Parameter] public EventCallback<TableDto> OnEditTableInLayout { get; set; }
+    [Parameter] public EventCallback<TableDto> OnDeleteTable { get; set; }
+    [Parameter] public EventCallback<FloorZoneDto> OnEditZoneInLayout { get; set; }
+    [Parameter] public EventCallback<FloorZoneDto> OnDeleteZoneInLayout { get; set; }
+    [Parameter] public EventCallback<FloorZoneDto> OnRenameZone { get; set; }
+    [Parameter] public EventCallback<int> OnRemoveZone { get; set; }
+    [Parameter] public EventCallback<FloorDecorDto> OnDeleteDecor { get; set; }
+
+    private FloorRenderKey? _renderedKey;
+
+    // Skip the whole floor diff unless something it draws actually changed. This also keeps the
+    // map frozen while floorplan.js owns the DOM in edit mode: the parent stops rendering then
+    // (_suppressRender), so the key can't change until Save/Cancel hands control back.
+    protected override bool ShouldRender() => _renderedKey is null || !_renderedKey.Value.Equals(RenderKey);
+
+    protected override void OnAfterRender(bool firstRender) => _renderedKey = RenderKey;
+
+    private string TableClass(TableDto t, ReservationDto? rv)
+    {
+        var status = EffectiveTableStatus(t, rv);
+        var c = $"tbl tbl--{t.Shape.ToString().ToLower()} tbl--{status.ToString().ToLower()}";
+        if (t.Color is not null) c += IsImageColor(t.Color) ? " tbl--colored-img" : " tbl--colored";
+        if (t.IsLocked) c += " tbl--locked";
+        if (t.GroupId is not null) c += " tbl--grouped";
+        if (Selecting && Selection.Contains(t.Id)) c += " tbl--selected";
+        return c;
+    }
+
+    private string PeriodIconFor(TimeOnly time) => PeriodIcon(Branding.Current.GetPeriod(time));
+
+    // True centre of the group's bounding box, both axes — kept centred on the table itself
+    // (like any ungrouped table's own name) rather than floating above it, so it reads the same
+    // whether the group is freshly rendered or mid-drag. floorplan.js's own live badge position
+    // during a drag (see onMove) uses this exact same formula, so the label doesn't visibly jump
+    // the instant the drag ends and Blazor's render takes back over.
+    private string GroupCenterStyle(int gid)
+    {
+        var members = Tables.Where(t => t.GroupId == gid).ToList();
+        if (members.Count == 0) return "";
+        var left = members.Min(t => t.PositionX);
+        var right = members.Max(t => t.PositionX + t.Width);
+        var top = members.Min(t => t.PositionY);
+        var bottom = members.Max(t => t.PositionY + t.Height);
+        return $"left:{N((left + right) / 2)}px; top:{N((top + bottom) / 2)}px;";
+    }
+
+    // Bottom-centre of the group's bounding box — where the joined row's one shared
+    // reservation-time badge hangs (see .tbl__resv--group), centred under the whole merged span
+    // instead of just the anchor member's own narrower box. floorplan.js's onMove uses this same
+    // formula live during a drag, for the same reason GroupCenterStyle documents above.
+    private string GroupBottomCenterStyle(int gid)
+    {
+        var members = Tables.Where(t => t.GroupId == gid).ToList();
+        if (members.Count == 0) return "";
+        var left = members.Min(t => t.PositionX);
+        var right = members.Max(t => t.PositionX + t.Width);
+        var bottom = members.Max(t => t.PositionY + t.Height);
+        return $"left:{N((left + right) / 2)}px; top:{N(bottom)}px;";
+    }
+}

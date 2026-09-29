@@ -10,6 +10,9 @@ namespace PosTpv.Application.Services;
 public interface IProductService
 {
     Task<List<ProductDto>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>Id/name/category of every product, for pickers that don't need images, extras or allergens.</summary>
+    Task<List<ProductLookupDto>> GetLookupAsync(CancellationToken ct = default);
     Task<List<ProductDto>> GetByCategoryAsync(int categoryId, bool onlyAvailable = false, bool includeHidden = false, CancellationToken ct = default);
     Task<List<ExtraDto>> GetExtrasAsync(int productId, CancellationToken ct = default);
     Task<ProductFormDto?> GetForEditAsync(int id, CancellationToken ct = default);
@@ -50,6 +53,16 @@ public class ProductService : IProductService
             .ToListAsync(ct);
         await ApplyCategoryExtrasAsync(list, ct);
         return _mapper.Map<List<ProductDto>>(list);
+    }
+
+    public async Task<List<ProductLookupDto>> GetLookupAsync(CancellationToken ct = default)
+    {
+        // Plain projection: skips the Extras/Allergens includes (a cartesian join that also drags
+        // every row's image column along) that GetAllAsync needs for the full ProductDto.
+        return await _uow.Repository<Product>().QueryNoTracking()
+            .OrderBy(p => p.Category.DisplayOrder).ThenBy(p => p.DisplayOrder).ThenBy(p => p.Name)
+            .Select(p => new ProductLookupDto(p.Id, p.Name, p.CategoryId, p.Category.Name))
+            .ToListAsync(ct);
     }
 
     public async Task<List<ProductDto>> GetByCategoryAsync(int categoryId, bool onlyAvailable = false, bool includeHidden = false, CancellationToken ct = default)

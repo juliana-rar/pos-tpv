@@ -32,6 +32,8 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
         services.AddScoped<IDbSeeder, DbSeeder>();
+        services.AddScoped<DemoContentSeeder>();
+        services.AddScoped<ImageUrlExternalizer>();
         services.AddSingleton<IReportExporter, PosTpv.Infrastructure.Reporting.ReportExporter>();
 
         // Local Ollama vision model, used to read supplier delivery notes (albaranes) from a

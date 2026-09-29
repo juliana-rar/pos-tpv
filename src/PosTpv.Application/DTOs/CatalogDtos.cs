@@ -68,6 +68,9 @@ public class CategoryCommentDto
     public int DisplayOrder { get; set; }
 }
 
+/// <summary>Minimal product row for pickers/filters (see IProductService.GetLookupAsync).</summary>
+public record ProductLookupDto(int Id, string Name, int CategoryId, string CategoryName);
+
 public record ProductDto(
     int Id, string Name, string? Description, decimal Price, decimal VatRate,
     string Color, string? ImageUrl, int DisplayOrder, bool IsVisible, bool IsAvailable,

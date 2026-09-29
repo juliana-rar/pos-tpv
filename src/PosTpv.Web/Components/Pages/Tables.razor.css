@@ -548,7 +548,7 @@
         linear-gradient(90deg, var(--border) 1px, transparent 1px);
 }
 .floor-tex-swatch--wood {
-    background-color: #8a7355;
+    background-color: #b39574;
     background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, .18) 0 2px, transparent 2px 6px);
 }
 .floor-tex-swatch--tile {
@@ -589,23 +589,22 @@
 }
 .floor-zoom-dock > .zoom-group {
     border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-    background: color-mix(in srgb, var(--card) 78%, transparent);
-    backdrop-filter: blur(14px) saturate(1.4);
-    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    /* Near-opaque instead of a frosted-glass backdrop-filter blur: these float over the scrolling
+       map, and re-blurring everything underneath on every scroll frame made scrolling stutter. */
+    background: color-mix(in srgb, var(--card) 94%, transparent);
     box-shadow: 0 10px 28px -10px rgba(0, 0, 0, .3), 0 1px 2px rgba(0, 0, 0, .08);
 }
-/* Zone filter as a floating segmented control (not tucked behind the Filters toggle). A
-   translucent frosted-glass pill (backdrop-filter blur over the map itself) reads as more
-   modern than a flat opaque bar sitting on top of the floor texture, and matches the
-   "floating over content" style already used for .floor-hint--floating above. */
+/* Zone filter as a floating segmented control (not tucked behind the Filters toggle): a pill
+   floating over the map, matching the "floating over content" style already used for
+   .floor-hint--floating above. */
 .floor-zoom-dock > .zone-filter {
     margin: 0;
     padding: 4px;
     gap: .15rem;
     border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-    background: color-mix(in srgb, var(--card) 78%, transparent);
-    backdrop-filter: blur(14px) saturate(1.4);
-    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    /* Near-opaque instead of a frosted-glass backdrop-filter blur: these float over the scrolling
+       map, and re-blurring everything underneath on every scroll frame made scrolling stutter. */
+    background: color-mix(in srgb, var(--card) 94%, transparent);
     box-shadow: 0 10px 28px -10px rgba(0, 0, 0, .3), 0 1px 2px rgba(0, 0, 0, .08);
 }
 /* Flat pill options — same family as the base .tabs__opt (app.css) rather than the toolbar
@@ -696,6 +695,12 @@
     min-height: 0;
     overflow: auto;
     box-sizing: border-box;
+    /* The floor texture (.floor--tex-*) scrolls with the map instead of staying pinned to the
+       viewport. A background fixed to a scroll container can't move with the scrolled layer, so
+       the browser had to repaint the whole multi-gradient texture on every scroll frame; painted
+       once and moved along with the content, scrolling stays smooth. It also reads more like a
+       real floor under the tables. */
+    background-attachment: local;
 }
 
 /* Everything positioned on the map (tables, decor, group badges) lives in here instead of
@@ -724,9 +729,11 @@
     --zc: var(--zcolor, var(--primary));
     position: absolute;
     box-sizing: border-box;
-    border: 2px dashed color-mix(in srgb, var(--zc) 55%, var(--border));
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--zc) 6%, transparent);
+    /* Thin solid hairline and a faint wash rather than a heavy dashed outline: the zone frames
+       its area quietly, like a modern floor-plan tool, without competing with the tables. */
+    border: 1.5px solid color-mix(in srgb, var(--zc) 38%, transparent);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--zc) 5%, transparent);
     cursor: default;
     transition: background var(--transition), border-color var(--transition);
 }
@@ -737,14 +744,19 @@
 }
 .floor-zone__name {
     position: absolute;
-    top: .5rem; left: .65rem;
+    top: .55rem; left: .6rem;
     transform-origin: top left;
     transform: scale(var(--text-boost, 1));
-    font-size: .76rem;
+    /* Label as a small pill tag in the zone's colour, like a modern map legend chip. */
+    padding: .15rem .55rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--zc) 16%, var(--card));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--zc) 30%, transparent), 0 2px 6px -3px rgba(0, 0, 0, .35);
+    font-size: .66rem;
     font-weight: 800;
-    letter-spacing: .02em;
+    letter-spacing: .08em;
     text-transform: uppercase;
-    color: color-mix(in srgb, var(--zc) 70%, var(--text));
+    color: color-mix(in srgb, var(--zc) 75%, var(--text));
     pointer-events: none;
 }
 /* Uploaded-image zone accent (--zimg, set in ZoneStyle only when the colour value isn't a hex
@@ -757,7 +769,8 @@
 }
 .floor-zone--img .floor-zone__name {
     color: #fff;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, .7);
+    background: rgba(0, 0, 0, .45);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .25);
 }
 .floor--edit .floor-zone { cursor: move; touch-action: none; }
 
@@ -810,17 +823,19 @@
 }
 
 .floor--tex-wood {
-    background-color: #8a7355;
+    /* Light, wide-plank oak — the pale, low-contrast floor of a contemporary dining room — with
+       faint grain and hairline seams instead of dark, busy plank lines. */
+    background-color: #b39574;
     background-image:
         /* fine grain */
-        repeating-linear-gradient(90deg, rgba(255, 255, 255, .04) 0 1px, transparent 1px 3px),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 4px),
         /* alternating plank tone */
-        repeating-linear-gradient(90deg, rgba(255, 255, 255, .035) 0 55px, rgba(0, 0, 0, .04) 55px 110px),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, .04) 0 70px, rgba(0, 0, 0, .03) 70px 140px),
         /* plank seams (long edge) */
-        repeating-linear-gradient(90deg, rgba(0, 0, 0, .16) 0 2px, transparent 2px 110px),
-        /* plank end-joints, offset every other row for a brick-like lay */
-        repeating-linear-gradient(0deg, rgba(0, 0, 0, .1) 0 1px, transparent 1px 200px);
-    background-size: 3px 100%, 110px 100%, 110px 100%, 100% 200px;
+        repeating-linear-gradient(90deg, rgba(0, 0, 0, .1) 0 1.5px, transparent 1.5px 140px),
+        /* plank end-joints */
+        repeating-linear-gradient(0deg, rgba(0, 0, 0, .06) 0 1px, transparent 1px 260px);
+    background-size: 4px 100%, 140px 100%, 140px 100%, 100% 260px;
 }
 [data-theme="dark"] .floor--tex-wood { background-color: #574739; }
 
@@ -877,20 +892,15 @@
 }
 [data-theme="dark"] .floor--tex-terracotta { background-color: #6b4d3c; }
 
-/* A tabletop material rather than a flat colour swatch: a soft off-centre highlight (like
-   light falling on a lacquered/marble surface), a beveled inset rim, and a real drop shadow
-   lifting the table off the floor texture beneath it — reads as an actual piece of furniture
-   instead of a labelled box. */
+/* Modern matte tabletop: a near-flat surface with only a whisper of top-down light, a fine inner
+   edge line instead of a chunky bevel, and a soft, wide ambient shadow lifting it off the floor —
+   the clean look of current restaurant floor-plan software rather than glossy skeuomorphism. */
 .tbl {
     position: absolute;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: .1rem;
-    border: 1px solid color-mix(in srgb, black 20%, var(--border));
-    background:
-        radial-gradient(circle at 32% 26%,
-            color-mix(in srgb, white 30%, var(--card-2)) 0%,
-            var(--card-2) 48%,
-            color-mix(in srgb, black 10%, var(--card-2)) 100%);
+    border: 1px solid color-mix(in srgb, black 12%, var(--border));
+    background: linear-gradient(170deg, color-mix(in srgb, white 45%, var(--card)) 0%, var(--card) 55%, color-mix(in srgb, black 4%, var(--card)) 100%);
     cursor: pointer;
     user-select: none;
     /* Same as .productCard in Pos.razor.css: without this, a touch browser's own gesture
@@ -909,32 +919,35 @@
        seam (see .tbl--grouped[data-seam]) without touching its outer edges. --ring-color/--ring-gloss
        are overridden wholesale by .tbl--colored/.tbl--colored-img instead of redeclaring box-shadow
        there, so the same seam-hiding trick keeps working no matter which tabletop finish is active. */
-    --ring-color: color-mix(in srgb, black 7%, var(--card-2));
-    --ring-gloss: rgba(255, 255, 255, .4);
+    --ring-color: color-mix(in srgb, black 5%, var(--card));
+    --ring-gloss: rgba(255, 255, 255, .7);
     --ring-left: var(--ring-color);
     --ring-right: var(--ring-color);
     box-shadow:
-        inset 3px 0 0 0 var(--ring-left),
-        inset -3px 0 0 0 var(--ring-right),
-        inset 0 3px 0 0 var(--ring-color),
-        inset 0 -3px 0 0 var(--ring-color),
-        inset 0 2px 2px var(--ring-gloss),
-        0 1px 2px rgba(0, 0, 0, .12),
-        0 10px 14px -8px rgba(0, 0, 0, .35);
+        inset 1.5px 0 0 0 var(--ring-left),
+        inset -1.5px 0 0 0 var(--ring-right),
+        inset 0 1.5px 0 0 var(--ring-color),
+        inset 0 -1.5px 0 0 var(--ring-color),
+        inset 0 1px 0 var(--ring-gloss),
+        0 1px 2px rgba(0, 0, 0, .08),
+        0 14px 24px -14px rgba(0, 0, 0, .45);
     transition: box-shadow var(--transition), outline-color var(--transition), transform var(--transition);
 }
 .tbl:hover { transform: translateY(-1px); }
-.tbl--square { border-radius: 10px; }
-.tbl--rectangular { border-radius: 10px; }
+.tbl--square { border-radius: 14px; }
+.tbl--rectangular { border-radius: 14px; }
 .tbl--round { border-radius: 50%; }
 .tbl--oval { border-radius: 50%; }
+/* Bar table: a long, narrow bar top with slightly rounded ends; its stools sit along one side
+   only (see ChairStyles). */
+.tbl--bartable { border-radius: 8px; }
 
 /* Status reads as a coloured halo standing just off the table's own edge (same colours as the
    Free/Occupied/Reserved legend dots) instead of tinting the table's material itself, so the
    tabletop gradient above stays consistent across every state. --status-color also feeds the
    grouped-table ring below (.tbl--grouped::after), which can't use outline (no per-side control),
    so both a standalone table's outline and a joined member's ring always agree on colour. */
-.tbl--available { --status-color: color-mix(in srgb, var(--success) 55%, transparent); outline: 2px solid var(--status-color); outline-offset: 3px; }
+.tbl--available { --status-color: color-mix(in srgb, var(--success) 60%, transparent); outline: 1.5px solid var(--status-color); outline-offset: 3px; }
 .tbl--occupied { --status-color: var(--warning); outline: 2px solid var(--status-color); outline-offset: 3px; }
 .tbl--reserved { --status-color: var(--secondary); outline: 2px solid var(--status-color); outline-offset: 3px; }
 
@@ -949,8 +962,8 @@
     transform: rotate(calc(-1 * var(--rot, 0deg))) scale(var(--text-boost, 1));
 }
 
-.tbl__name { font-weight: 800; font-size: .76rem; color: var(--tfg, var(--text)); }
-.tbl__seats { font-size: .6rem; color: var(--tfg, var(--text-soft)); }
+.tbl__name { font-weight: 800; font-size: .76rem; letter-spacing: .02em; color: var(--tfg, var(--text)); }
+.tbl__seats { font-size: .6rem; font-weight: 600; color: var(--tfg, var(--text-soft)); opacity: .85; }
 /* Extra clearance from the reservation-time badge (.tbl__resv), which hangs off the bottom
    edge of the table box — without this the customer name crowds right up against it.
    --tfg (set inline in TableStyle only for dark custom accent colours) overrides the default
@@ -974,7 +987,7 @@
 .tbl__lock {
     position: absolute;
     top: -10px; left: -10px;
-    width: 24px; height: 24px;
+    width: 28px; height: 28px;
     padding: 0;
     display: grid; place-items: center;
     font-size: .8rem;
@@ -989,7 +1002,7 @@
 .tbl__shape {
     position: absolute;
     bottom: -10px; left: -10px;
-    width: 24px; height: 24px;
+    width: 28px; height: 28px;
     padding: 0;
     display: grid; place-items: center;
     font-size: .8rem; line-height: 1;
@@ -1008,7 +1021,7 @@
 .tbl__rename {
     position: absolute;
     top: -10px; left: -10px;
-    width: 24px; height: 24px;
+    width: 28px; height: 28px;
     padding: 0;
     display: grid; place-items: center;
     border: 1px solid var(--border);
@@ -1025,7 +1038,7 @@
 .tbl__delete {
     position: absolute;
     top: -10px; right: -10px;
-    width: 24px; height: 24px;
+    width: 28px; height: 28px;
     padding: 0;
     display: grid; place-items: center;
     border: 1px solid var(--border);
@@ -1044,7 +1057,7 @@
 .tbl__unassign {
     position: absolute;
     top: -10px; right: -10px;
-    width: 24px; height: 24px;
+    width: 28px; height: 28px;
     padding: 0;
     display: grid; place-items: center;
     border: 1px solid var(--danger);
@@ -1116,7 +1129,7 @@
     position: absolute;
     inset: -5px;
     border: 2px solid var(--status-color, transparent);
-    border-radius: 14px;
+    border-radius: 18px;
     pointer-events: none;
 }
 /* Drops the border/ring/status-ring on whichever side(s) butt up against a neighbour (data-seam,
@@ -1134,12 +1147,12 @@
     --ring-right: transparent;
 }
 /* The tabletop's own outer corners round off too (matching a standalone square/rectangular
-   table's 10px — see .tbl--square/.tbl--rectangular), not just the status ring above — a rounded
+   table's 14px — see .tbl--square/.tbl--rectangular), not just the status ring above — a rounded
    ring sitting outside a perfectly square tabletop corner read as mismatched/floating. Only the
    corners on the union's outer edge round; whichever corner(s) sit at a seam stay square (0, the
    .tbl--grouped default above) so two members still butt up flush with no visible gap. */
-.tbl--grouped[data-seam="left"] { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
-.tbl--grouped[data-seam="right"] { border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
+.tbl--grouped[data-seam="left"] { border-top-right-radius: 14px; border-bottom-right-radius: 14px; }
+.tbl--grouped[data-seam="right"] { border-top-left-radius: 14px; border-bottom-left-radius: 14px; }
 .tbl--grouped[data-seam="left"]::after, .tbl--grouped[data-seam="both"]::after {
     border-left-color: transparent;
     border-top-left-radius: 0;
@@ -1160,18 +1173,13 @@
     /* Restrained, near-matte falloff (a soft sheen, not a shiny highlight) — a glossy/toy-like
        gradient reads as playful; a subtle one reads as a real painted/lacquered surface in a
        professional colour instead of a bright plastic swatch. */
-    background:
-        radial-gradient(circle at 30% 24%,
-            color-mix(in srgb, white 22%, var(--tcolor)) 0%,
-            color-mix(in srgb, white 5%, var(--tcolor)) 32%,
-            var(--tcolor) 62%,
-            color-mix(in srgb, black 18%, var(--tcolor)) 100%);
+    background: linear-gradient(170deg, color-mix(in srgb, white 16%, var(--tcolor)) 0%, var(--tcolor) 55%, color-mix(in srgb, black 10%, var(--tcolor)) 100%);
     /* Inset bevel ring tinted to the table's own colour (darker shade) instead of the base .tbl's
        neutral grey ring, so the bevel reads as the edge of the same coloured material. Overrides
        the --ring-* custom properties .tbl's box-shadow is built from (see .tbl) rather than
        redeclaring box-shadow itself, so a joined+coloured table's seam-hiding still works. */
-    --ring-color: color-mix(in srgb, black 16%, var(--tcolor));
-    --ring-gloss: rgba(255, 255, 255, .2);
+    --ring-color: color-mix(in srgb, black 12%, var(--tcolor));
+    --ring-gloss: rgba(255, 255, 255, .22);
 }
 /* Same slot as .tbl--colored above but for an uploaded-image accent (--timg, set in TableStyle
    only when the colour value isn't a hex code) — the tabletop becomes the image itself, cover-
@@ -1188,50 +1196,48 @@
     --ring-color: rgba(0, 0, 0, .3);
     --ring-gloss: rgba(255, 255, 255, .12);
 }
-/* One per seat, ringed around the table's own edge (see ChairStyles in Tables.razor) so a
-   table with 6 seats visibly reads as bigger/busier than one with 2 — closer to a real floor
+/* One per seat, ringed around the table's own edge (see ChairStyles in FloorPlanHelpers.cs) so
+   a table with 6 seats visibly reads as bigger/busier than one with 2 — closer to a real floor
    plan than a plain box with a seat-count number. A real top-down chair drawing (seat + cushion
-   + backrest + four legs, as separate <rect> shapes) instead of CSS gradient/shadow tricks on a
-   single box — reads unambiguously as a chair at this size the way a hand-drawn floor-plan
-   symbol would, rather than a stylised square. Sits outside the table's own box (left/top can
-   fall outside 0–100%), so it must not be clipped and must stay a direct child of .tbl. */
-/* The seat's own centre (not the SVG viewBox's centre, which includes the backrest above it) is
-   what needs to land on the point ChairStyles computed and be the pivot for --ang, so both the
-   translate and transform-origin use the seat-centre fraction of the total height (17.5 of 28 =
-   62.5%) instead of the usual 50% — otherwise the chair would visibly drift off its spot, and
-   swing around the wrong point, as it rotates from one table edge to another. */
+   + backrest + four legs, drop shadow included) rather than a stylised square. Sits outside the
+   table's own box (left/top can fall outside 0–100%), so it must stay a direct child of .tbl.
+   Drawn as a static image (wwwroot/img/chair-*.svg), not inline SVG: the browser rasterises it
+   once and just stamps it ~300 times, which roughly halves the cost of painting a large floor
+   compared with ~300 vector chairs each carrying a CSS drop-shadow filter. The price is that the
+   colours are baked in per theme and per free/occupied state instead of following the theme
+   variables live — regenerate the four images if the palette changes. */
+/* The seat's own centre (not the image's centre, which includes the backrest above it and the
+   padding left for the legs and shadow) is what needs to land on the point ChairStyles computed
+   and be the pivot for --ang, so both the translate and transform-origin use the seat-centre
+   fraction of the image height (14.25 of 25.6 = 55.66%) instead of the usual 50% — otherwise the
+   chair would visibly drift off its spot, and swing around the wrong point, as it rotates from
+   one table edge to another. */
 .tbl__chair {
     position: absolute;
-    width: 14px; height: 19.6px;
-    transform-origin: 50% 62.5%;
-    transform: translate(-50%, -62.5%) rotate(var(--ang, 0deg));
-    filter: drop-shadow(0 1.5px 2px rgba(0, 0, 0, .28));
+    width: 20px; height: 25.6px;
+    transform-origin: 50% 55.66%;
+    transform: translate(-50%, -55.66%) rotate(var(--ang, 0deg));
+    background: url("/img/chair-light-free.svg") center / 100% 100% no-repeat;
     pointer-events: none;
-    overflow: visible;
 }
-.tbl__chair .chair-leg { fill: color-mix(in srgb, var(--text-soft) 55%, var(--border)); }
-.tbl__chair .chair-seat {
-    fill: color-mix(in srgb, white 12%, var(--card-2));
-    stroke: color-mix(in srgb, var(--border) 70%, var(--text-soft));
-    stroke-width: 0.8;
+/* Occupied tables (incl. a seated reservation, see EffectiveTableStatus) get the warm chair,
+   matching .tbl--occupied's own border colour, so a busy table visibly reads as full of people
+   at a glance — same chair drawing, just re-tinted. */
+.tbl--occupied > .tbl__chair { background-image: url("/img/chair-light-occupied.svg"); }
+[data-theme="dark"] .tbl__chair { background-image: url("/img/chair-dark-free.svg"); }
+[data-theme="dark"] .tbl--occupied > .tbl__chair { background-image: url("/img/chair-dark-occupied.svg"); }
+/* Bar stools (bar tables only): a round seat over its footrest ring, no backrest, so the image is
+   square and centred on the point ChairStyles computed. Selectors are one step more specific than
+   the chair ones above so they win in every theme/state combination. */
+.tbl > .tbl__chair--stool {
+    width: 28px; height: 28px;
+    transform-origin: 50% 50%;
+    transform: translate(-50%, -50%);
+    background-image: url("/img/stool-light-free.svg");
 }
-/* Recessed, upholstered cushion panel — warmer and more saturated than the seat's own frame, so
-   the two materials (frame vs. padded seat) read as distinct pieces of furniture. */
-.tbl__chair .chair-cushion { fill: color-mix(in srgb, var(--primary) 10%, var(--card-2)); }
-.tbl__chair .chair-backrest {
-    fill: color-mix(in srgb, black 6%, var(--card-2));
-    stroke: color-mix(in srgb, var(--border) 70%, var(--text-soft));
-    stroke-width: 0.8;
-}
-/* Occupied tables get every piece re-tinted to a warm tone matching .tbl--occupied's own border
-   colour instead of the neutral frame, so a busy table visibly reads as full of people at a
-   glance — same chair drawing, not swapped for a different (plainer) shape. */
-.tbl__chair--seated .chair-seat, .tbl__chair--seated .chair-backrest {
-    fill: color-mix(in srgb, var(--warning) 55%, var(--text));
-    stroke: color-mix(in srgb, var(--warning) 70%, var(--border));
-}
-.tbl__chair--seated .chair-cushion { fill: color-mix(in srgb, white 25%, var(--warning)); }
-.tbl__chair--seated .chair-leg { fill: color-mix(in srgb, var(--warning) 60%, var(--text)); }
+.tbl--occupied > .tbl__chair--stool { background-image: url("/img/stool-light-occupied.svg"); }
+[data-theme="dark"] .tbl > .tbl__chair--stool { background-image: url("/img/stool-dark-free.svg"); }
+[data-theme="dark"] .tbl--occupied > .tbl__chair--stool { background-image: url("/img/stool-dark-occupied.svg"); }
 /* Floats just above the group's top edge, horizontally centred on its midpoint (see
    GroupCenterStyle/left+top set inline) rather than pinned above one anchor table — a sibling
    of the .tbl elements, not nested inside one, so it reads as "where they join" instead of
@@ -1888,113 +1894,78 @@
 }
 .decor__delete:hover { color: var(--danger); border-color: var(--danger); }
 
-/* Plants — drawn as real plan-view foliage symbols (the same convention actual architectural/
-   interior-design floor plans use for a potted plant: a ring of pointed leaves fanning out from
-   a centre, with the pot rim and soil showing at the edges/gaps) instead of a flat gradient
-   blob, via an inline SVG data URI so no external asset is needed. Each leaf is its own <path>
-   with a slightly different length/curve and one of three green tones so the cluster reads as
-   individual foliage, not a single flat shape. filter:drop-shadow (not box-shadow) so the
-   contact shadow hugs the actual leaf silhouette instead of the element's square bounding box. */
+/* Plants — photoreal plan-view renderings (wwwroot/img/decor/*.svg), lit from the top-left like
+   the rest of the map: individually shaded leaves with midribs and veins, a soft self-shadow the
+   foliage casts onto its pot/soil, and a pot with rim, wall thickness and soil texture. Each
+   species reads differently from above — a glossy ficus in terracotta, an echeveria rosette in a
+   glazed pot, a golden pothos trailing out of a hanging basket (hanger cords meet at the hook),
+   a dense boxwood shrub, an olive tree over a concrete planter and an arching Boston fern.
+   Static files rather than data URIs so the browser caches and rasterises each one once.
+   filter:drop-shadow (not box-shadow) so the contact shadow hugs the leaf silhouette. */
 .decor--pottedplant, .decor--smallplant, .decor--hangingplant,
 .decor--bush, .decor--smalltree, .decor--fern {
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: contain;
+    background: center / contain no-repeat;
     filter: drop-shadow(0 5px 4px rgba(0, 0, 0, .38));
 }
-.decor--pottedplant {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='pot1' cx='0.35' cy='0.3' r='0.75'%3E%3Cstop offset='0' stop-color='%23c98f66'/%3E%3Cstop offset='1' stop-color='%23935f3f'/%3E%3C/radialGradient%3E%3CradialGradient id='lfA' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%233d7a4c'/%3E%3Cstop offset='1' stop-color='%231f4029'/%3E%3C/radialGradient%3E%3CradialGradient id='lfB' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2357a865'/%3E%3Cstop offset='1' stop-color='%232c6438'/%3E%3C/radialGradient%3E%3CradialGradient id='lfC' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2378c886'/%3E%3Cstop offset='1' stop-color='%233d7c4c'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='44' fill='url(%23pot1)'/%3E%3Ccircle cx='50' cy='50' r='37' fill='%232e1c12'/%3E%3Ccircle cx='43' cy='44' r='2' fill='%234a2d1d'/%3E%3Ccircle cx='59' cy='41' r='1.6' fill='%234a2d1d'/%3E%3Ccircle cx='40' cy='59' r='1.8' fill='%234a2d1d'/%3E%3Cg stroke='%2317331f' stroke-width='0.7' stroke-opacity='0.5'%3E%3Cpath d='M50 46 C66 43,80 45,93 50 C80 55,66 57,50 54 Z' fill='url(%23lfA)' transform='rotate(0 50 50)'/%3E%3Cpath d='M50 46 C65 43,78 45,89 50 C78 55,65 57,50 54 Z' fill='url(%23lfB)' transform='rotate(51 50 50)'/%3E%3Cpath d='M50 45 C67 42,82 44,96 50 C82 56,67 58,50 55 Z' fill='url(%23lfC)' transform='rotate(103 50 50)'/%3E%3Cpath d='M50 46 C65 43,78 45,90 50 C78 55,65 57,50 54 Z' fill='url(%23lfA)' transform='rotate(154 50 50)'/%3E%3Cpath d='M50 45 C66 42,80 44,94 50 C80 56,66 58,50 55 Z' fill='url(%23lfB)' transform='rotate(206 50 50)'/%3E%3Cpath d='M50 46 C64 43,77 45,88 50 C77 55,64 57,50 54 Z' fill='url(%23lfC)' transform='rotate(257 50 50)'/%3E%3Cpath d='M50 45 C66 42,79 44,91 50 C79 56,66 58,50 55 Z' fill='url(%23lfA)' transform='rotate(309 50 50)'/%3E%3C/g%3E%3C/svg%3E");
-}
-.decor--smallplant {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='pot1' cx='0.35' cy='0.3' r='0.75'%3E%3Cstop offset='0' stop-color='%23c98f66'/%3E%3Cstop offset='1' stop-color='%23935f3f'/%3E%3C/radialGradient%3E%3CradialGradient id='lfA' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%233d7a4c'/%3E%3Cstop offset='1' stop-color='%231f4029'/%3E%3C/radialGradient%3E%3CradialGradient id='lfB' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2357a865'/%3E%3Cstop offset='1' stop-color='%232c6438'/%3E%3C/radialGradient%3E%3CradialGradient id='lfC' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2378c886'/%3E%3Cstop offset='1' stop-color='%233d7c4c'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='40' fill='url(%23pot1)'/%3E%3Ccircle cx='50' cy='50' r='33' fill='%232e1c12'/%3E%3Ccircle cx='44' cy='45' r='1.7' fill='%234a2d1d'/%3E%3Ccircle cx='57' cy='42' r='1.4' fill='%234a2d1d'/%3E%3Cg stroke='%2317331f' stroke-width='0.7' stroke-opacity='0.5'%3E%3Cpath d='M50 45 C64 42,77 44,90 50 C77 56,64 58,50 55 Z' fill='url(%23lfB)' transform='rotate(15 50 50)'/%3E%3Cpath d='M50 45 C64 42,77 44,88 50 C77 56,64 58,50 55 Z' fill='url(%23lfC)' transform='rotate(105 50 50)'/%3E%3Cpath d='M50 45 C64 42,77 44,90 50 C77 56,64 58,50 55 Z' fill='url(%23lfA)' transform='rotate(200 50 50)'/%3E%3Cpath d='M50 45 C63 42,75 44,86 50 C75 56,63 58,50 55 Z' fill='url(%23lfB)' transform='rotate(290 50 50)'/%3E%3C/g%3E%3C/svg%3E");
-}
-/* Hanging plant — no pot (it's clipped to something above, see the CSS cord below): a small
-   basket near the top and leaves trailing outward/downward like a real pothos, instead of
-   radiating a full 360° the way a floor-standing plant's canopy would. */
-.decor--hangingplant {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='pot2' cx='0.35' cy='0.3' r='0.75'%3E%3Cstop offset='0' stop-color='%238a7259'/%3E%3Cstop offset='1' stop-color='%2354432f'/%3E%3C/radialGradient%3E%3CradialGradient id='lfA' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%233d7a4c'/%3E%3Cstop offset='1' stop-color='%231f4029'/%3E%3C/radialGradient%3E%3CradialGradient id='lfB' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2357a865'/%3E%3Cstop offset='1' stop-color='%232c6438'/%3E%3C/radialGradient%3E%3CradialGradient id='lfC' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2378c886'/%3E%3Cstop offset='1' stop-color='%233d7c4c'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='38' r='14' fill='url(%23pot2)'/%3E%3Cg stroke='%2317331f' stroke-width='0.6' stroke-opacity='0.5'%3E%3Cpath d='M50 34 C60 31,68 33,76 40 C68 45,60 46,50 42 Z' fill='url(%23lfB)' transform='rotate(40 50 38)'/%3E%3Cpath d='M50 34 C62 30,73 33,84 42 C73 48,62 49,50 44 Z' fill='url(%23lfC)' transform='rotate(95 50 38)'/%3E%3Cpath d='M50 34 C60 31,68 33,77 41 C68 46,60 47,50 43 Z' fill='url(%23lfA)' transform='rotate(150 50 38)'/%3E%3Cpath d='M50 34 C61 30,71 33,81 42 C71 47,61 48,50 44 Z' fill='url(%23lfB)' transform='rotate(205 50 38)'/%3E%3Cpath d='M50 34 C59 31,66 33,74 40 C66 45,59 46,50 42 Z' fill='url(%23lfC)' transform='rotate(260 50 38)'/%3E%3C/g%3E%3C/svg%3E");
-}
-.decor--hangingplant::after {
-    content: "";
-    position: absolute;
-    top: -12%; left: 50%;
-    width: 2px; height: 16%;
-    transform: translateX(-50%);
-    background: #6b5a44;
-}
+.decor--pottedplant { background-image: url("/img/decor/potted-plant.svg"); }
+.decor--smallplant { background-image: url("/img/decor/small-plant.svg"); }
+.decor--hangingplant { background-image: url("/img/decor/hanging-plant.svg"); filter: drop-shadow(0 9px 7px rgba(0, 0, 0, .32)); }
+.decor--bush { background-image: url("/img/decor/bush.svg"); }
+.decor--smalltree { background-image: url("/img/decor/small-tree.svg"); filter: drop-shadow(0 8px 6px rgba(0, 0, 0, .4)); }
+.decor--fern { background-image: url("/img/decor/fern.svg"); }
 
-/* Bush — a dense cluster of overlapping foliage blobs sitting directly on the ground (no pot,
-   no visible soil), the standard plan-view symbol for a shrub/hedge plant in landscape and
-   interior-design drawings. A radial gradient (light top-left, dark edge) on the four main
-   lobes gives them volume instead of flat colour discs, and a ring of small bump circles
-   around the rim breaks up the silhouette into individual leaf clumps instead of one smooth
-   blob outline — the single biggest legibility difference between "circle" and "shrub". */
-.decor--bush {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='bg1' cx='0.32' cy='0.28' r='0.85'%3E%3Cstop offset='0' stop-color='%236fbf7c'/%3E%3Cstop offset='0.55' stop-color='%233f8350'/%3E%3Cstop offset='1' stop-color='%23234a2c'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg stroke='%23173a20' stroke-width='0.5' stroke-opacity='0.35'%3E%3Ccircle cx='38' cy='42' r='27' fill='url(%23bg1)'/%3E%3Ccircle cx='64' cy='40' r='25' fill='url(%23bg1)'/%3E%3Ccircle cx='50' cy='64' r='26' fill='url(%23bg1)'/%3E%3Ccircle cx='50' cy='46' r='29' fill='url(%23bg1)'/%3E%3Ccircle cx='28' cy='35' r='7' fill='%235aa668'/%3E%3Ccircle cx='42' cy='23' r='6' fill='%235aa668'/%3E%3Ccircle cx='58' cy='21' r='6.5' fill='%236fbf7c'/%3E%3Ccircle cx='73' cy='31' r='7' fill='%233f8350'/%3E%3Ccircle cx='77' cy='50' r='6.5' fill='%232a5233'/%3E%3Ccircle cx='71' cy='69' r='7' fill='%233f8350'/%3E%3Ccircle cx='50' cy='79' r='6.5' fill='%232a5233'/%3E%3Ccircle cx='29' cy='68' r='6.5' fill='%235aa668'/%3E%3Ccircle cx='22' cy='49' r='6' fill='%233f8350'/%3E%3C/g%3E%3C/svg%3E");
-}
+/* ---- Architecture: walls, glazing and doors ----
+   Drawn like a professional architectural floor plan rather than as textured objects: walls
+   are solid charcoal "poché" with a fine diagonal hatch, glazing is a pale glass band framed in
+   that same wall colour, and doors are an opening in the wall with the leaf and its swing arc.
+   --wall is shared so every piece of the building shell reads as one material. */
+.decor { --wall: #3b4049; --wall-hatch: rgba(255, 255, 255, .07); }
+[data-theme="dark"] .decor { --wall: #14171c; --wall-hatch: rgba(255, 255, 255, .05); }
 
-/* Small tree — the same gradient/bump-cluster technique as the bush, but bigger and with a
-   small dark trunk cross-section showing dead-centre where the canopy thins out overhead. */
-.decor--smalltree {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='bg1' cx='0.32' cy='0.28' r='0.85'%3E%3Cstop offset='0' stop-color='%236fbf7c'/%3E%3Cstop offset='0.55' stop-color='%233f8350'/%3E%3Cstop offset='1' stop-color='%23234a2c'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg stroke='%23173a20' stroke-width='0.5' stroke-opacity='0.35'%3E%3Ccircle cx='50' cy='50' r='44' fill='url(%23bg1)'/%3E%3Ccircle cx='36' cy='38' r='30' fill='url(%23bg1)'/%3E%3Ccircle cx='66' cy='40' r='28' fill='url(%23bg1)'/%3E%3Ccircle cx='50' cy='66' r='27' fill='url(%23bg1)'/%3E%3Ccircle cx='24' cy='30' r='8' fill='%235aa668'/%3E%3Ccircle cx='42' cy='16' r='7' fill='%235aa668'/%3E%3Ccircle cx='62' cy='14' r='7.5' fill='%236fbf7c'/%3E%3Ccircle cx='80' cy='27' r='8' fill='%233f8350'/%3E%3Ccircle cx='85' cy='50' r='7.5' fill='%232a5233'/%3E%3Ccircle cx='77' cy='73' r='8' fill='%233f8350'/%3E%3Ccircle cx='50' cy='85' r='7.5' fill='%232a5233'/%3E%3Ccircle cx='22' cy='71' r='7.5' fill='%235aa668'/%3E%3Ccircle cx='14' cy='48' r='7' fill='%233f8350'/%3E%3C/g%3E%3Ccircle cx='50' cy='50' r='7' fill='%234a3521'/%3E%3C/svg%3E");
-}
-
-/* Fern — the potted-plant leaf-cluster technique again, but with twice as many thinner, more
-   tightly-packed fronds in cooler/deeper greens for a feathery look instead of a few broad
-   leaves. */
-.decor--fern {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='pot1' cx='0.35' cy='0.3' r='0.75'%3E%3Cstop offset='0' stop-color='%23c98f66'/%3E%3Cstop offset='1' stop-color='%23935f3f'/%3E%3C/radialGradient%3E%3CradialGradient id='fA' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%232d6b3c'/%3E%3Cstop offset='1' stop-color='%23123018'/%3E%3C/radialGradient%3E%3CradialGradient id='fB' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%233f8a4c'/%3E%3Cstop offset='1' stop-color='%231f4a2c'/%3E%3C/radialGradient%3E%3CradialGradient id='fC' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2354a862'/%3E%3Cstop offset='1' stop-color='%232c6438'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='38' fill='url(%23pot1)'/%3E%3Ccircle cx='50' cy='50' r='31' fill='%232e1c12'/%3E%3Cg stroke='%230f2814' stroke-width='0.5' stroke-opacity='0.5'%3E%3Cpath d='M50 48 C63 46,75 47,88 50 C75 53,63 54,50 52 Z' fill='url(%23fA)' transform='rotate(0 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,85 50 C73 53,62 54,50 52 Z' fill='url(%23fB)' transform='rotate(45 50 50)'/%3E%3Cpath d='M50 48 C63 46,75 47,89 50 C75 53,63 54,50 52 Z' fill='url(%23fC)' transform='rotate(90 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,84 50 C73 53,62 54,50 52 Z' fill='url(%23fA)' transform='rotate(135 50 50)'/%3E%3Cpath d='M50 48 C63 46,75 47,87 50 C75 53,63 54,50 52 Z' fill='url(%23fB)' transform='rotate(180 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,83 50 C73 53,62 54,50 52 Z' fill='url(%23fC)' transform='rotate(225 50 50)'/%3E%3Cpath d='M50 48 C63 46,75 47,86 50 C75 53,63 54,50 52 Z' fill='url(%23fA)' transform='rotate(270 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,82 50 C73 53,62 54,50 52 Z' fill='url(%23fB)' transform='rotate(315 50 50)'/%3E%3C/g%3E%3C/svg%3E");
-}
-
-/* Wall — a concrete-block course, not a flat gradient bar: a repeating vertical joint pattern
-   (blocks in a running-bond stagger, offset row to row) plus a horizontal mid-course line, on
-   top of the base gradient. The only decor type without rounded corners, so it still reads as a
-   fixed architectural line rather than a placed object. */
 .decor--wall {
-    border-radius: 2px;
-    background:
-        repeating-linear-gradient(to right,
-            transparent 0 31px, rgba(0, 0, 0, .16) 31px 32px),
-        repeating-linear-gradient(to right,
-            transparent 0 15px, rgba(0, 0, 0, .1) 15px 16px),
-        linear-gradient(to bottom,
-            rgba(255, 255, 255, .1) 0 1px, transparent 1px 50%,
-            rgba(0, 0, 0, .1) 50% calc(50% + 1px), transparent calc(50% + 1px) 100%),
-        linear-gradient(to bottom, #9d9d9f, #7d7d80);
-    background-position: 0 0, 16px 0, 0 0, 0 0;
-    border: 1px solid #5f5f62;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, .25),
-        inset 0 -2px 3px rgba(0, 0, 0, .3),
-        0 4px 8px -4px rgba(0, 0, 0, .4);
-}
-[data-theme="dark"] .decor--wall {
-    background:
-        repeating-linear-gradient(to right,
-            transparent 0 31px, rgba(0, 0, 0, .35) 31px 32px),
-        repeating-linear-gradient(to right,
-            transparent 0 15px, rgba(0, 0, 0, .22) 15px 16px),
-        linear-gradient(to bottom,
-            rgba(255, 255, 255, .05) 0 1px, transparent 1px 50%,
-            rgba(0, 0, 0, .3) 50% calc(50% + 1px), transparent calc(50% + 1px) 100%),
-        linear-gradient(to bottom, #4b4b50, #333338);
-    background-position: 0 0, 16px 0, 0 0, 0 0;
-    border-color: #222225;
+    border-radius: 1px;
+    background: repeating-linear-gradient(45deg, var(--wall-hatch) 0 1px, transparent 1px 6px), var(--wall);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .2), 0 3px 6px -2px rgba(0, 0, 0, .45);
 }
 
-/* Door — a real architectural plan-view door symbol, not an elevation photo of a wood panel:
-   a pale threshold bar (the wall opening) plus a swung-open leaf and its dashed quarter-circle
-   sweep arc, drawn as an SVG anchored at the hinge (the frame's own bottom-left corner) so it
-   reads instantly as "a door" from directly above, the way it actually appears on the map. The
-   arc square is sized to the frame's own width via aspect-ratio (not a fixed px value) so it
-   scales correctly when a door is resized. */
+/* Window — glass set into the wall line: frame in the wall colour, a pale-blue pane with a soft
+   reflection, and a mullion every 48px. Both mullion directions are layered, and only the one
+   along the window's long side ever has room to show, so the same rule works for horizontal and
+   vertical windows. */
+.decor--window {
+    border-radius: 1px;
+    background:
+        repeating-linear-gradient(90deg, transparent 0 46px, var(--wall) 46px 48px),
+        repeating-linear-gradient(0deg, transparent 0 46px, var(--wall) 46px 48px),
+        linear-gradient(135deg, rgba(255, 255, 255, .6) 0 18%, transparent 34%),
+        linear-gradient(to bottom, #dcf0f9, #a9d6ea);
+    border: 2px solid var(--wall);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .85), 0 2px 4px -1px rgba(0, 0, 0, .3);
+}
+
+/* Glass wall — a full-height glazed partition: lighter and more transparent than a window (the
+   floor shows through), thin frame, double-glazing highlight and slimmer mullions every 64px. */
+.decor--glasswall {
+    border-radius: 1px;
+    background:
+        repeating-linear-gradient(90deg, transparent 0 62px, var(--wall) 62px 64px),
+        repeating-linear-gradient(0deg, transparent 0 62px, var(--wall) 62px 64px),
+        linear-gradient(135deg, rgba(255, 255, 255, .55) 0 12%, transparent 26%, rgba(255, 255, 255, .25) 60%, transparent 72%),
+        rgba(178, 222, 240, .55);
+    border: 1.5px solid var(--wall);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .7), 0 2px 5px -2px rgba(0, 0, 0, .3);
+}
+
+/* Door — an opening in the wall (pale threshold between two jambs in the wall colour) with the
+   leaf standing open and its dashed swing arc, anchored at the hinge. The arc square is sized to
+   the door's own width, so a wider door gets a proportionally wider swing; vertical doors are
+   the same element rotated 90°. */
 .decor--door {
-    border-radius: 2px;
-    background: linear-gradient(to bottom, #e9ddc8, #d8c9a8);
-    border: 2px solid #6b4426;
-    box-shadow:
-        inset 0 1px 2px rgba(255, 255, 255, .4), inset 0 -2px 3px rgba(0, 0, 0, .15),
-        0 5px 8px -5px rgba(0, 0, 0, .45);
+    border-radius: 0;
+    background: linear-gradient(to bottom, #f3eee6, #e2dbcd);
+    border-left: 4px solid var(--wall);
+    border-right: 4px solid var(--wall);
+    box-shadow: 0 2px 4px -2px rgba(0, 0, 0, .35);
 }
 .decor--door::after {
     content: "";
@@ -2002,34 +1973,40 @@
     left: 0; top: 100%;
     width: 100%;
     aspect-ratio: 1;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M0,100 C55.23,100 100,55.23 100,0' fill='none' stroke='%236b4426' stroke-width='1.6' stroke-dasharray='4 3' stroke-opacity='.55'/%3E%3Cline x1='0' y1='0' x2='0' y2='100' stroke='%236b4426' stroke-width='7' stroke-linecap='round'/%3E%3Ccircle cx='0' cy='0' r='3' fill='%234a2d1a'/%3E%3C/svg%3E");
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M0,100 C55.23,100 100,55.23 100,0' fill='none' stroke='%233b4049' stroke-width='1.4' stroke-dasharray='4 3' stroke-opacity='.6'/%3E%3Cline x1='0' y1='0' x2='0' y2='100' stroke='%233b4049' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
     pointer-events: none;
 }
+[data-theme="dark"] .decor--door { background: linear-gradient(to bottom, #6b6358, #5a534a); }
+[data-theme="dark"] .decor--door::after { filter: invert(.85); }
 
-/* Bar counter — dark lacquered wood with grain streaks running its length (not a flat gradient),
-   a glossy highlight along the top edge like the coloured tabletops above, and a footrail — a
-   thin brass tube standing slightly proud of the front edge, the one detail that reads as
-   "a bar" rather than just "a dark counter" from directly above. */
+/* Bar counter — matte graphite stone top with faint veining and a crisp light edge, plus a thin
+   brass footrail standing just proud of the front edge (the detail that reads as "a bar" rather
+   than just "a dark counter" from above). Contemporary rather than glossy lacquered wood. */
 .decor--barcounter {
-    border-radius: 6px;
+    border-radius: 8px;
     background:
-        repeating-linear-gradient(to right,
-            rgba(255, 255, 255, .05) 0 1px, transparent 1px 5px, rgba(0, 0, 0, .07) 5px 6px, transparent 6px 9px),
-        linear-gradient(to bottom, #6b4a34 0%, #4a3021 55%, #3a2418 100%);
-    border: 1px solid #2a1a10;
+        url("/img/decor/stone-veins.svg") 0 0 / 100% 100% no-repeat,
+        linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, .06) 32%, transparent 40%, transparent 62%, rgba(255, 255, 255, .05) 70%, transparent 78%),
+        linear-gradient(170deg, #454b54 0%, #33383f 55%, #2a2e34 100%);
+    border: 1px solid #1c1f24;
     box-shadow:
-        inset 0 -3px 5px rgba(0, 0, 0, .4),
-        0 8px 14px -8px rgba(0, 0, 0, .5);
+        inset 0 1px 0 rgba(255, 255, 255, .14),
+        inset 0 -6px 0 -3px #5a3a26,
+        0 14px 22px -14px rgba(0, 0, 0, .55);
 }
+/* Beer-tap tower on the bartender's (back) side: a chrome bar with round tap handles over its
+   drip tray, so the counter reads as a working bar from above. */
 .decor--barcounter::before {
     content: "";
     position: absolute;
-    inset: 4px 4px auto 4px;
-    height: 22%;
-    border-radius: 4px;
-    background: linear-gradient(to bottom, rgba(255, 255, 255, .35), transparent);
+    left: 14%; top: 14%;
+    width: min(34%, 5.5rem); height: 9px;
+    border-radius: 3px;
+    background:
+        radial-gradient(circle at 40% 35%, #fff 0 12%, #c9ced4 22%, #6f767e 55%, transparent 60%) 2px 0 / 12px 9px repeat-x,
+        linear-gradient(#1b1d20, #1b1d20) 0 50% / 100% 3px no-repeat,
+        linear-gradient(#8d949b, #4f555c);
+    box-shadow: 0 2px 3px rgba(0, 0, 0, .45);
 }
 .decor--barcounter::after {
     content: "";
@@ -2063,23 +2040,159 @@
             rgba(255, 255, 255, .3) 0%, #6b6a66 30%, #4c4b48 65%, #38372f 100%);
 }
 
-/* Window — glass pane in a frame, with a cross of mullions dividing it into four lights and a
-   soft diagonal reflection streak across the glass so it reads as a translucent material rather
-   than a flat tinted rectangle. */
-.decor--window {
+/* ---- Furniture and fittings ---- */
+
+/* Banquette — channel-tufted oxblood leather: the backrest (the side meant to go against the
+   wall) along the top edge and a plump piped seat cushion, one cushion per ~seat. The tile keeps
+   its proportions and repeats with `round`, so a longer bench gets more whole cushions instead of
+   stretched ones. */
+.decor--banquette {
+    border-radius: 6px 6px 4px 4px;
+    background: #3d1418 url("/img/decor/banquette.svg") 0 0 / auto 100% round no-repeat;
+    border: 1px solid #3a1015;
+    box-shadow: 0 4px 7px -3px rgba(0, 0, 0, .45);
+}
+
+/* Rug — hand-knotted Persian-style area rug under a group of tables: a knotted border drawn with
+   border-image (corners and edge motifs stay crisp at any size), a lattice field, a central
+   medallion and cotton fringe on both short ends. Sits beneath every table and zone
+   (z-index -1 inside the canvas). */
+.decor--rug {
+    z-index: -1;
+    border: 12px solid #5c1c1a;
+    border-image: url("/img/decor/rug-border.svg") 30 round;
+    background:
+        url("/img/decor/rug-medallion.svg") center / auto 62% no-repeat,
+        radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(40, 10, 8, .28) 100%),
+        url("/img/decor/rug-field.svg") center / 22px 22px,
+        #8a2f2a;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .25);
+    opacity: .94;
+}
+.decor--rug::before, .decor--rug::after {
+    content: "";
+    position: absolute;
+    top: -12px; bottom: -12px;
+    width: 6px;
+    background: repeating-linear-gradient(to bottom, #efe6d2 0 1.5px, transparent 1.5px 3px);
+}
+.decor--rug::before { left: -18px; }
+.decor--rug::after { right: -18px; }
+
+/* Planter — long timber trough of clipped boxwood hedging, e.g. edging a terrace. The hedge is a
+   seamless tile scaled to the trough's depth, so it fills the box whichever length it runs. */
+.decor--planter {
+    border-radius: 3px;
+    background: #2e2016 url("/img/decor/planter-hedge.svg") 0 0 / auto 100% round no-repeat;
+    border: 4px solid #8a6a4f;
+    border-color: #a8845f #7a5a3f #6b4d35 #9a7753;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35), 0 4px 6px -2px rgba(0, 0, 0, .45);
+}
+
+/* Parasol — octagonal canvas market umbrella seen from above: each panel shaded by how it faces
+   the light, ribs, hem stitching, a raised wind vent and a timber finial. Slightly see-through
+   so the tables beneath still read. */
+.decor--parasol {
+    opacity: .9;
+    background: url("/img/decor/parasol.svg") center / contain no-repeat;
+    filter: drop-shadow(0 8px 8px rgba(0, 0, 0, .35));
+}
+
+/* Wine rack — walnut lattice with the ends of the bottles showing (green and red glass, punt
+   and a glint on each). */
+.decor--winerack {
+    border-radius: 3px;
+    background: #3b2415 url("/img/decor/wine-rack.svg") 0 0 / 22px 11px;
+    border: 2px solid #26160d;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 3px 5px -2px rgba(0, 0, 0, .45);
+}
+
+/* Host stand — walnut lectern with the booking tablet, a brass lamp and a stack of menus. */
+.decor--hoststand {
+    background: url("/img/decor/host-stand.svg") center / contain no-repeat;
+    filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .4));
+}
+
+/* ---- Back-of-house rooms: drawn as whole blocks with their name (the element's localised
+   title) written on the floor, like the labelled rooms on an architect's plan. ---- */
+.decor--kitchen::after, .decor--restrooms::after, .decor--stairs::after {
+    content: attr(title);
+    position: absolute;
+    left: 50%; bottom: 5%;
+    transform: translateX(-50%);
+    padding: 1px .5em;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, .82);
+    white-space: nowrap;
+    font-size: .66rem;
+    font-weight: 800;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #4e5761;
+    pointer-events: none;
+}
+
+/* Kitchen — a commercial line in plan: six-burner range with cast-iron grates, griddle and
+   fryers under the (dashed) extraction hood, reach-in fridges, a prep counter with double sink,
+   a prep island and the pass with its heat lamps, on a quarry-tile floor. The drawing lives on
+   ::before so a container query can swap in the portrait layout when the block is taller than
+   it is wide, instead of shrinking the landscape plan into a letterbox. */
+.decor--kitchen {
+    container-type: size;
     border-radius: 3px;
     background:
-        linear-gradient(115deg,
-            transparent 30%, rgba(255, 255, 255, .5) 42%, rgba(255, 255, 255, .12) 52%, transparent 62%),
-        linear-gradient(160deg, #cfe8f5 0%, #a9d3e6 55%, #8fc2da 100%);
-    border: 3px solid #7d716280;
-    box-shadow:
-        inset 0 0 8px rgba(255, 255, 255, .6), inset 0 0 0 1px rgba(255, 255, 255, .4),
-        0 5px 8px -5px rgba(0, 0, 0, .35);
+        linear-gradient(90deg, #b8b1a5 .6px, transparent .6px) 0 0 / 12px 12px,
+        linear-gradient(#b8b1a5 .6px, transparent .6px) 0 0 / 12px 12px,
+        #d9d4cb;
+    border: 3px solid var(--wall);
+    box-shadow: 0 4px 8px -3px rgba(0, 0, 0, .35);
 }
-.decor--window::before, .decor--window::after { content: ""; position: absolute; background: rgba(255, 255, 255, .55); }
-.decor--window::before { left: 50%; top: 6%; bottom: 6%; width: 2px; transform: translateX(-50%); }
-.decor--window::after { top: 50%; left: 6%; right: 6%; height: 2px; transform: translateY(-50%); }
+.decor--kitchen::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: url("/img/decor/kitchen.svg") center / contain no-repeat;
+    pointer-events: none;
+}
+@container (max-aspect-ratio: 3 / 4) {
+    .decor--kitchen::before { background-image: url("/img/decor/kitchen-portrait.svg"); }
+}
+
+/* Restrooms — two washrooms in plan: WC cubicles, basins, the partition wall, door swings and
+   the men/women pictograms on a tiled floor. */
+.decor--restrooms {
+    border-radius: 3px;
+    background:
+        url("/img/decor/restrooms.svg") center / contain no-repeat,
+        linear-gradient(90deg, rgba(0, 0, 0, .07) 1px, transparent 1px) 0 0 / 10px 10px,
+        linear-gradient(rgba(0, 0, 0, .07) 1px, transparent 1px) 0 0 / 10px 10px,
+        #eef1f4;
+    border: 3px solid var(--wall);
+    box-shadow: 0 3px 6px -3px rgba(0, 0, 0, .3);
+}
+
+/* Stairs — shaded treads with a nosing highlight, handrails on both sides and the walking line
+   (with its arrow) up the middle. */
+.decor--stairs {
+    border-radius: 2px;
+    background:
+        linear-gradient(#4a4640, #4a4640) 50% 45% / 2px 64% no-repeat,
+        linear-gradient(90deg, #6b4a2e, #9a7350 50%, #6b4a2e) 3px 0 / 4px 100% no-repeat,
+        linear-gradient(90deg, #6b4a2e, #9a7350 50%, #6b4a2e) calc(100% - 3px) 0 / 4px 100% no-repeat,
+        repeating-linear-gradient(to bottom, #f1ece4 0 1.5px, #e2dcd2 1.5px 10px, #b3ab9f 10px 11.5px, #8e867a 11.5px 13px);
+    border: 2px solid var(--wall);
+    box-shadow: 0 3px 6px -2px rgba(0, 0, 0, .35);
+}
+.decor--stairs::before {
+    content: "";
+    position: absolute;
+    left: 50%; top: 10%;
+    border: 6px solid transparent;
+    border-bottom: 9px solid #4a4640;
+    border-top: none;
+    transform: translateX(-50%);
+}
+.decor--stairs::after { color: #3f3a34; background: rgba(230, 225, 217, .9); }
 
 /* Menu preview swatches (in the Plants / Design elements dropdowns) — same shapes as the floor
    elements above, scaled down to the fixed 22px size shared with .floor-tex-swatch. */
@@ -2096,36 +2209,70 @@
     background-position: center;
     background-size: 85%;
 }
-.decor-swatch--pottedplant { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='pot1' cx='0.35' cy='0.3' r='0.75'%3E%3Cstop offset='0' stop-color='%23c98f66'/%3E%3Cstop offset='1' stop-color='%23935f3f'/%3E%3C/radialGradient%3E%3CradialGradient id='lfA' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%233d7a4c'/%3E%3Cstop offset='1' stop-color='%231f4029'/%3E%3C/radialGradient%3E%3CradialGradient id='lfB' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2357a865'/%3E%3Cstop offset='1' stop-color='%232c6438'/%3E%3C/radialGradient%3E%3CradialGradient id='lfC' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2378c886'/%3E%3Cstop offset='1' stop-color='%233d7c4c'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='44' fill='url(%23pot1)'/%3E%3Ccircle cx='50' cy='50' r='37' fill='%232e1c12'/%3E%3Ccircle cx='43' cy='44' r='2' fill='%234a2d1d'/%3E%3Ccircle cx='59' cy='41' r='1.6' fill='%234a2d1d'/%3E%3Ccircle cx='40' cy='59' r='1.8' fill='%234a2d1d'/%3E%3Cg stroke='%2317331f' stroke-width='0.7' stroke-opacity='0.5'%3E%3Cpath d='M50 46 C66 43,80 45,93 50 C80 55,66 57,50 54 Z' fill='url(%23lfA)' transform='rotate(0 50 50)'/%3E%3Cpath d='M50 46 C65 43,78 45,89 50 C78 55,65 57,50 54 Z' fill='url(%23lfB)' transform='rotate(51 50 50)'/%3E%3Cpath d='M50 45 C67 42,82 44,96 50 C82 56,67 58,50 55 Z' fill='url(%23lfC)' transform='rotate(103 50 50)'/%3E%3Cpath d='M50 46 C65 43,78 45,90 50 C78 55,65 57,50 54 Z' fill='url(%23lfA)' transform='rotate(154 50 50)'/%3E%3Cpath d='M50 45 C66 42,80 44,94 50 C80 56,66 58,50 55 Z' fill='url(%23lfB)' transform='rotate(206 50 50)'/%3E%3Cpath d='M50 46 C64 43,77 45,88 50 C77 55,64 57,50 54 Z' fill='url(%23lfC)' transform='rotate(257 50 50)'/%3E%3Cpath d='M50 45 C66 42,79 44,91 50 C79 56,66 58,50 55 Z' fill='url(%23lfA)' transform='rotate(309 50 50)'/%3E%3C/g%3E%3C/svg%3E"); }
-.decor-swatch--smallplant { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='pot1' cx='0.35' cy='0.3' r='0.75'%3E%3Cstop offset='0' stop-color='%23c98f66'/%3E%3Cstop offset='1' stop-color='%23935f3f'/%3E%3C/radialGradient%3E%3CradialGradient id='lfA' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%233d7a4c'/%3E%3Cstop offset='1' stop-color='%231f4029'/%3E%3C/radialGradient%3E%3CradialGradient id='lfB' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2357a865'/%3E%3Cstop offset='1' stop-color='%232c6438'/%3E%3C/radialGradient%3E%3CradialGradient id='lfC' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2378c886'/%3E%3Cstop offset='1' stop-color='%233d7c4c'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='40' fill='url(%23pot1)'/%3E%3Ccircle cx='50' cy='50' r='33' fill='%232e1c12'/%3E%3Ccircle cx='44' cy='45' r='1.7' fill='%234a2d1d'/%3E%3Ccircle cx='57' cy='42' r='1.4' fill='%234a2d1d'/%3E%3Cg stroke='%2317331f' stroke-width='0.7' stroke-opacity='0.5'%3E%3Cpath d='M50 45 C64 42,77 44,90 50 C77 56,64 58,50 55 Z' fill='url(%23lfB)' transform='rotate(15 50 50)'/%3E%3Cpath d='M50 45 C64 42,77 44,88 50 C77 56,64 58,50 55 Z' fill='url(%23lfC)' transform='rotate(105 50 50)'/%3E%3Cpath d='M50 45 C64 42,77 44,90 50 C77 56,64 58,50 55 Z' fill='url(%23lfA)' transform='rotate(200 50 50)'/%3E%3Cpath d='M50 45 C63 42,75 44,86 50 C75 56,63 58,50 55 Z' fill='url(%23lfB)' transform='rotate(290 50 50)'/%3E%3C/g%3E%3C/svg%3E"); }
-.decor-swatch--hangingplant { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='pot2' cx='0.35' cy='0.3' r='0.75'%3E%3Cstop offset='0' stop-color='%238a7259'/%3E%3Cstop offset='1' stop-color='%2354432f'/%3E%3C/radialGradient%3E%3CradialGradient id='lfA' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%233d7a4c'/%3E%3Cstop offset='1' stop-color='%231f4029'/%3E%3C/radialGradient%3E%3CradialGradient id='lfB' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2357a865'/%3E%3Cstop offset='1' stop-color='%232c6438'/%3E%3C/radialGradient%3E%3CradialGradient id='lfC' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2378c886'/%3E%3Cstop offset='1' stop-color='%233d7c4c'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='38' r='14' fill='url(%23pot2)'/%3E%3Cg stroke='%2317331f' stroke-width='0.6' stroke-opacity='0.5'%3E%3Cpath d='M50 34 C60 31,68 33,76 40 C68 45,60 46,50 42 Z' fill='url(%23lfB)' transform='rotate(40 50 38)'/%3E%3Cpath d='M50 34 C62 30,73 33,84 42 C73 48,62 49,50 44 Z' fill='url(%23lfC)' transform='rotate(95 50 38)'/%3E%3Cpath d='M50 34 C60 31,68 33,77 41 C68 46,60 47,50 43 Z' fill='url(%23lfA)' transform='rotate(150 50 38)'/%3E%3Cpath d='M50 34 C61 30,71 33,81 42 C71 47,61 48,50 44 Z' fill='url(%23lfB)' transform='rotate(205 50 38)'/%3E%3Cpath d='M50 34 C59 31,66 33,74 40 C66 45,59 46,50 42 Z' fill='url(%23lfC)' transform='rotate(260 50 38)'/%3E%3C/g%3E%3C/svg%3E"); }
-.decor-swatch--bush { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='bg1' cx='0.32' cy='0.28' r='0.85'%3E%3Cstop offset='0' stop-color='%236fbf7c'/%3E%3Cstop offset='0.55' stop-color='%233f8350'/%3E%3Cstop offset='1' stop-color='%23234a2c'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg stroke='%23173a20' stroke-width='0.5' stroke-opacity='0.35'%3E%3Ccircle cx='38' cy='42' r='27' fill='url(%23bg1)'/%3E%3Ccircle cx='64' cy='40' r='25' fill='url(%23bg1)'/%3E%3Ccircle cx='50' cy='64' r='26' fill='url(%23bg1)'/%3E%3Ccircle cx='50' cy='46' r='29' fill='url(%23bg1)'/%3E%3Ccircle cx='28' cy='35' r='7' fill='%235aa668'/%3E%3Ccircle cx='42' cy='23' r='6' fill='%235aa668'/%3E%3Ccircle cx='58' cy='21' r='6.5' fill='%236fbf7c'/%3E%3Ccircle cx='73' cy='31' r='7' fill='%233f8350'/%3E%3Ccircle cx='77' cy='50' r='6.5' fill='%232a5233'/%3E%3Ccircle cx='71' cy='69' r='7' fill='%233f8350'/%3E%3Ccircle cx='50' cy='79' r='6.5' fill='%232a5233'/%3E%3Ccircle cx='29' cy='68' r='6.5' fill='%235aa668'/%3E%3Ccircle cx='22' cy='49' r='6' fill='%233f8350'/%3E%3C/g%3E%3C/svg%3E"); }
-.decor-swatch--smalltree { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='bg1' cx='0.32' cy='0.28' r='0.85'%3E%3Cstop offset='0' stop-color='%236fbf7c'/%3E%3Cstop offset='0.55' stop-color='%233f8350'/%3E%3Cstop offset='1' stop-color='%23234a2c'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg stroke='%23173a20' stroke-width='0.5' stroke-opacity='0.35'%3E%3Ccircle cx='50' cy='50' r='44' fill='url(%23bg1)'/%3E%3Ccircle cx='36' cy='38' r='30' fill='url(%23bg1)'/%3E%3Ccircle cx='66' cy='40' r='28' fill='url(%23bg1)'/%3E%3Ccircle cx='50' cy='66' r='27' fill='url(%23bg1)'/%3E%3Ccircle cx='24' cy='30' r='8' fill='%235aa668'/%3E%3Ccircle cx='42' cy='16' r='7' fill='%235aa668'/%3E%3Ccircle cx='62' cy='14' r='7.5' fill='%236fbf7c'/%3E%3Ccircle cx='80' cy='27' r='8' fill='%233f8350'/%3E%3Ccircle cx='85' cy='50' r='7.5' fill='%232a5233'/%3E%3Ccircle cx='77' cy='73' r='8' fill='%233f8350'/%3E%3Ccircle cx='50' cy='85' r='7.5' fill='%232a5233'/%3E%3Ccircle cx='22' cy='71' r='7.5' fill='%235aa668'/%3E%3Ccircle cx='14' cy='48' r='7' fill='%233f8350'/%3E%3C/g%3E%3Ccircle cx='50' cy='50' r='7' fill='%234a3521'/%3E%3C/svg%3E"); }
-.decor-swatch--fern { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='pot1' cx='0.35' cy='0.3' r='0.75'%3E%3Cstop offset='0' stop-color='%23c98f66'/%3E%3Cstop offset='1' stop-color='%23935f3f'/%3E%3C/radialGradient%3E%3CradialGradient id='fA' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%232d6b3c'/%3E%3Cstop offset='1' stop-color='%23123018'/%3E%3C/radialGradient%3E%3CradialGradient id='fB' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%233f8a4c'/%3E%3Cstop offset='1' stop-color='%231f4a2c'/%3E%3C/radialGradient%3E%3CradialGradient id='fC' cx='0.3' cy='0.35' r='0.8'%3E%3Cstop offset='0' stop-color='%2354a862'/%3E%3Cstop offset='1' stop-color='%232c6438'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='38' fill='url(%23pot1)'/%3E%3Ccircle cx='50' cy='50' r='31' fill='%232e1c12'/%3E%3Cg stroke='%230f2814' stroke-width='0.5' stroke-opacity='0.5'%3E%3Cpath d='M50 48 C63 46,75 47,88 50 C75 53,63 54,50 52 Z' fill='url(%23fA)' transform='rotate(0 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,85 50 C73 53,62 54,50 52 Z' fill='url(%23fB)' transform='rotate(45 50 50)'/%3E%3Cpath d='M50 48 C63 46,75 47,89 50 C75 53,63 54,50 52 Z' fill='url(%23fC)' transform='rotate(90 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,84 50 C73 53,62 54,50 52 Z' fill='url(%23fA)' transform='rotate(135 50 50)'/%3E%3Cpath d='M50 48 C63 46,75 47,87 50 C75 53,63 54,50 52 Z' fill='url(%23fB)' transform='rotate(180 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,83 50 C73 53,62 54,50 52 Z' fill='url(%23fC)' transform='rotate(225 50 50)'/%3E%3Cpath d='M50 48 C63 46,75 47,86 50 C75 53,63 54,50 52 Z' fill='url(%23fA)' transform='rotate(270 50 50)'/%3E%3Cpath d='M50 48 C62 46,73 47,82 50 C73 53,62 54,50 52 Z' fill='url(%23fB)' transform='rotate(315 50 50)'/%3E%3C/g%3E%3C/svg%3E"); }
-.decor-swatch--wall {
-    background:
-        repeating-linear-gradient(to right, transparent 0 9px, rgba(0, 0, 0, .18) 9px 10px),
-        linear-gradient(to bottom, #9a9a9c, #7d7d80);
-}
-.decor-swatch--door {
-    background-color: #d8c9a8;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 85%;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M2,98 C57.23,98 98,57.23 98,2' fill='none' stroke='%236b4426' stroke-width='4' stroke-dasharray='9 7' stroke-opacity='.55'/%3E%3Cline x1='2' y1='2' x2='2' y2='98' stroke='%236b4426' stroke-width='9' stroke-linecap='round'/%3E%3Ccircle cx='2' cy='2' r='5' fill='%234a2d1a'/%3E%3C/svg%3E");
-}
+.decor-swatch--pottedplant { background-image: url("/img/decor/potted-plant.svg"); }
+.decor-swatch--smallplant { background-image: url("/img/decor/small-plant.svg"); }
+.decor-swatch--hangingplant { background-image: url("/img/decor/hanging-plant.svg"); }
+.decor-swatch--bush { background-image: url("/img/decor/bush.svg"); }
+.decor-swatch--smalltree { background-image: url("/img/decor/small-tree.svg"); }
+.decor-swatch--fern { background-image: url("/img/decor/fern.svg"); }
 .decor-swatch--barcounter {
     background:
-        repeating-linear-gradient(to right, rgba(255, 255, 255, .06) 0 1px, transparent 1px 4px),
-        linear-gradient(to bottom, #6b4a34, #3a2418);
+        linear-gradient(#c89b43, #c89b43) 50% 88% / 80% 2px no-repeat,
+        linear-gradient(170deg, #454b54, #2a2e34);
 }
 .decor-swatch--column {
     background:
         repeating-conic-gradient(from 0deg, rgba(255, 255, 255, .15) 0deg 3deg, transparent 3deg 18deg, rgba(0, 0, 0, .08) 18deg 21deg, transparent 21deg 36deg),
         radial-gradient(circle at 32% 28%, #e7e3da 0%, #b6b0a4 65%, #948d7f 100%);
 }
+.decor-swatch--wall {
+    background: repeating-linear-gradient(45deg, rgba(255, 255, 255, .1) 0 1px, transparent 1px 4px), #3b4049;
+}
+.decor-swatch--door {
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='0' y='0' width='100' height='14' fill='%23e2dbcd'/%3E%3Crect x='0' y='0' width='10' height='14' fill='%233b4049'/%3E%3Crect x='90' y='0' width='10' height='14' fill='%233b4049'/%3E%3Cpath d='M10,96 C58,96 90,62 90,14' fill='none' stroke='%233b4049' stroke-width='3' stroke-dasharray='7 5' stroke-opacity='.6'/%3E%3Cline x1='10' y1='14' x2='10' y2='96' stroke='%233b4049' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E") center / 85% no-repeat,
+        var(--card-2);
+}
 .decor-swatch--window {
     background:
-        linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, .55) 45%, transparent 60%),
-        linear-gradient(160deg, #cfe8f5 0%, #8fc2da 100%);
+        linear-gradient(90deg, transparent 47%, #3b4049 47% 53%, transparent 53%),
+        linear-gradient(135deg, rgba(255, 255, 255, .6) 0 20%, transparent 36%),
+        linear-gradient(to bottom, #dcf0f9, #a9d6ea);
+    box-shadow: inset 0 0 0 2px #3b4049;
+}
+.decor-swatch--glasswall {
+    background:
+        linear-gradient(90deg, transparent 32%, #3b4049 32% 36%, transparent 36% 64%, #3b4049 64% 68%, transparent 68%),
+        linear-gradient(135deg, rgba(255, 255, 255, .55) 0 14%, transparent 30%),
+        rgba(178, 222, 240, .7);
+    box-shadow: inset 0 0 0 1.5px #3b4049;
+}
+.decor-swatch--banquette {
+    background: #3d1418 url("/img/decor/banquette.svg") 0 0 / auto 100% round no-repeat;
+}
+.decor-swatch--rug {
+    background: url("/img/decor/rug-medallion.svg") center / 70% no-repeat, #8a2f2a;
+    box-shadow: inset 0 0 0 2px #1f2b49, inset 0 0 0 3px #e8d9b8;
+}
+.decor-swatch--planter {
+    background: #2e2016 url("/img/decor/planter-hedge.svg") 0 50% / auto 70% round no-repeat;
+    box-shadow: inset 0 0 0 2px #8a6a4f;
+}
+.decor-swatch--parasol {
+    background: var(--card-2) url("/img/decor/parasol.svg") center / 90% no-repeat;
+}
+.decor-swatch--winerack {
+    background: #3b2415 url("/img/decor/wine-rack.svg") 0 0 / 14px 7px;
+}
+.decor-swatch--hoststand {
+    background: var(--card-2) url("/img/decor/host-stand.svg") center / 90% no-repeat;
+}
+.decor-swatch--kitchen {
+    background: #d9d4cb url("/img/decor/kitchen.svg") center / cover no-repeat;
+}
+.decor-swatch--restrooms {
+    background: #eef1f4 url("/img/decor/restrooms.svg") center / cover no-repeat;
+}
+.decor-swatch--stairs {
+    background: repeating-linear-gradient(to bottom, #e6e1d9 0 3px, #9e978c 3px 4px);
 }

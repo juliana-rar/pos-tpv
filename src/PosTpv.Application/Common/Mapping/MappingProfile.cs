@@ -68,9 +68,7 @@ public class MappingProfile : Profile
 
         CreateMap<SupplierDocument, SupplierDocumentDto>();
 
-        CreateMap<Supplier, SupplierDto>()
-            .ForCtorParam(nameof(SupplierDto.DocumentCount), o => o.MapFrom(s => s.Documents.Count))
-            .ForCtorParam(nameof(SupplierDto.PurchaseCount), o => o.MapFrom(s => s.Purchases.Count));
+        // Supplier -> SupplierDto is projected in SQL by SupplierService.GetAllAsync (counts included).
         CreateMap<Supplier, SupplierFormDto>();
         CreateMap<SupplierFormDto, Supplier>()
             .ForMember(d => d.Documents, o => o.Ignore())

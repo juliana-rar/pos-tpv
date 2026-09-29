@@ -1,9 +1,14 @@
 @page "/tables"
-@rendermode InteractiveServer
+@* No prerender: with ~85 tables (and ~300 chairs) the prerendered map was built, painted, then
+   thrown away and rebuilt from scratch once the circuit connected (Blazor doesn't reuse
+   prerendered DOM). Rendering it only once, interactively, gets the usable map on screen in about
+   half the time. *@
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Authorize(Roles = "Admin,Waiter,Cashier")]
 @using System.Globalization
 @using System.Security.Claims
 @using FluentValidation
+@using static PosTpv.Web.Components.Shared.FloorPlanHelpers
 @implements IAsyncDisposable
 @inject ITableService Service
 @inject IFloorDecorService DecorService
@@ -544,170 +549,19 @@
             var resByTable = ResByTable;
         }
     <div class="floor-canvas" style="transform:scale(@N(_zoom)); transform-origin:0 0; --zoom:@N(_zoom);">
-        @foreach (var z in VisibleZones)
-        {
-            <div class="floor-zone @(!_editing && _zoneFilter == z.Name ? "floor-zone--on" : "") @(_editing && _zoneEditActive ? "floor-zone--btns-visible" : "") @(z.Color is not null && IsImageColor(z.Color) ? "floor-zone--img" : "")"
-                 data-id="@z.Id"
-                 data-x="@N(z.PositionX)" data-y="@N(z.PositionY)"
-                 data-w="@N(z.Width)" data-h="@N(z.Height)" data-rot="0"
-                 data-locked="false"
-                 style="@ZoneStyle(z)"
-                 title="@z.Name">
-                <span class="floor-zone__name">@z.Name</span>
-                @if (_editing)
-                {
-                    @if (_zoneEditActive)
-                    {
-                        @* Rename/delete need a Blazor-rendered Modal (rename) or a live list
-                           update (delete) to actually show up — impossible while _editing has
-                           frozen rendering for JS to own the DOM (see ShouldRender/_suppressRender)
-                           — so both handlers below step out of edit mode first (Save for rename,
-                           so a drag already in progress isn't silently thrown away; Cancel for
-                           delete, since the zone about to be removed has nothing worth keeping)
-                           before doing anything Blazor needs to re-render for. floorplan.js's
-                           onDown also has to ignore pointerdown on these two, or it arms a drag
-                           on the zone underneath before the click ever reaches these handlers. *@
-                        <button class="floor-zone__rename" type="button" title="@Loc.T("Rename")" @onclick="() => EditZoneDuringLayoutEdit(z)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="12" /></button>
-                    }
-                    <button class="floor-zone__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RequestDeleteZone(z)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
-                    <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
-                }
-                else if (_zoneMenuOpen || _zoneFilter == z.Name)
-                {
-                    @* Shown while the "Zones" toolbar button's own edit mode is on (see
-                       ToggleZoneMenu) — otherwise these sat on every zone box all the time, so
-                       modifying a zone only ever took clicking directly on it, never the button —
-                       or, once a chip has narrowed the map down to that one zone (_zoneFilter),
-                       on that single remaining zone box even after the dropdown itself has
-                       closed, since it's now the only thing left to act on. *@
-                    <button class="floor-zone__rename" type="button" title="@Loc.T("Rename")" @onclick="() => StartRenameZone(z)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="12" /></button>
-                    <button class="floor-zone__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RemoveZone(z.Id)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
-                }
-            </div>
-        }
-        @foreach (var t in visible)
-        {
-            resByTable.TryGetValue(t.Id, out var rv);
-            <div class="@TableClass(t, rv)"
-                 data-id="@t.Id"
-                 data-x="@N(t.PositionX)" data-y="@N(t.PositionY)"
-                 data-w="@N(t.Width)" data-h="@N(t.Height)" data-rot="@N(t.Rotation)"
-                 data-locked="@(t.IsLocked ? "true" : "false")"
-                 data-shape="@((int)t.Shape)"
-                 data-group="@(t.GroupId?.ToString() ?? "")"
-                 data-seam="@GroupSeamAttr(t)"
-                 style="@TableStyle(t)"
-                 @onclick="() => OnTableClick(t)"
-                 @oncontextmenu:preventDefault="true"
-                 title="@(t.GroupId is not null ? (t.GroupName ?? t.Name) : t.Name)">
-                @if (!_editing)
-                {
-                    @foreach (var chairStyle in ChairStyles(t, _tables))
-                    {
-                        <svg class="tbl__chair @(EffectiveTableStatus(t, rv) == TableStatus.Occupied ? "tbl__chair--seated" : "")"
-                             style="@chairStyle" viewBox="0 0 14 19.6" width="14" height="19.6">
-                            <rect class="chair-leg" x="-1" y="9.1" width="1.7" height="2" rx="0.4" />
-                            <rect class="chair-leg" x="13.3" y="9.1" width="1.7" height="2" rx="0.4" />
-                            <rect class="chair-leg" x="-1" y="13.65" width="1.7" height="2" rx="0.4" />
-                            <rect class="chair-leg" x="13.3" y="13.65" width="1.7" height="2" rx="0.4" />
-                            <rect class="chair-seat" x="0" y="5.25" width="14" height="14" rx="3.5" />
-                            <rect class="chair-cushion" x="2.1" y="7.35" width="9.8" height="9.8" rx="2.45" />
-                            <rect class="chair-backrest" x="1.4" y="0" width="11.2" height="5.95" rx="2.8" />
-                        </svg>
-                    }
-                }
-                <div class="tbl__content">
-                    @if (t.GroupId is null)
-                    {
-                        <span class="tbl__name">@t.Name</span>
-                        <span class="tbl__seats">@t.Seats<LucideIcon Name="user" Size="12" /></span>
-                        @if (rv is not null)
-                        {
-                            <span class="tbl__total">@rv.CustomerName</span>
-                        }
-                    }
-                </div>
-                @* Grouped tables skip this entirely — see the .tbl__resv--group badge below,
-                   rendered once per group and centred on the whole joined row instead of hanging
-                   off whichever member happens to be the anchor. *@
-                @if (!_editing && rv is not null && t.GroupId is null)
-                {
-                    <span class="tbl__resv" title="@rv.CustomerName"><LucideIcon Name="@(rv.Status == ReservationStatus.Seated ? "armchair" : PeriodIcon(rv.Time))" Size="14" /> @rv.Time.ToString("HH:mm")</span>
-                }
-                @* Revealed by a first click on this same assigned table (see OnTableClick) instead of
-                   showing on every reserved table all the time — a second click on the table itself
-                   still opens its comanda as usual; this X only removes the table from the reservation. *@
-                @if (!_editing && rv is not null && _selectedAssignedTableId == t.Id)
-                {
-                    <button type="button" class="tbl__unassign" title="@Loc.T("Remove from reservation")" @onclick="() => RemoveTableFromReservation(t)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
-                }
-                @if (_editing)
-                {
-                    @if (t.GroupId is null)
-                    {
-                        @* Grouped members skip shape: JoinTablesAsync already forces every member
-                           to share one Rotation/IsLocked/Height, so editing it individually while
-                           joined doesn't fit the "reads as one table" model — and, concretely,
-                           .tbl__shape sits bottom-left on its own table while .tbl__handle--resize
-                           sits bottom-right on the one before it, so for two tables snapped
-                           edge-to-edge those two controls land almost exactly on top of each other
-                           at the shared seam. Grabbing one member's resize handle there could land
-                           on its neighbour's shape button instead, silently cycling that neighbour
-                           from square to round. *@
-                        <button class="tbl__shape" type="button" title="@Loc.T("Change shape")">@ShapeIcon(t.Shape)</button>
-                    }
-                    @* One edit button per group (on its anchor member), not one per table — a
-                       joined block reads and is edited as a single unit, so its pencil opens the
-                       shared group name below instead of each member's own name in turn. *@
-                    @if (t.GroupId is null || IsGroupAnchor(t))
-                    {
-                        <button class="tbl__rename" type="button" title="@Loc.T("Edit table")" @onclick="() => EditTableDuringLayoutEdit(t)" @onclick:stopPropagation="true"><LucideIcon Name="pencil" Size="14" /></button>
-                    }
-                    <button class="tbl__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RequestDeleteTable(t)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="14" /></button>
-                    <span class="tbl__handle tbl__handle--rotate" title="@Loc.T("Rotate")"></span>
-                    <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
-                }
-            </div>
-        }
-        @* One badge per group, centered on the bounding box of its member tables — rather
-           than pinned to a single anchor table — so it sits right where they join once
-           dragged, and carries the group's own name now that no single member shows it. *@
-        @foreach (var gid in visible.Where(t => t.GroupId.HasValue).Select(t => t.GroupId!.Value).Distinct())
-        {
-            var grv = GroupReservation(gid, resByTable);
-            <span class="tbl__group" data-group="@gid" style="@GroupCenterStyle(gid, visible) --grp:@GroupColor(gid)">
-                @if (grv is not null)
-                {
-                    <span class="tbl__total">@grv.CustomerName</span>
-                }
-                <span class="tbl__group-name">@GroupDisplayName(gid)</span>
-                <span class="tbl__group-seats"><LucideIcon Name="link" Size="15" /> @GroupSeats(gid)<LucideIcon Name="user" Size="14" /></span>
-            </span>
-            @if (!_editing && grv is not null)
-            {
-                <span class="tbl__resv tbl__resv--group" data-group="@gid" style="@GroupBottomCenterStyle(gid, visible)" title="@grv.CustomerName"><LucideIcon Name="@(grv.Status == ReservationStatus.Seated ? "armchair" : PeriodIcon(grv.Time))" Size="14" /> @grv.Time.ToString("HH:mm")</span>
-            }
-        }
-        @foreach (var d in VisibleDecor)
-        {
-            <div class="decor decor--@DecorSlug(d.Type)"
-                 data-id="@d.Id"
-                 data-x="@N(d.PositionX)" data-y="@N(d.PositionY)"
-                 data-w="@N(d.Width)" data-h="@N(d.Height)" data-rot="@N(d.Rotation)"
-                 data-locked="@(d.IsLocked ? "true" : "false")"
-                 style="@DecorStyle(d)"
-                 title="@Loc.T(DecorLabel(d.Type))">
-                @if (_editing)
-                {
-                    <button class="tbl__lock" type="button" title="@Loc.T("Lock / unlock")"><LucideIcon Name="@(d.IsLocked ? "lock" : "lock-open")" Size="14" /></button>
-                    <button class="decor__delete" type="button" title="@Loc.T("Remove")" @onclick="() => RequestDeleteDecor(d)" @onclick:stopPropagation="true"><LucideIcon Name="x" Size="12" /></button>
-                    <span class="tbl__handle tbl__handle--rotate" title="@Loc.T("Rotate")"></span>
-                    <span class="tbl__handle tbl__handle--resize" title="@Loc.T("Resize")"></span>
-                }
-            </div>
-        }
-        @if (_tables.Count == 0) { <p class="empty">@Loc.T("No tables yet. Create one to start.")</p> }
-        else if (visible.Count == 0) { <p class="empty">@Loc.T("No tables in this zone.")</p> }
+        <FloorMap AllTables="_tables" Tables="visible" Zones="VisibleZones" Decor="VisibleDecor" ResByTable="resByTable"
+                  Editing="_editing" ZoneEditActive="_zoneEditActive" ZoneMenuOpen="_zoneMenuOpen" ZoneFilter="@_zoneFilter"
+                  Selecting="_selecting" Selection="_selection" SelectedAssignedTableId="_selectedAssignedTableId" LayoutEpoch="_layoutEpoch"
+                  Loading="!_loaded" RenderKey="FloorKey"
+                  OnTableClick="OnTableClick"
+                  OnRemoveTableFromReservation="RemoveTableFromReservation"
+                  OnEditTableInLayout="EditTableDuringLayoutEdit"
+                  OnDeleteTable="RequestDeleteTable"
+                  OnEditZoneInLayout="EditZoneDuringLayoutEdit"
+                  OnDeleteZoneInLayout="RequestDeleteZone"
+                  OnRenameZone="StartRenameZone"
+                  OnRemoveZone="RemoveZone"
+                  OnDeleteDecor="RequestDeleteDecor" />
     </div>
     </div>
     </div>
@@ -791,7 +645,7 @@
     <ChildContent>
         @if (RenamingTable?.GroupId is not null)
         {
-            <div class="field"><label>@Loc.T("Group name")</label><input class="input" placeholder="@GroupDisplayName(RenamingTable.GroupId.Value)" @bind="_groupNameQuickInput" /></div>
+            <div class="field"><label>@Loc.T("Group name")</label><input class="input" placeholder="@GroupDisplayName(_tables, RenamingTable.GroupId.Value)" @bind="_groupNameQuickInput" /></div>
         }
         else
         {
@@ -853,11 +707,8 @@
 <OrderEditor OrderId="_editorOrderId" OnClose="CloseOrderEditor" OnChanged="OnOrderEditorChanged" FullScreen="true" />
 
 @code {
-    // Cooler, darker "corporate upholstery" palette (navy, teal, slate, taupe, aubergine, sage)
-    // instead of the warmer/brighter first pass — used both for joined-group badges and the table
-    // paint-mode swatches, so the whole floor plan reads as enterprise software, not a colour wheel.
-    private static readonly string[] GroupColors = { "#2f4a68", "#2f6b66", "#52657a", "#6b5f4a", "#5c4a5c", "#3f5c4a" };
-
+    // Replaced, never mutated in place: FloorMap decides whether to re-render by comparing list
+    // references (see FloorRenderKey) — the same goes for _decor, _zones and _reservations.
     private List<TableDto> _tables = new();
     private TableFormDto? _form;
     private List<string> _groupMembers = new();
@@ -965,7 +816,13 @@
         FloorDecorType.PottedPlant, FloorDecorType.SmallPlant, FloorDecorType.HangingPlant,
         FloorDecorType.Bush, FloorDecorType.SmallTree, FloorDecorType.Fern
     };
-    private static readonly FloorDecorType[] InteriorTypes = { FloorDecorType.Wall, FloorDecorType.Door, FloorDecorType.BarCounter, FloorDecorType.Column, FloorDecorType.Window };
+    private static readonly FloorDecorType[] InteriorTypes =
+    {
+        FloorDecorType.Wall, FloorDecorType.Window, FloorDecorType.GlassWall, FloorDecorType.Door, FloorDecorType.Column,
+        FloorDecorType.BarCounter, FloorDecorType.WineRack, FloorDecorType.Banquette, FloorDecorType.Rug,
+        FloorDecorType.Planter, FloorDecorType.Parasol, FloorDecorType.HostStand,
+        FloorDecorType.Kitchen, FloorDecorType.Restrooms, FloorDecorType.Stairs,
+    };
 
     private bool _plantMenuOpen;
     private bool _plantMenuClosing;
@@ -1036,40 +893,19 @@
         }
     }
 
-    private static string DecorSlug(FloorDecorType type) => type.ToString().ToLowerInvariant();
-
-    private static string DecorLabel(FloorDecorType type) => type switch
-    {
-        FloorDecorType.PottedPlant => "Potted plant",
-        FloorDecorType.SmallPlant => "Small plant",
-        FloorDecorType.HangingPlant => "Hanging plant",
-        FloorDecorType.Bush => "Bush",
-        FloorDecorType.SmallTree => "Small tree",
-        FloorDecorType.Fern => "Fern",
-        FloorDecorType.Wall => "Wall",
-        FloorDecorType.Door => "Door",
-        FloorDecorType.BarCounter => "Bar counter",
-        FloorDecorType.Column => "Column",
-        FloorDecorType.Window => "Window",
-        _ => type.ToString(),
-    };
-
-    private static string DecorStyle(FloorDecorDto d) =>
-        $"left:{N(d.PositionX)}px; top:{N(d.PositionY)}px; width:{N(d.Width)}px; height:{N(d.Height)}px; transform:rotate({N(d.Rotation)}deg); --rot:{N(d.Rotation)}deg";
-
     private async Task AddDecor(FloorDecorType type)
     {
         _plantMenuOpen = false;
         _designMenuOpen = false;
         var dto = await DecorService.CreateAsync(type);
-        _decor.Add(dto);
+        _decor = [.. _decor, dto];
         StartEdit();
     }
 
     private async Task RemoveDecor(int id)
     {
         await DecorService.DeleteAsync(id);
-        _decor.RemoveAll(d => d.Id == id);
+        _decor = _decor.Where(d => d.Id != id).ToList();
     }
 
     // ---- Floor zones: named, clickable boundary boxes drawn directly on the map (e.g.
@@ -1082,17 +918,6 @@
     private string _zoneNameInput = "";
     private string? _zoneColorInput;
 
-    private static string ZoneStyle(FloorZoneDto z)
-    {
-        var s = $"left:{N(z.PositionX)}px; top:{N(z.PositionY)}px; width:{N(z.Width)}px; height:{N(z.Height)}px;";
-        if (z.Color is not null)
-        {
-            if (IsImageColor(z.Color)) s += $" --zimg:url('{z.Color}');";
-            else s += $" --zcolor:{z.Color};";
-        }
-        return s;
-    }
-
     private void OnZoneClick(FloorZoneDto z)
     {
         if (_editing) return;
@@ -1103,14 +928,14 @@
     {
         _zoneMenuOpen = false;
         var dto = await ZoneService.CreateAsync();
-        _zones.Add(dto);
+        _zones = [.. _zones, dto];
         StartEdit();
     }
 
     private async Task RemoveZone(int id)
     {
         await ZoneService.DeleteAsync(id);
-        _zones.RemoveAll(z => z.Id == id);
+        _zones = _zones.Where(z => z.Id != id).ToList();
     }
 
     private void StartRenameZone(FloorZoneDto z)
@@ -1180,8 +1005,8 @@
     {
         if (_renamingZoneId is null || string.IsNullOrWhiteSpace(_zoneNameInput)) return;
         await ZoneService.UpdateAsync(_renamingZoneId.Value, _zoneNameInput, _zoneColorInput);
-        var i = _zones.FindIndex(z => z.Id == _renamingZoneId.Value);
-        if (i >= 0) _zones[i] = _zones[i] with { Name = _zoneNameInput.Trim(), Color = _zoneColorInput };
+        var renamedId = _renamingZoneId.Value;
+        _zones = _zones.Select(z => z.Id == renamedId ? z with { Name = _zoneNameInput.Trim(), Color = _zoneColorInput } : z).ToList();
         _renamingZoneId = null;
     }
 
@@ -1337,86 +1162,6 @@
     private ElementReference _floorEl;
     private IJSObjectReference? _module;
 
-    // Numbers must be invariant so CSS/px values never use a comma decimal separator.
-    private static string N(double d) => d.ToString(CultureInfo.InvariantCulture);
-    private static string GroupColor(int gid) => GroupColors[Math.Abs(gid) % GroupColors.Length];
-
-    // The anchor is the left-most (then top-most) member — it carries the group's badge and total.
-    private bool IsGroupAnchor(TableDto t) =>
-        t.GroupId is not null &&
-        !_tables.Any(o => o.GroupId == t.GroupId &&
-                          (o.PositionX < t.PositionX ||
-                           (o.PositionX == t.PositionX && o.PositionY < t.PositionY)));
-
-    // Which of a joined member's shared edges (left/right) butt up against a neighbour, so the
-    // CSS can drop the border/bevel there and the row reads as one continuous table surface
-    // instead of a seam down the middle. Mirrors ChairStyles' own hideLeft/hideRight logic,
-    // since both rely on the same "always snapped left-to-right" layout (see JoinTablesAsync).
-    private string GroupSeamAttr(TableDto t)
-    {
-        if (t.GroupId is null) return "";
-        var members = _tables.Where(m => m.GroupId == t.GroupId).OrderBy(m => m.PositionX).ToList();
-        var idx = members.FindIndex(m => m.Id == t.Id);
-        var left = idx > 0;
-        var right = idx >= 0 && idx < members.Count - 1;
-        return left && right ? "both" : left ? "left" : right ? "right" : "";
-    }
-
-    // The reservation shown on a joined group's own overlay badge — any member carries the same
-    // reservation object (see ResByTable), so the first one found is enough.
-    private ReservationDto? GroupReservation(int gid, Dictionary<int, ReservationDto> resByTable)
-    {
-        var member = _tables.FirstOrDefault(t => t.GroupId == gid);
-        return member is not null && resByTable.TryGetValue(member.Id, out var rv) ? rv : null;
-    }
-
-    // Joining tables loses a seat on each side of every seam where two tables meet (nobody can
-    // sit facing into the next table) — a chain of N tables has N-1 seams, so 2 seats go for
-    // each one. Two 4-seat tables joined into one therefore seat 6, not 8.
-    private int GroupSeats(int gid)
-    {
-        var members = _tables.Where(t => t.GroupId == gid).ToList();
-        if (members.Count <= 1) return members.Sum(t => t.Seats);
-        return Math.Max(0, members.Sum(t => t.Seats) - 2 * (members.Count - 1));
-    }
-
-    private string GroupDisplayName(int gid)
-    {
-        var members = _tables.Where(t => t.GroupId == gid).OrderBy(t => t.Name).ToList();
-        var namedGroup = members.Select(t => t.GroupName).FirstOrDefault(n => !string.IsNullOrWhiteSpace(n));
-        return namedGroup ?? string.Join(" + ", members.Select(t => t.Name));
-    }
-
-    // True centre of the group's bounding box, both axes — kept centred on the table itself
-    // (like any ungrouped table's own name) rather than floating above it, so it reads the same
-    // whether the group is freshly rendered or mid-drag. floorplan.js's own live badge position
-    // during a drag (see onMove) uses this exact same formula, so the label doesn't visibly jump
-    // the instant the drag ends and Blazor's render takes back over.
-    private string GroupCenterStyle(int gid, List<TableDto> visible)
-    {
-        var members = visible.Where(t => t.GroupId == gid).ToList();
-        if (members.Count == 0) return "";
-        var left = members.Min(t => t.PositionX);
-        var right = members.Max(t => t.PositionX + t.Width);
-        var top = members.Min(t => t.PositionY);
-        var bottom = members.Max(t => t.PositionY + t.Height);
-        return $"left:{N((left + right) / 2)}px; top:{N((top + bottom) / 2)}px;";
-    }
-
-    // Bottom-centre of the group's bounding box — where the joined row's one shared
-    // reservation-time badge hangs (see .tbl__resv--group), centred under the whole merged span
-    // instead of just the anchor member's own narrower box. floorplan.js's onMove uses this same
-    // formula live during a drag, for the same reason GroupCenterStyle documents above.
-    private string GroupBottomCenterStyle(int gid, List<TableDto> visible)
-    {
-        var members = visible.Where(t => t.GroupId == gid).ToList();
-        if (members.Count == 0) return "";
-        var left = members.Min(t => t.PositionX);
-        var right = members.Max(t => t.PositionX + t.Width);
-        var bottom = members.Max(t => t.PositionY + t.Height);
-        return $"left:{N((left + right) / 2)}px; top:{N(bottom)}px;";
-    }
-
     private string? _zoneFilter;
 
     // True once any zone's chip has been clicked to enter layout-edit mode (see the zone-pick
@@ -1467,136 +1212,11 @@
         }
     }
 
-    private string TableClass(TableDto t, ReservationDto? rv)
-    {
-        var status = EffectiveTableStatus(t, rv);
-        var c = $"tbl tbl--{t.Shape.ToString().ToLower()} tbl--{status.ToString().ToLower()}";
-        if (t.Color is not null) c += IsImageColor(t.Color) ? " tbl--colored-img" : " tbl--colored";
-        if (t.IsLocked) c += " tbl--locked";
-        if (t.GroupId is not null) c += " tbl--grouped";
-        if (_selecting && _selection.Contains(t.Id)) c += " tbl--selected";
-        return c;
-    }
-
-    // A seated party reads as "occupied" on the floor plan (yellow, same as a walk-in order) even
-    // though the table's own record is still "Reserved" — the guest is physically there now.
-    private static TableStatus EffectiveTableStatus(TableDto t, ReservationDto? rv) =>
-        rv?.Status == ReservationStatus.Seated ? TableStatus.Occupied : t.Status;
-
-    // Icons mirror SHAPE_ICONS in floorplan.js so the button looks identical before and after a JS cycle.
-    private static string ShapeIcon(TableShape shape) => shape switch
-    {
-        TableShape.Round => "○",
-        TableShape.Rectangular => "▭",
-        TableShape.Oval => "⬭",
-        _ => "◻"
-    };
-
-    private string TableStyle(TableDto t)
-    {
-        var s = $"left:{N(t.PositionX)}px; top:{N(t.PositionY)}px; width:{N(t.Width)}px; height:{N(t.Height)}px; transform:rotate({N(t.Rotation)}deg); --rot:{N(t.Rotation)}deg";
-        if (t.GroupId is not null) s += $"; --grp:{GroupColor(t.GroupId.Value)}";
-        if (t.Color is not null)
-        {
-            if (IsImageColor(t.Color)) { s += $"; --timg:url('{t.Color}'); --tfg:#fff"; }
-            else
-            {
-                s += $"; --tcolor:{t.Color}";
-                if (IsDarkColor(t.Color)) s += "; --tfg:#fff";
-            }
-        }
-        return s;
-    }
-
-    // Colour values picked via ColorPickerPanel are either a "#rrggbb" hex or an "/uploads/..."
-    // image path (see ColorPickerPanel's own Value/IsImage) — this is the same '#'-prefix check
-    // used there, kept in sync so a value round-trips as the same kind on both ends.
-    private static bool IsImageColor(string color) => !color.StartsWith('#');
-
-    // Quick perceived-luminance check so a custom/dark accent colour (picked freely via the
-    // native colour input, unlike the fixed GroupColors palette) automatically gets white
-    // labels instead of the default dark text becoming unreadable on it.
-    private static bool IsDarkColor(string hex)
-    {
-        if (hex.Length < 7) return false;
-        if (!byte.TryParse(hex.AsSpan(1, 2), System.Globalization.NumberStyles.HexNumber, null, out var r)) return false;
-        if (!byte.TryParse(hex.AsSpan(3, 2), System.Globalization.NumberStyles.HexNumber, null, out var g)) return false;
-        if (!byte.TryParse(hex.AsSpan(5, 2), System.Globalization.NumberStyles.HexNumber, null, out var b)) return false;
-        return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5;
-    }
-
-    // One small chair mark per seat, ringed around the table so it reads as a real table
-    // instead of a bare labelled box. Round/oval tables get an even circular ring. Square/
-    // rectangular tables follow the same convention as a real dining table: exactly one chair
-    // on each short side (left/right) once there are at least 2 seats, and the rest split as
-    // evenly as possible between the head and foot (top/bottom) — so 4 seats is 1-1-1-1, 6 is
-    // 1-1-2-2, 8 is 1-1-3-3, etc., rather than a count proportional to each edge's length.
-    // Percentages can fall outside 0–100 on purpose — that's what pushes the chair beyond the
-    // table's own edge instead of sitting on top of it.
-    // Joined tables are always snapped into a single left-to-right row (see JoinTablesAsync), so
-    // a member's left and/or right edge can be a seam shared with its neighbour rather than a
-    // real table edge — those sides skip their chair so nobody is drawn "sitting" inside the
-    // next table. Top/bottom are never shared, since the row never stacks vertically.
-    private static IEnumerable<string> ChairStyles(TableDto t, IReadOnlyList<TableDto> allTables)
-    {
-        var hideLeft = false;
-        var hideRight = false;
-        if (t.GroupId is not null)
-        {
-            var members = allTables.Where(m => m.GroupId == t.GroupId).OrderBy(m => m.PositionX).ToList();
-            var idx = members.FindIndex(m => m.Id == t.Id);
-            hideLeft = idx > 0;
-            hideRight = idx >= 0 && idx < members.Count - 1;
-        }
-
-        const double outset = 18; // clearance off the table's own edge, scaled to the smaller chair size (see .tbl__chair)
-        // Left/right offsets are a % of the table's own Width, so a wide 6+ seat table (see
-        // RestaurantTable.DefaultWidthForSeats) pushed its side chairs much farther out in
-        // absolute px than the top/bottom ones get from the same %. Pin the side offset to the
-        // pixel clearance a default 70px-tall table would get instead, so it stays close
-        // regardless of how wide the table is.
-        var sideOutset = t.Width > 0 ? outset / 100 * 70 / t.Width * 100 : outset;
-        var n = t.Seats;
-        if (n <= 0 || n > 16) yield break;
-
-        // A joined member always has its corners squared regardless of its own Shape (see
-        // .tbl--grouped's border-radius:0 — the row has to read as one continuous rectangular
-        // surface, not a chain of circles), so a round/oval seat ring — chairs at 30°/60° angles
-        // meant to trace a circle's curve — would float at odd diagonal positions that don't line
-        // up with that rectangle's straight edges or corners at all. Grouped members fall through
-        // to the same rectangular one-per-side layout every square/rect table already uses.
-        if (t.GroupId is null && t.Shape is TableShape.Round or TableShape.Oval)
-        {
-            for (var i = 0; i < n; i++)
-            {
-                var angle = 2 * Math.PI * i / n - Math.PI / 2;
-                var left = 50 + 50 * (1 + outset / 50) * Math.Cos(angle);
-                var top = 50 + 50 * (1 + outset / 50) * Math.Sin(angle);
-                // Faces outward, away from the table centre — the same vector the chair was placed
-                // along, just expressed as a rotation for the backrest pseudo-element (see .tbl__chair
-                // in Tables.razor.css). +90 converts "angle from +X axis" to "rotation from facing up".
-                var ang = angle * 180 / Math.PI + 90;
-                yield return $"left:{left:0.#}%; top:{top:0.#}%; --ang:{ang:0.#}deg;";
-            }
-            yield break;
-        }
-
-        var sideCount = n >= 2 ? 1 : 0;
-        var remaining = n - 2 * sideCount;
-        var topCount = (remaining + 1) / 2;      // the odd remainder's extra chair goes to the head (top)
-        var bottomCount = remaining / 2;
-
-        if (!hideLeft)
-            for (var i = 0; i < sideCount; i++)
-                yield return $"left:{-sideOutset:0.#}%; top:50%; --ang:270deg;";          // left
-        if (!hideRight)
-            for (var i = 0; i < sideCount; i++)
-                yield return $"left:{100 + sideOutset:0.#}%; top:50%; --ang:90deg;";      // right
-        for (var i = 0; i < topCount; i++)
-            yield return $"left:{(i + 0.5) / topCount * 100:0.#}%; top:{-outset:0.#}%; --ang:0deg;";
-        for (var i = 0; i < bottomCount; i++)
-            yield return $"left:{(i + 0.5) / bottomCount * 100:0.#}%; top:{100 + outset:0.#}%; --ang:180deg;";
-    }
+    // Everything FloorMap draws from — see FloorRenderKey for why lists compare by reference.
+    private FloorRenderKey FloorKey => new(
+        _tables, _zones, _decor, _reservations, _periodFilter, _loaded,
+        _editing, _selecting, FloorRenderKey.HashSelection(_selection), _assignReservationId, _zoneFilter,
+        _zoneMenuOpen, _zoneEditActive, _selectedAssignedTableId, _layoutEpoch, Branding.Current);
 
     protected override bool ShouldRender() => !_suppressRender;
 
@@ -1610,7 +1230,12 @@
 
         await Load();
         await LoadReservations();
+        _loaded = true;
     }
+
+    // False until the first load finishes, so the map shows nothing (rather than a flash of
+    // "No tables yet") while the circuit's first data load is still in flight.
+    private bool _loaded;
 
     private async Task Load()
     {
@@ -1621,13 +1246,17 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // <PageTitle> only reaches the static <head> during prerendering, which this page skips
+        // (see @rendermode above), so set the tab title directly once the page is up.
+        if (firstRender) await JS.InvokeVoidAsync("posSetTitle", $"Tables · {Branding.Current.Title}");
+
         if (_editing && _module is null && RendererInfo.IsInteractive)
         {
             // Cache-busted with a fixed build marker (bump the number whenever this file changes)
             // — a plain "./js/floorplan.js" URL lets browsers keep serving a stale cached copy
             // across dev-server restarts/deploys, silently running old drag/resize logic even
             // after the server-side fix is live.
-            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/floorplan.js?v=2");
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/floorplan.js?v=3");
             await _module.InvokeVoidAsync("init", _floorEl, _zoom);
             _suppressRender = true;
         }
@@ -1693,8 +1322,11 @@
         _editing = false;
         _zoneFilter = null;
         _zoneEditActive = false;
+        _layoutEpoch++; // discard whatever floorplan.js moved (see FloorMap.LayoutEpoch)
         await Load();
     }
+
+    private int _layoutEpoch;
 
     // ---- Join / separate ----
     private void StartSelect() { CancelAssign(); CancelReassign(); StopPaintMode(); _selecting = true; _selection.Clear(); _notice = null; }
@@ -2076,12 +1708,7 @@
 
     // Which service turn a reservation's time falls into, so it reads at a glance in the
     // day list and on the floor plan without having to parse the raw HH:mm.
-    private string PeriodIcon(TimeOnly time) => Branding.Current.GetPeriod(time) switch
-    {
-        ServicePeriod.Lunch => "sun",
-        ServicePeriod.Dinner => "moon",
-        _ => "clock"
-    };
+    private string PeriodIcon(TimeOnly time) => FloorPlanHelpers.PeriodIcon(Branding.Current.GetPeriod(time));
 
     private string PeriodLabel(TimeOnly time) => Branding.Current.GetPeriod(time) switch
     {

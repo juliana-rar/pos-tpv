@@ -35,6 +35,16 @@ public class FloorDecor : BaseEntity
         FloorDecorType.Bush => (64, 64),
         FloorDecorType.SmallTree => (76, 76),
         FloorDecorType.Fern => (46, 46),
+        FloorDecorType.GlassWall => (180, 10),
+        FloorDecorType.Banquette => (140, 34),
+        FloorDecorType.Rug => (180, 140),
+        FloorDecorType.Planter => (140, 24),
+        FloorDecorType.Parasol => (90, 90),
+        FloorDecorType.WineRack => (160, 28),
+        FloorDecorType.Kitchen => (240, 200),
+        FloorDecorType.Restrooms => (160, 120),
+        FloorDecorType.Stairs => (90, 150),
+        FloorDecorType.HostStand => (46, 30),
         _ => (50, 50)
     };
 }
