@@ -45,6 +45,7 @@ internal static class FloorPlanHelpers
         FloorDecorType.Restrooms => "Restrooms",
         FloorDecorType.Stairs => "Stairs",
         FloorDecorType.HostStand => "Host stand",
+        FloorDecorType.Corridor => "Corridor",
         _ => type.ToString(),
     };
 

@@ -1,18 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 28 28" width="28" height="28">
-  <!-- Modern bar stool seen from above (stool image for bar tables, see Tables.razor.css):
-       dark theme, free table. Chrome footrest ring, padded round seat with a stitched
-       edge, and a low curved backrest on the side facing away from the bar. -->
+  <!-- Counter stool seen from above (bar tables, the stool variant of .tbl__chair in Tables.razor.css):
+       dark theme, free table. Four splayed metal legs with glides, a polished footrest ring, a padded leather
+       seat with piping, top-stitching and a tufting button, and a low curved backrest on the side
+       facing away from the bar. Generated — edit the generator, not this file. -->
   <defs>
-    <filter id="s" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="1.3" stdDeviation="1" flood-color="#000" flood-opacity=".32"/></filter>
-    <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f1f4f7"/><stop offset=".5" stop-color="#a9b2bc"/><stop offset="1" stop-color="#e3e8ed"/></linearGradient>
-    <radialGradient id="seat" cx=".38" cy=".34" r=".75"><stop offset="0" stop-color="#8791a0"/><stop offset="1" stop-color="#555e6c"/></radialGradient>
+    <filter id="sh" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation=".9"/></filter>
+    <radialGradient id="seat" cx=".36" cy=".32" r=".78"><stop offset="0" stop-color="#a3adbb"/><stop offset=".62" stop-color="#707b8a"/><stop offset="1" stop-color="#454d59"/></radialGradient>
+    <linearGradient id="back" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5f6975"/><stop offset=".45" stop-color="#a3adbb"/><stop offset="1" stop-color="#454d59"/></linearGradient>
+    <linearGradient id="frame" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a717b"/><stop offset="1" stop-color="#2a2e34"/></linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3f5f7"/><stop offset=".5" stop-color="#9aa3ad"/><stop offset="1" stop-color="#dfe4e9"/></linearGradient>
   </defs>
-  <g filter="url(#s)">
-    <circle cx="12" cy="12" r="11" fill="none" stroke="url(#chrome)" stroke-width="1.5"/>
-    <circle cx="12" cy="12" r="8.3" fill="url(#seat)" stroke="#2e343d" stroke-width=".7"/>
-    <circle cx="12" cy="12" r="6.6" fill="none" stroke="rgba(255,255,255,.45)" stroke-width=".45" stroke-dasharray=".9 .8"/>
-    <path d="M3.48 8.03 A9.4 9.4 0 0 1 20.52 8.03" fill="none" stroke="#3d4450" stroke-width="2.8" stroke-linecap="round"/>
-    <path d="M3.48 8.03 A9.4 9.4 0 0 1 20.52 8.03" fill="none" stroke="rgba(255,255,255,.22)" stroke-width=".6" stroke-linecap="round" transform="translate(0 -.7)"/>
-    <circle cx="12" cy="12" r=".9" fill="#2e343d" opacity=".6"/>
-  </g>
+  <ellipse cx="12.4" cy="13.4" rx="11" ry="10.6" fill="#000" fill-opacity=".28" filter="url(#sh)"/>
+  <path d="M16.81 16.81L19.5 19.5" stroke="url(#frame)" stroke-width="1.5" stroke-linecap="round"/><circle cx="19.5" cy="19.5" r="1.05" fill="#2a2e34"/><circle cx="19.2" cy="19.15" r=".35" fill="#fff" fill-opacity=".45"/><path d="M7.19 16.81L4.5 19.5" stroke="url(#frame)" stroke-width="1.5" stroke-linecap="round"/><circle cx="4.5" cy="19.5" r="1.05" fill="#2a2e34"/><circle cx="4.2" cy="19.15" r=".35" fill="#fff" fill-opacity=".45"/><path d="M7.19 7.19L4.5 4.5" stroke="url(#frame)" stroke-width="1.5" stroke-linecap="round"/><circle cx="4.5" cy="4.5" r="1.05" fill="#2a2e34"/><circle cx="4.2" cy="4.15" r=".35" fill="#fff" fill-opacity=".45"/><path d="M16.81 7.19L19.5 4.5" stroke="url(#frame)" stroke-width="1.5" stroke-linecap="round"/><circle cx="19.5" cy="4.5" r="1.05" fill="#2a2e34"/><circle cx="19.2" cy="4.15" r=".35" fill="#fff" fill-opacity=".45"/>
+  <circle cx="12" cy="12" r="9.1" fill="none" stroke="#000" stroke-opacity=".35" stroke-width="1.3" transform="translate(.3 .5)"/>
+  <circle cx="12" cy="12" r="9.1" fill="none" stroke="url(#ring)" stroke-width=".95"/>
+  <circle cx="12" cy="12" r="7.9" fill="#000" fill-opacity=".3" transform="translate(.35 .6)" filter="url(#sh)"/>
+  <circle cx="12" cy="12" r="7.8" fill="url(#seat)"/>
+  <circle cx="12" cy="12" r="7.45" fill="none" stroke="#a3adbb" stroke-opacity=".8" stroke-width=".55"/>
+  <circle cx="12" cy="12" r="7.8" fill="none" stroke="#454d59" stroke-width=".45"/>
+  <circle cx="12" cy="12" r="6.3" fill="none" stroke="#fff" stroke-opacity=".38" stroke-width=".3" stroke-dasharray=".7 .55"/>
+  <path d="M7.4 9.3A5.6 5.6 0 0 1 12 6.6" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1.1" stroke-linecap="round"/>
+  <circle cx="12" cy="12" r=".75" fill="#454d59"/><circle cx="11.8" cy="11.8" r=".3" fill="#fff" fill-opacity=".35"/>
+  <path d="M4.3 7.2A8.9 8.9 0 0 1 19.7 7.2" fill="none" stroke="#000" stroke-opacity=".35" stroke-width="3.1" stroke-linecap="round" transform="translate(.3 .6)" filter="url(#sh)"/>
+  <path d="M4.3 7.2A8.9 8.9 0 0 1 19.7 7.2" fill="none" stroke="#454d59" stroke-width="3" stroke-linecap="round"/>
+  <path d="M4.3 7.2A8.9 8.9 0 0 1 19.7 7.2" fill="none" stroke="url(#back)" stroke-width="2.3" stroke-linecap="round"/>
+  <path d="M5.1 6.5A8.3 8.3 0 0 1 18.9 6.5" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width=".4" stroke-linecap="round"/>
 </svg>

@@ -1,14 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-3 -2 20 25.6" width="20" height="25.6">
-  <!-- Modern dining chair seen from above (see .tbl__chair in Tables.razor.css): light theme,
-       occupied table. Padded rounded seat with a stitched edge and a thin curved backrest. -->
+  <!-- Upholstered dining chair seen from above (see .tbl__chair in Tables.razor.css): light theme, occupied table.
+       Four legs showing at the corners, a padded leather seat with piping, top-stitching and a
+       darker waterfall front edge, and a curved backrest with real thickness joined to the seat
+       by two posts. Generated — edit the generator, not this file. -->
   <defs>
-    <filter id="s" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="1.3" stdDeviation="1" flood-color="#000" flood-opacity=".3"/></filter>
-    <radialGradient id="seat" cx=".38" cy=".34" r=".8"><stop offset="0" stop-color="#f7c066"/><stop offset="1" stop-color="#c9851f"/></radialGradient>
+    <filter id="sh" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation=".9"/></filter>
+    <radialGradient id="seat" cx=".36" cy=".32" r=".78"><stop offset="0" stop-color="#f9cd7e"/><stop offset=".62" stop-color="#d9952c"/><stop offset="1" stop-color="#8a5810"/></radialGradient>
+    <linearGradient id="back" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b87f25"/><stop offset=".45" stop-color="#f9cd7e"/><stop offset="1" stop-color="#8a5810"/></linearGradient>
+    <linearGradient id="frame" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5a4630"/><stop offset="1" stop-color="#1f1810"/></linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3d6"/><stop offset=".5" stop-color="#b8862f"/><stop offset="1" stop-color="#f0d59a"/></linearGradient>
   </defs>
-  <g filter="url(#s)">
-    <rect x=".6" y="5.9" width="12.8" height="12.8" rx="4.6" fill="url(#seat)" stroke="#7a4d0e" stroke-width=".7"/>
-    <rect x="2.2" y="7.5" width="9.6" height="9.6" rx="3.3" fill="none" stroke="rgba(255,255,255,.6)" stroke-width=".45" stroke-dasharray=".9 .8"/>
-    <path d="M1.4 4.6 Q7 .6 12.6 4.6" fill="none" stroke="#8a5810" stroke-width="2.6" stroke-linecap="round"/>
-    <path d="M2.4 3.7 Q7 .5 11.6 3.7" fill="none" stroke="rgba(255,255,255,.22)" stroke-width=".55" stroke-linecap="round"/>
-  </g>
+  <rect x="-.6" y="3.6" width="15.2" height="17.2" rx="4.6" fill="#000" fill-opacity=".3" filter="url(#sh)" transform="translate(.35 .7)"/>
+  <rect x="-0.75" y="17.95" width="1.9" height="1.9" rx=".55" fill="url(#frame)"/><circle cx="-0.05" cy="18.6" r=".3" fill="#fff" fill-opacity=".4"/><rect x="12.85" y="17.95" width="1.9" height="1.9" rx=".55" fill="url(#frame)"/><circle cx="13.55" cy="18.6" r=".3" fill="#fff" fill-opacity=".4"/><rect x="-0.05" y="4.45" width="1.9" height="1.9" rx=".55" fill="url(#frame)"/><circle cx="0.65" cy="5.1" r=".3" fill="#fff" fill-opacity=".4"/><rect x="12.15" y="4.45" width="1.9" height="1.9" rx=".55" fill="url(#frame)"/><circle cx="12.85" cy="5.1" r=".3" fill="#fff" fill-opacity=".4"/>
+  <path d="M3 4.8V6.6M11 4.8V6.6" stroke="url(#frame)" stroke-width="1.3" stroke-linecap="round"/>
+  <rect x=".6" y="5.9" width="12.8" height="12.8" rx="4.4" fill="url(#seat)"/>
+  <path d="M1.6 16.2Q7 19.6 12.4 16.2" fill="none" stroke="#000" stroke-opacity=".22" stroke-width="1.6" stroke-linecap="round"/>
+  <rect x=".95" y="6.25" width="12.1" height="12.1" rx="4.1" fill="none" stroke="#f9cd7e" stroke-opacity=".75" stroke-width=".5"/>
+  <rect x=".6" y="5.9" width="12.8" height="12.8" rx="4.4" fill="none" stroke="#8a5810" stroke-width=".45"/>
+  <rect x="2.2" y="7.5" width="9.6" height="9.6" rx="3.2" fill="none" stroke="#fff" stroke-opacity=".36" stroke-width=".3" stroke-dasharray=".7 .55"/>
+  <path d="M3 9.2Q4.4 7.6 6.6 7.4" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1" stroke-linecap="round"/>
+  <path d="M.9 4.3Q7 -.2 13.1 4.3" fill="none" stroke="#000" stroke-opacity=".35" stroke-width="3" stroke-linecap="round" transform="translate(.3 .6)" filter="url(#sh)"/>
+  <path d="M.9 4.3Q7 -.2 13.1 4.3" fill="none" stroke="#8a5810" stroke-width="2.9" stroke-linecap="round"/>
+  <path d="M.9 4.3Q7 -.2 13.1 4.3" fill="none" stroke="url(#back)" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M2 3.4Q7 .1 12 3.4" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width=".4" stroke-linecap="round"/>
 </svg>

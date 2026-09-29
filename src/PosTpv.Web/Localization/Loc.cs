@@ -446,6 +446,7 @@ public static class Loc
         ["Restrooms"] = "Aseos",
         ["Stairs"] = "Escaleras",
         ["Host stand"] = "Recepción",
+        ["Corridor"] = "Pasillo",
         ["Zoom in"] = "Acercar",
         ["Zoom out"] = "Alejar",
         ["Reset zoom"] = "Restablecer zoom",

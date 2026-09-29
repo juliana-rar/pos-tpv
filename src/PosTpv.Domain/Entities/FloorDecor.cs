@@ -45,6 +45,7 @@ public class FloorDecor : BaseEntity
         FloorDecorType.Restrooms => (160, 120),
         FloorDecorType.Stairs => (90, 150),
         FloorDecorType.HostStand => (46, 30),
+        FloorDecorType.Corridor => (260, 70),
         _ => (50, 50)
     };
 }

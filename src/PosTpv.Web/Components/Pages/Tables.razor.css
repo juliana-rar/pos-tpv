@@ -1924,36 +1924,69 @@
 
 .decor--wall {
     border-radius: 1px;
-    background: repeating-linear-gradient(45deg, var(--wall-hatch) 0 1px, transparent 1px 6px), var(--wall);
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, .2), 0 3px 6px -2px rgba(0, 0, 0, .45);
+    background:
+        url("/img/decor/wall-grain.svg") 0 0 / 64px 64px,
+        repeating-linear-gradient(45deg, var(--wall-hatch) 0 1px, transparent 1px 5px),
+        linear-gradient(135deg, rgba(255, 255, 255, .06), transparent 60%),
+        var(--wall);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, .09),
+        0 0 0 .5px rgba(0, 0, 0, .55),
+        0 0 7px 1px rgba(0, 0, 0, .22),
+        2px 4px 6px -2px rgba(0, 0, 0, .35);
 }
 
-/* Window — glass set into the wall line: frame in the wall colour, a pale-blue pane with a soft
-   reflection, and a mullion every 48px. Both mullion directions are layered, and only the one
-   along the window's long side ever has room to show, so the same rule works for horizontal and
-   vertical windows. */
-.decor--window {
-    border-radius: 1px;
-    background:
-        repeating-linear-gradient(90deg, transparent 0 46px, var(--wall) 46px 48px),
-        repeating-linear-gradient(0deg, transparent 0 46px, var(--wall) 46px 48px),
-        linear-gradient(135deg, rgba(255, 255, 255, .6) 0 18%, transparent 34%),
-        linear-gradient(to bottom, #dcf0f9, #a9d6ea);
-    border: 2px solid var(--wall);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .85), 0 2px 4px -1px rgba(0, 0, 0, .3);
+/* Glazing — windows and glass walls are drawn the way a presentation plan draws them: the wall
+   stops at a jamb on each end, an anodised-aluminium frame runs between them, and the glass is
+   shown as the two parallel panes of a double-glazed unit with a light tint and reflection,
+   split into lites by mullions. The drawing lives on ::before so a container query can turn it
+   for a vertical run: --along/--across are the gradient angles along and across the window. */
+.decor--window, .decor--glasswall {
+    container-type: size;
+    --along: 90deg;
+    --across: 180deg;
+    --frame: #aab3bb;
+    --frame-hi: #e3e8ec;
+    --pane: rgba(64, 104, 128, .75);
+    --glass: rgba(170, 214, 235, .8);
+    --jamb: 5px;
+    --lite: 48px;
+    box-shadow: 0 0 0 .5px rgba(0, 0, 0, .5), 0 2px 4px -1px rgba(0, 0, 0, .3);
 }
-
-/* Glass wall — a full-height glazed partition: lighter and more transparent than a window (the
-   floor shows through), thin frame, double-glazing highlight and slimmer mullions every 64px. */
-.decor--glasswall {
-    border-radius: 1px;
+.decor--glasswall { --glass: rgba(178, 222, 240, .5); --jamb: 3px; --lite: 64px; }
+[data-theme="dark"] .decor--window, [data-theme="dark"] .decor--glasswall {
+    --frame: #6b737c;
+    --frame-hi: #9aa3ab;
+    --pane: rgba(170, 214, 235, .6);
+    --glass: rgba(90, 140, 165, .55);
+}
+.decor--window::before, .decor--glasswall::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
     background:
-        repeating-linear-gradient(90deg, transparent 0 62px, var(--wall) 62px 64px),
-        repeating-linear-gradient(0deg, transparent 0 62px, var(--wall) 62px 64px),
-        linear-gradient(135deg, rgba(255, 255, 255, .55) 0 12%, transparent 26%, rgba(255, 255, 255, .25) 60%, transparent 72%),
-        rgba(178, 222, 240, .55);
-    border: 1.5px solid var(--wall);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .7), 0 2px 5px -2px rgba(0, 0, 0, .3);
+        /* wall jambs at both ends */
+        linear-gradient(var(--along), var(--wall) 0 var(--jamb), transparent var(--jamb) calc(100% - var(--jamb)), var(--wall) calc(100% - var(--jamb))),
+        /* mullions between the lites */
+        repeating-linear-gradient(var(--along), transparent 0 calc(var(--lite) - 2px), var(--frame) calc(var(--lite) - 2px) var(--lite)),
+        /* the two panes of the double-glazed unit */
+        linear-gradient(var(--across), transparent calc(36% - .5px), var(--pane) calc(36% - .5px) calc(36% + .6px), transparent calc(36% + .6px) calc(64% - .6px), var(--pane) calc(64% - .6px) calc(64% + .5px), transparent calc(64% + .5px)),
+        /* reflection streaks */
+        repeating-linear-gradient(calc(var(--along) + 45deg), transparent 0 18px, rgba(255, 255, 255, .45) 18px 21px, transparent 21px 40px),
+        /* tinted glass between the panes, aluminium frame outside them */
+        linear-gradient(var(--across), var(--frame-hi) 0, var(--frame) 30%, var(--glass) 30% 70%, var(--frame) 70%, var(--frame-hi) 100%);
+}
+.decor--glasswall::before {
+    background:
+        linear-gradient(var(--along), var(--wall) 0 var(--jamb), transparent var(--jamb) calc(100% - var(--jamb)), var(--wall) calc(100% - var(--jamb))),
+        repeating-linear-gradient(var(--along), transparent 0 calc(var(--lite) - 2px), var(--frame) calc(var(--lite) - 2px) var(--lite)),
+        linear-gradient(var(--across), transparent calc(44% - .5px), var(--pane) calc(44% - .5px) calc(44% + .5px), transparent calc(44% + .5px) calc(56% - .5px), var(--pane) calc(56% - .5px) calc(56% + .5px), transparent calc(56% + .5px)),
+        repeating-linear-gradient(calc(var(--along) + 45deg), transparent 0 24px, rgba(255, 255, 255, .4) 24px 27px, transparent 27px 60px),
+        linear-gradient(var(--across), var(--frame) 0 18%, var(--glass) 18% 82%, var(--frame) 82%);
+}
+@container (max-aspect-ratio: 1 / 1) {
+    .decor--window::before, .decor--glasswall::before { --along: 180deg; --across: 90deg; }
 }
 
 /* Door — an opening in the wall (pale threshold between two jambs in the wall colour) with the
@@ -1999,14 +2032,18 @@
 .decor--barcounter::before {
     content: "";
     position: absolute;
-    left: 14%; top: 14%;
-    width: min(34%, 5.5rem); height: 9px;
-    border-radius: 3px;
+    left: 14%; top: 12%;
+    width: min(30%, 5rem); height: 10px;
+    border-radius: 2px;
     background:
-        radial-gradient(circle at 40% 35%, #fff 0 12%, #c9ced4 22%, #6f767e 55%, transparent 60%) 2px 0 / 12px 9px repeat-x,
-        linear-gradient(#1b1d20, #1b1d20) 0 50% / 100% 3px no-repeat,
-        linear-gradient(#8d949b, #4f555c);
-    box-shadow: 0 2px 3px rgba(0, 0, 0, .45);
+        /* tap handles: black levers with a chrome collar */
+        linear-gradient(90deg, transparent 4px, #111316 4px 7px, transparent 7px) 0 0 / 12px 6px repeat-x,
+        linear-gradient(90deg, transparent 3.5px, #e9edf1 3.5px 7.5px, transparent 7.5px) 0 5px / 12px 1.5px repeat-x,
+        /* drip tray grille under the spouts */
+        repeating-linear-gradient(90deg, #1b1d20 0 1px, #3a3f45 1px 3px) 0 100% / 100% 3px no-repeat,
+        /* brushed-steel tower */
+        linear-gradient(#c9ced4, #7b838b) 0 6px / 100% 1.5px no-repeat;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .5));
 }
 .decor--barcounter::after {
     content: "";
@@ -2018,26 +2055,60 @@
     box-shadow: 0 1px 2px rgba(0, 0, 0, .5);
 }
 
-/* Column — round marble-look pillar: the base radial "sheen" gradient plus a fine repeating
-   conic overlay of subtly alternating wedges, so the surface reads as thin veining/fluting on
-   the stone instead of one perfectly smooth gradient disc. */
+/* Column — a structural pillar, drawn the way architectural plans draw structure: the same
+   hatched charcoal poché as the walls (it is part of the building shell, not furniture), a thin
+   light casing ring and a soft contact shadow. */
 .decor--column {
     border-radius: 50%;
-    background:
-        repeating-conic-gradient(from 0deg,
-            rgba(255, 255, 255, .12) 0deg 1.5deg, transparent 1.5deg 9deg, rgba(0, 0, 0, .07) 9deg 10.5deg, transparent 10.5deg 18deg),
-        radial-gradient(circle at 32% 28%,
-            rgba(255, 255, 255, .65) 0%, #d8d3ca 30%, #b6b0a4 65%, #948d7f 100%);
+    background: repeating-linear-gradient(45deg, var(--wall-hatch) 0 1px, transparent 1px 5px), var(--wall);
     box-shadow:
-        inset 0 0 0 2px rgba(0, 0, 0, .12),
-        0 6px 10px -6px rgba(0, 0, 0, .45);
+        inset 0 0 0 2px rgba(255, 255, 255, .16),
+        0 0 0 2px rgba(0, 0, 0, .12),
+        0 4px 7px -3px rgba(0, 0, 0, .5);
 }
-[data-theme="dark"] .decor--column {
+
+/* Corridor — a circulation walkway between rooms, as on a professional presentation plan:
+   large-format porcelain tiles in a neutral stone tone set apart from the dining floors, a
+   skirting line along both edges and the dashed circulation line with direction chevrons down
+   the middle. It sits under tables and zones like a rug; the markings live on ::before so a
+   container query can turn them for a vertical corridor. */
+.decor--corridor {
+    --corr-floor: #e4ded3;
+    --corr-joint: rgba(90, 80, 66, .16);
+    --corr-mark: rgba(78, 87, 97, .45);
+    z-index: -1;
+    container-type: size;
     background:
-        repeating-conic-gradient(from 0deg,
-            rgba(255, 255, 255, .08) 0deg 1.5deg, transparent 1.5deg 9deg, rgba(0, 0, 0, .18) 9deg 10.5deg, transparent 10.5deg 18deg),
-        radial-gradient(circle at 32% 28%,
-            rgba(255, 255, 255, .3) 0%, #6b6a66 30%, #4c4b48 65%, #38372f 100%);
+        linear-gradient(90deg, var(--corr-joint) 1px, transparent 1px) 0 0 / 30px 30px,
+        linear-gradient(var(--corr-joint) 1px, transparent 1px) 0 0 / 30px 30px,
+        linear-gradient(160deg, rgba(255, 255, 255, .35), transparent 45%, rgba(0, 0, 0, .04)),
+        var(--corr-floor);
+    box-shadow:
+        inset 0 0 0 1px rgba(59, 64, 73, .45),
+        inset 0 0 0 4px rgba(255, 255, 255, .35),
+        inset 0 0 0 5px rgba(59, 64, 73, .12);
+}
+[data-theme="dark"] .decor--corridor {
+    --corr-floor: #3a3834;
+    --corr-joint: rgba(255, 255, 255, .06);
+    --corr-mark: rgba(230, 225, 217, .35);
+}
+.decor--corridor::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        url("/img/decor/corridor-arrow.svg") 0 50% / 140px 14px repeat-x,
+        linear-gradient(90deg, var(--corr-mark) 60%, transparent 60%) 0 50% / 12px 1.5px repeat-x;
+    opacity: .9;
+}
+@container (max-aspect-ratio: 1 / 1) {
+    .decor--corridor::before {
+        background:
+            url("/img/decor/corridor-arrow-v.svg") 50% 0 / 14px 140px repeat-y,
+            linear-gradient(var(--corr-mark) 60%, transparent 60%) 50% 0 / 1.5px 12px repeat-y;
+    }
 }
 
 /* ---- Furniture and fittings ---- */
@@ -2221,9 +2292,16 @@
         linear-gradient(170deg, #454b54, #2a2e34);
 }
 .decor-swatch--column {
+    border-radius: 50%;
+    background: repeating-linear-gradient(45deg, rgba(255, 255, 255, .1) 0 1px, transparent 1px 4px), #3b4049;
+}
+.decor-swatch--corridor {
     background:
-        repeating-conic-gradient(from 0deg, rgba(255, 255, 255, .15) 0deg 3deg, transparent 3deg 18deg, rgba(0, 0, 0, .08) 18deg 21deg, transparent 21deg 36deg),
-        radial-gradient(circle at 32% 28%, #e7e3da 0%, #b6b0a4 65%, #948d7f 100%);
+        linear-gradient(90deg, rgba(78, 87, 97, .55) 60%, transparent 60%) 0 50% / 5px 1.5px repeat-x,
+        linear-gradient(90deg, rgba(90, 80, 66, .18) 1px, transparent 1px) 0 0 / 8px 8px,
+        linear-gradient(rgba(90, 80, 66, .18) 1px, transparent 1px) 0 0 / 8px 8px,
+        #e4ded3;
+    box-shadow: inset 0 3px 0 -2px #3b4049, inset 0 -3px 0 -2px #3b4049;
 }
 .decor-swatch--wall {
     background: repeating-linear-gradient(45deg, rgba(255, 255, 255, .1) 0 1px, transparent 1px 4px), #3b4049;

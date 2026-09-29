@@ -150,5 +150,7 @@ public enum FloorDecorType
     /// <summary>Staircase.</summary>
     Stairs = 19,
     /// <summary>Host / reception stand by the entrance.</summary>
-    HostStand = 20
+    HostStand = 20,
+    /// <summary>Walkway/circulation corridor between rooms, drawn under tables like a rug.</summary>
+    Corridor = 21
 }

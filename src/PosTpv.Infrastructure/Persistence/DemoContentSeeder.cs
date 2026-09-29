@@ -548,10 +548,11 @@ public class DemoContentSeeder
 
     private sealed record DecorSpec(FloorDecorType Type, double X, double Y, double W, double H, double Rotation = 0);
 
-    // Whole restaurant, in spec coordinates about 2155x960 (FloorSpacing then spreads it to roughly
-    // 2480x1130 on the canvas): main hall top-left with the bar below it, terrace and garden across
-    // the top, private room, lounge, chef's table and wine cellar in the middle band, street terrace
-    // and event hall along the bottom, and the back of house (kitchen, restrooms, stairs) on the right.
+    // Whole restaurant, in spec coordinates about 2225x1035 (FloorSpacing then spreads it to roughly
+    // 2560x1190 on the canvas): main hall top-left with the bar below it, terrace and garden across
+    // the top, a guest corridor under them leading to the private room, lounge, chef's table and
+    // wine cellar in the middle band, street terrace and event hall along the bottom, and a service
+    // corridor to the back of house (kitchen, restrooms, stairs) on the right.
     // Table pitch (~125px) leaves room for the chairs drawn around each table (see ChairStyles in
     // Tables.razor), so no two tables' chairs overlap.
     private const string Wood = "#c08a52";
@@ -607,24 +608,24 @@ public class DemoContentSeeder
         new("T28", 2, TableShape.Round, 1005, 285, 60, 60, "Terrace", Wood),
         new("T29", 4, TableShape.Square, 1135, 280, 70, 70, "Terrace", Wood),
         // Private room — two long banquet tables and a round one.
-        new("P1", 8, TableShape.Rectangular, 625, 470, 210, 70, "Private room", Violet),
-        new("P3", 6, TableShape.Round, 885, 455, 100, 100, "Private room", Violet),
-        new("P2", 10, TableShape.Rectangular, 625, 630, 280, 70, "Private room", Violet),
+        new("P1", 8, TableShape.Rectangular, 625, 550, 210, 70, "Private room", Violet),
+        new("P3", 6, TableShape.Round, 885, 535, 100, 100, "Private room", Violet),
+        new("P2", 10, TableShape.Rectangular, 625, 710, 280, 70, "Private room", Violet),
         // Lounge — four round tables.
-        new("L1", 4, TableShape.Round, 1060, 465, 70, 70, "Lounge", Amber),
-        new("L2", 4, TableShape.Round, 1160, 465, 70, 70, "Lounge", Amber),
-        new("L3", 4, TableShape.Round, 1060, 595, 70, 70, "Lounge", Amber),
-        new("L4", 4, TableShape.Round, 1160, 595, 70, 70, "Lounge", Amber),
+        new("L1", 4, TableShape.Round, 1060, 545, 70, 70, "Lounge", Amber),
+        new("L2", 4, TableShape.Round, 1160, 545, 70, 70, "Lounge", Amber),
+        new("L3", 4, TableShape.Round, 1060, 675, 70, 70, "Lounge", Amber),
+        new("L4", 4, TableShape.Round, 1160, 675, 70, 70, "Lounge", Amber),
         // Bar — eight bar tables in a row forming the bar top, two stools each on the guests' side;
         // the counter behind them (decor) is the back bar.
-        new("B1", 2, TableShape.BarTable, 40, 585, 56, 38, "Bar", Walnut),
-        new("B2", 2, TableShape.BarTable, 99, 585, 56, 38, "Bar", Walnut),
-        new("B3", 2, TableShape.BarTable, 158, 585, 56, 38, "Bar", Walnut),
-        new("B4", 2, TableShape.BarTable, 217, 585, 56, 38, "Bar", Walnut),
-        new("B5", 2, TableShape.BarTable, 276, 585, 56, 38, "Bar", Walnut),
-        new("B6", 2, TableShape.BarTable, 335, 585, 56, 38, "Bar", Walnut),
-        new("B7", 2, TableShape.BarTable, 394, 585, 56, 38, "Bar", Walnut),
-        new("B8", 2, TableShape.BarTable, 453, 585, 56, 38, "Bar", Walnut),
+        new("B1", 2, TableShape.BarTable, 40, 665, 56, 38, "Bar", Walnut),
+        new("B2", 2, TableShape.BarTable, 99, 665, 56, 38, "Bar", Walnut),
+        new("B3", 2, TableShape.BarTable, 158, 665, 56, 38, "Bar", Walnut),
+        new("B4", 2, TableShape.BarTable, 217, 665, 56, 38, "Bar", Walnut),
+        new("B5", 2, TableShape.BarTable, 276, 665, 56, 38, "Bar", Walnut),
+        new("B6", 2, TableShape.BarTable, 335, 665, 56, 38, "Bar", Walnut),
+        new("B7", 2, TableShape.BarTable, 394, 665, 56, 38, "Bar", Walnut),
+        new("B8", 2, TableShape.BarTable, 453, 665, 56, 38, "Bar", Walnut),
         // Garden — open-air, 5 columns x 3 rows to the right of the terrace.
         new("G1", 4, TableShape.Round, 1300, 50, 70, 70, "Garden", Olive),
         new("G2", 2, TableShape.Round, 1430, 55, 60, 60, "Garden", Olive),
@@ -642,148 +643,165 @@ public class DemoContentSeeder
         new("G14", 4, TableShape.Square, 1675, 280, 70, 70, "Garden", Olive),
         new("G15", 2, TableShape.Round, 1805, 285, 60, 60, "Garden", Olive),
         // Chef's table — two rows of stools facing the open kitchen pass.
-        new("C1", 2, TableShape.Round, 1290, 500, 48, 48, "Chef's table", Graphite),
-        new("C2", 2, TableShape.Round, 1345, 500, 48, 48, "Chef's table", Graphite),
-        new("C3", 2, TableShape.Round, 1400, 500, 48, 48, "Chef's table", Graphite),
-        new("C4", 2, TableShape.Round, 1455, 500, 48, 48, "Chef's table", Graphite),
-        new("C5", 2, TableShape.Round, 1290, 620, 48, 48, "Chef's table", Graphite),
-        new("C6", 2, TableShape.Round, 1345, 620, 48, 48, "Chef's table", Graphite),
-        new("C7", 2, TableShape.Round, 1400, 620, 48, 48, "Chef's table", Graphite),
-        new("C8", 2, TableShape.Round, 1455, 620, 48, 48, "Chef's table", Graphite),
+        new("C1", 2, TableShape.Round, 1290, 580, 48, 48, "Chef's table", Graphite),
+        new("C2", 2, TableShape.Round, 1345, 580, 48, 48, "Chef's table", Graphite),
+        new("C3", 2, TableShape.Round, 1400, 580, 48, 48, "Chef's table", Graphite),
+        new("C4", 2, TableShape.Round, 1455, 580, 48, 48, "Chef's table", Graphite),
+        new("C5", 2, TableShape.Round, 1290, 700, 48, 48, "Chef's table", Graphite),
+        new("C6", 2, TableShape.Round, 1345, 700, 48, 48, "Chef's table", Graphite),
+        new("C7", 2, TableShape.Round, 1400, 700, 48, 48, "Chef's table", Graphite),
+        new("C8", 2, TableShape.Round, 1455, 700, 48, 48, "Chef's table", Graphite),
         // Wine cellar — high tables between the barrels.
-        new("W1", 2, TableShape.Round, 1590, 460, 60, 60, "Wine cellar", Burgundy),
-        new("W2", 4, TableShape.Square, 1700, 455, 70, 70, "Wine cellar", Burgundy),
-        new("W3", 2, TableShape.Round, 1815, 460, 60, 60, "Wine cellar", Burgundy),
-        new("W4", 4, TableShape.Square, 1585, 595, 70, 70, "Wine cellar", Burgundy),
-        new("W5", 2, TableShape.Round, 1705, 600, 60, 60, "Wine cellar", Burgundy),
-        new("W6", 4, TableShape.Square, 1810, 595, 70, 70, "Wine cellar", Burgundy),
+        new("W1", 2, TableShape.Round, 1590, 540, 60, 60, "Wine cellar", Burgundy),
+        new("W2", 4, TableShape.Square, 1700, 535, 70, 70, "Wine cellar", Burgundy),
+        new("W3", 2, TableShape.Round, 1815, 540, 60, 60, "Wine cellar", Burgundy),
+        new("W4", 4, TableShape.Square, 1585, 675, 70, 70, "Wine cellar", Burgundy),
+        new("W5", 2, TableShape.Round, 1705, 680, 60, 60, "Wine cellar", Burgundy),
+        new("W6", 4, TableShape.Square, 1810, 675, 70, 70, "Wine cellar", Burgundy),
         // Street terrace — sidewalk tables outside the main entrance (gap left for the door).
-        new("S1", 2, TableShape.Round, 45, 820, 60, 60, "Street terrace", Slate),
-        new("S2", 4, TableShape.Square, 150, 815, 70, 70, "Street terrace", Slate),
-        new("S3", 2, TableShape.Round, 360, 820, 60, 60, "Street terrace", Slate),
-        new("S4", 4, TableShape.Square, 465, 815, 70, 70, "Street terrace", Slate),
-        new("S5", 2, TableShape.Round, 590, 820, 60, 60, "Street terrace", Slate),
-        new("S6", 4, TableShape.Square, 695, 815, 70, 70, "Street terrace", Slate),
-        new("S7", 2, TableShape.Round, 820, 820, 60, 60, "Street terrace", Slate),
-        new("S8", 4, TableShape.Square, 925, 815, 70, 70, "Street terrace", Slate),
-        new("S9", 2, TableShape.Round, 1050, 820, 60, 60, "Street terrace", Slate),
-        new("S10", 4, TableShape.Square, 1150, 815, 70, 70, "Street terrace", Slate),
+        new("S1", 2, TableShape.Round, 45, 900, 60, 60, "Street terrace", Slate),
+        new("S2", 4, TableShape.Square, 150, 895, 70, 70, "Street terrace", Slate),
+        new("S3", 2, TableShape.Round, 360, 900, 60, 60, "Street terrace", Slate),
+        new("S4", 4, TableShape.Square, 465, 895, 70, 70, "Street terrace", Slate),
+        new("S5", 2, TableShape.Round, 590, 900, 60, 60, "Street terrace", Slate),
+        new("S6", 4, TableShape.Square, 695, 895, 70, 70, "Street terrace", Slate),
+        new("S7", 2, TableShape.Round, 820, 900, 60, 60, "Street terrace", Slate),
+        new("S8", 4, TableShape.Square, 925, 895, 70, 70, "Street terrace", Slate),
+        new("S9", 2, TableShape.Round, 1050, 900, 60, 60, "Street terrace", Slate),
+        new("S10", 4, TableShape.Square, 1150, 895, 70, 70, "Street terrace", Slate),
         // Event hall — banquet tables for groups and celebrations.
-        new("E1", 12, TableShape.Rectangular, 1295, 815, 330, 70, "Event hall", Rose),
-        new("E2", 8, TableShape.Rectangular, 1680, 815, 190, 70, "Event hall", Rose),
+        new("E1", 12, TableShape.Rectangular, 1295, 895, 330, 70, "Event hall", Rose),
+        new("E2", 8, TableShape.Rectangular, 1680, 895, 190, 70, "Event hall", Rose),
     };
 
     private static readonly (string Name, double X, double Y, double W, double H, string Color)[] FloorZoneSpecs =
     {
-        ("Main hall", 20, 20, 545, 490, "#6366f1"),
+        ("Main hall", 20, 20, 545, 570, "#6366f1"),
         ("Terrace", 590, 20, 662, 385, "#22c55e"),
-        ("Bar", 20, 520, 545, 225, "#14b8a6"),
-        ("Private room", 590, 420, 420, 325, "#a855f7"),
-        ("Lounge", 1025, 420, 225, 325, "#f59e0b"),
+        ("Bar", 20, 600, 545, 225, "#14b8a6"),
+        ("Private room", 590, 510, 420, 315, "#a855f7"),
+        ("Lounge", 1025, 510, 225, 315, "#f59e0b"),
         ("Garden", 1270, 20, 625, 385, "#65a30d"),
-        ("Chef's table", 1265, 420, 262, 325, "#64748b"),
-        ("Wine cellar", 1542, 420, 353, 325, "#be123c"),
-        ("Street terrace", 20, 772, 1230, 170, "#0ea5e9"),
-        ("Event hall", 1265, 772, 630, 170, "#ec4899"),
+        ("Chef's table", 1265, 510, 262, 315, "#64748b"),
+        ("Wine cellar", 1542, 510, 353, 315, "#be123c"),
+        ("Street terrace", 20, 852, 1230, 170, "#0ea5e9"),
+        ("Event hall", 1265, 852, 630, 170, "#ec4899"),
     };
 
     private static readonly DecorSpec[] FloorDecorSpecs =
     {
+        // ---- Circulation. A guest corridor runs between the terrace/garden and the middle rooms,
+        // from the main hall to the back of house, with a door into every room along it; a staff
+        // service corridor runs down behind the dining rooms to the kitchen, restrooms and stairs.
+        // Both come first so they sit under everything else.
+        new(FloorDecorType.Corridor, 582, 418, 1318, 80),
+        new(FloorDecorType.Corridor, 1910, 16, 70, 1009),
         // ---- Building shell. Walls are stored at their final size (vertical ones are just tall
         // and thin) rather than rotated, so the saved box is exactly what's drawn. Glass walls
-        // separate the dining rooms from the open-air terrace and garden.
+        // separate the open-air terrace and garden from the corridor.
         new(FloorDecorType.Wall, 10, 6, 572, 10),        // top of main hall
-        new(FloorDecorType.Wall, 10, 6, 10, 754),        // left
-        new(FloorDecorType.Wall, 10, 750, 1900, 10),     // front of the building (onto the street)
+        new(FloorDecorType.Wall, 10, 6, 10, 834),        // left
+        new(FloorDecorType.Wall, 10, 830, 1900, 10),     // front of the building (onto the street)
         new(FloorDecorType.GlassWall, 572, 6, 10, 402),  // main hall | terrace
-        new(FloorDecorType.Wall, 572, 408, 10, 352),     // bar | private room
-        new(FloorDecorType.GlassWall, 582, 408, 678, 10),// terrace | private room + lounge
-        new(FloorDecorType.Wall, 1015, 418, 10, 332),    // private room | lounge
-        new(FloorDecorType.Wall, 1250, 408, 10, 352),    // lounge | chef's table
-        new(FloorDecorType.GlassWall, 1260, 408, 640, 10),// garden | chef's table + cellar
-        new(FloorDecorType.Wall, 1532, 418, 10, 332),    // chef's table | cellar
-        new(FloorDecorType.Wall, 1900, 6, 10, 950),      // dining | back of house
-        new(FloorDecorType.Wall, 1900, 6, 255, 10),      // back of house: top
-        new(FloorDecorType.Wall, 2145, 6, 10, 950),      // back of house: right
-        new(FloorDecorType.Wall, 1910, 565, 235, 10),    // kitchen | restrooms
-        new(FloorDecorType.Wall, 1910, 752, 235, 10),    // restrooms | stairs
-        new(FloorDecorType.Wall, 1255, 760, 10, 192),    // street terrace | event hall
-        new(FloorDecorType.Wall, 1255, 945, 900, 10),    // event hall + stairs: bottom
+        new(FloorDecorType.Wall, 572, 408, 10, 432),     // main hall + bar | corridor + private room
+        new(FloorDecorType.GlassWall, 582, 408, 678, 10),// terrace | corridor
+        new(FloorDecorType.GlassWall, 1260, 408, 640, 10),// garden | corridor
+        new(FloorDecorType.Wall, 582, 498, 1318, 10),    // corridor | middle rooms
+        new(FloorDecorType.Wall, 1015, 508, 10, 322),    // private room | lounge
+        new(FloorDecorType.Wall, 1250, 508, 10, 322),    // lounge | chef's table
+        new(FloorDecorType.Wall, 1532, 508, 10, 322),    // chef's table | cellar
+        new(FloorDecorType.Wall, 1900, 6, 10, 1030),     // dining | service corridor
+        new(FloorDecorType.Wall, 1900, 6, 325, 10),      // back of house: top
+        new(FloorDecorType.Wall, 1980, 6, 10, 1030),     // service corridor | back rooms
+        new(FloorDecorType.Wall, 2215, 6, 10, 1030),     // back of house: right
+        new(FloorDecorType.Wall, 1990, 645, 225, 10),    // kitchen | restrooms
+        new(FloorDecorType.Wall, 1990, 832, 225, 10),    // restrooms | stairs
+        new(FloorDecorType.Wall, 1255, 840, 10, 192),    // street terrace | event hall
+        new(FloorDecorType.Wall, 1255, 1025, 970, 10),   // event hall + back of house: bottom
         // ---- Windows and doors sit on top of the walls; vertical doors are rotated 90°.
         new(FloorDecorType.Window, 70, 4, 140, 14),
         new(FloorDecorType.Window, 330, 4, 140, 14),
         new(FloorDecorType.Window, 8, 150, 14, 120),
-        new(FloorDecorType.Window, 8, 560, 14, 110),
-        new(FloorDecorType.Window, 700, 748, 120, 14),
-        new(FloorDecorType.Window, 1080, 748, 120, 14),
-        new(FloorDecorType.Window, 1320, 748, 140, 14),
-        new(FloorDecorType.Window, 1640, 748, 160, 14),
-        new(FloorDecorType.Window, 1400, 943, 160, 14),
-        new(FloorDecorType.Window, 1650, 943, 160, 14),
-        new(FloorDecorType.Window, 2143, 180, 14, 140),
-        new(FloorDecorType.Door, 230, 743, 90, 16, 180), // main entrance, swinging inwards
+        new(FloorDecorType.Window, 8, 640, 14, 110),
+        new(FloorDecorType.Window, 700, 828, 120, 14),
+        new(FloorDecorType.Window, 1080, 828, 120, 14),
+        new(FloorDecorType.Window, 1320, 828, 140, 14),
+        new(FloorDecorType.Window, 1640, 828, 160, 14),
+        new(FloorDecorType.Window, 1400, 1023, 160, 14),
+        new(FloorDecorType.Window, 1650, 1023, 160, 14),
+        new(FloorDecorType.Window, 2213, 180, 14, 140),
+        new(FloorDecorType.Door, 230, 823, 90, 16, 180), // main entrance, swinging inwards
         new(FloorDecorType.Door, 547, 232, 60, 16, 90),  // main hall -> terrace
-        new(FloorDecorType.Door, 547, 632, 60, 16, 90),  // bar -> private room
-        new(FloorDecorType.Door, 760, 405, 60, 16),      // terrace -> private room
-        new(FloorDecorType.Door, 1110, 405, 60, 16),     // terrace -> lounge
-        new(FloorDecorType.Door, 1225, 582, 60, 16, 90), // lounge -> chef's table
-        new(FloorDecorType.Door, 1507, 582, 60, 16, 90), // chef's table -> cellar
-        new(FloorDecorType.Door, 1690, 405, 60, 16),     // garden -> cellar
-        new(FloorDecorType.Door, 1480, 747, 60, 16),     // chef's table -> event hall
-        new(FloorDecorType.Door, 1875, 472, 60, 16, 90), // cellar -> kitchen
-        new(FloorDecorType.Door, 1875, 642, 60, 16, 90), // cellar -> restrooms
-        new(FloorDecorType.Door, 1875, 842, 60, 16, 90), // event hall -> stairs
+        new(FloorDecorType.Door, 547, 450, 60, 16, 90),  // main hall -> corridor
+        new(FloorDecorType.Door, 547, 712, 60, 16, 90),  // bar -> private room
+        new(FloorDecorType.Door, 760, 405, 60, 16),      // terrace -> corridor
+        new(FloorDecorType.Door, 1110, 405, 60, 16),     // terrace -> corridor
+        new(FloorDecorType.Door, 1690, 405, 60, 16),     // garden -> corridor
+        new(FloorDecorType.Door, 700, 495, 60, 16),      // corridor -> private room
+        new(FloorDecorType.Door, 1110, 495, 60, 16),     // corridor -> lounge
+        new(FloorDecorType.Door, 1360, 495, 60, 16),     // corridor -> chef's table
+        new(FloorDecorType.Door, 1690, 495, 60, 16),     // corridor -> cellar
+        new(FloorDecorType.Door, 1225, 662, 60, 16, 90), // lounge -> chef's table
+        new(FloorDecorType.Door, 1507, 662, 60, 16, 90), // chef's table -> cellar
+        new(FloorDecorType.Door, 1480, 827, 60, 16),     // chef's table -> event hall
+        new(FloorDecorType.Door, 1875, 450, 60, 16, 90), // corridor -> service corridor
+        new(FloorDecorType.Door, 1875, 922, 60, 16, 90), // event hall -> service corridor
+        new(FloorDecorType.Door, 1955, 292, 60, 16, 90), // service corridor -> kitchen
+        new(FloorDecorType.Door, 1955, 737, 60, 16, 90), // service corridor -> restrooms
+        new(FloorDecorType.Door, 1955, 922, 60, 16, 90), // service corridor -> stairs
         // ---- Back of house.
-        new(FloorDecorType.Kitchen, 1918, 24, 222, 534),
-        new(FloorDecorType.Restrooms, 1918, 583, 222, 162),
-        new(FloorDecorType.Stairs, 1985, 772, 90, 164),
+        new(FloorDecorType.Kitchen, 1990, 16, 225, 629),
+        new(FloorDecorType.Restrooms, 1990, 655, 225, 177),
+        new(FloorDecorType.Stairs, 2058, 852, 90, 164),
         // ---- Main hall and bar.
-        new(FloorDecorType.BarCounter, 35, 650, 470, 46),
-        new(FloorDecorType.HostStand, 336, 708, 46, 30),
+        new(FloorDecorType.BarCounter, 35, 730, 470, 46),
+        new(FloorDecorType.HostStand, 336, 788, 46, 30),
         new(FloorDecorType.SmallTree, 302, 412, 76, 76),
         new(FloorDecorType.Column, 452, 428, 36, 36),
-        new(FloorDecorType.PottedPlant, 505, 440, 50, 50),
-        new(FloorDecorType.SmallPlant, 518, 655, 36, 36),
-        new(FloorDecorType.HangingPlant, 26, 700, 40, 40),
+        new(FloorDecorType.PottedPlant, 505, 525, 50, 50),
+        new(FloorDecorType.SmallPlant, 518, 735, 36, 36),
+        new(FloorDecorType.HangingPlant, 26, 780, 40, 40),
         // ---- Terrace: planter along the glass.
         new(FloorDecorType.Planter, 596, 380, 646, 20),
         // ---- Garden: hedge against the terrace, planter along the glass, trees in the corners.
         new(FloorDecorType.Planter, 1254, 26, 16, 346),
         new(FloorDecorType.Planter, 1276, 380, 616, 20),
         new(FloorDecorType.SmallTree, 1858, 24, 40, 40),
+        // ---- Corridor: plants between the doors.
+        new(FloorDecorType.Fern, 905, 437, 40, 40),
+        new(FloorDecorType.Fern, 1515, 437, 40, 40),
         // ---- Private room: rugs under the banquet tables.
-        new(FloorDecorType.Rug, 600, 440, 404, 146),
-        new(FloorDecorType.Rug, 604, 604, 322, 122),
-        new(FloorDecorType.PottedPlant, 952, 688, 50, 50),
+        new(FloorDecorType.Rug, 600, 530, 404, 136),
+        new(FloorDecorType.Rug, 604, 684, 322, 122),
+        new(FloorDecorType.PottedPlant, 952, 768, 50, 50),
         // ---- Lounge: one rug under the four tables.
-        new(FloorDecorType.Rug, 1034, 440, 208, 292),
-        new(FloorDecorType.Fern, 1030, 700, 42, 42),
-        new(FloorDecorType.HangingPlant, 1200, 700, 42, 42),
+        new(FloorDecorType.Rug, 1034, 525, 208, 290),
+        new(FloorDecorType.Fern, 1030, 780, 42, 42),
+        new(FloorDecorType.HangingPlant, 1200, 780, 42, 42),
         // ---- Chef's table: the kitchen pass and the chef's counter.
-        new(FloorDecorType.BarCounter, 1285, 452, 225, 34),
-        new(FloorDecorType.BarCounter, 1285, 690, 225, 34),
+        new(FloorDecorType.BarCounter, 1285, 532, 225, 34),
+        new(FloorDecorType.BarCounter, 1285, 770, 225, 34),
         // ---- Wine cellar: racks along the walls, barrels between the tables.
-        new(FloorDecorType.WineRack, 1560, 704, 300, 26),
-        new(FloorDecorType.WineRack, 1866, 440, 24, 240),
-        new(FloorDecorType.Column, 1555, 432, 30, 30),
-        new(FloorDecorType.Column, 1640, 660, 30, 30),
-        new(FloorDecorType.Column, 1790, 520, 30, 30),
+        new(FloorDecorType.WineRack, 1560, 784, 300, 26),
+        new(FloorDecorType.WineRack, 1866, 520, 24, 240),
+        new(FloorDecorType.Column, 1640, 740, 30, 30),
+        new(FloorDecorType.Column, 1790, 600, 30, 30),
         // ---- Street terrace: planters along the kerb (gap left at the entrance), trees by the door.
-        new(FloorDecorType.Planter, 30, 918, 190, 18),
-        new(FloorDecorType.Planter, 340, 918, 900, 18),
-        new(FloorDecorType.SmallTree, 246, 786, 46, 46),
-        new(FloorDecorType.SmallTree, 286, 872, 42, 42),
+        new(FloorDecorType.Planter, 30, 998, 190, 18),
+        new(FloorDecorType.Planter, 340, 998, 900, 18),
+        new(FloorDecorType.SmallTree, 246, 866, 46, 46),
+        new(FloorDecorType.SmallTree, 286, 952, 42, 42),
         // ---- Event hall: banquettes along the back wall.
-        new(FloorDecorType.Banquette, 1300, 915, 300, 26),
-        new(FloorDecorType.Banquette, 1690, 915, 180, 26),
-        new(FloorDecorType.PottedPlant, 1268, 895, 40, 40),
+        new(FloorDecorType.Banquette, 1300, 995, 300, 26),
+        new(FloorDecorType.Banquette, 1690, 995, 180, 26),
+        new(FloorDecorType.PottedPlant, 1268, 975, 40, 40),
     };
 
     /// <summary>
     /// Lays out the whole floor plan: repositions existing tables by name, adds the missing ones and
     /// rewrites zones/decor in place — nothing is deleted. Runs on a fresh database, and once more on
     /// a database still holding an earlier demo layout (T2 untouched at its pre-spacing spot, no
-    /// kitchen drawn yet, or the bar still made of round stools) so it picks up the current design; after that it never overwrites what
+    /// kitchen or corridors drawn yet, or the bar still made of round stools) so it picks up the current design; after that it never overwrites what
     /// was moved in the editor.
     /// </summary>
     private async Task SeedFloorAsync(CancellationToken ct)
@@ -791,7 +809,8 @@ public class DemoContentSeeder
         var laidOut = await _db.Tables.AnyAsync(t => t.Name == "E2", ct);
         var previousLayout = await _db.Tables.AnyAsync(t => t.Name == "T2" && t.PositionX == 178 && t.PositionY == 55 + FloorOffsetY, ct)
                              || !await _db.FloorDecors.AnyAsync(d => d.Type == FloorDecorType.Kitchen, ct)
-                             || await _db.Tables.AnyAsync(t => t.Name == "B1" && t.Shape == TableShape.Round && t.Width == 48, ct);
+                             || await _db.Tables.AnyAsync(t => t.Name == "B1" && t.Shape == TableShape.Round && t.Width == 48, ct)
+                             || !await _db.FloorDecors.AnyAsync(d => d.Type == FloorDecorType.Corridor, ct);
         if (laidOut && !previousLayout) return;
         _log.LogInformation("Demo content: laying out the floor plan.");
 
@@ -859,10 +878,10 @@ public class DemoContentSeeder
             var spec = FloorDecorSpecs[i];
             var d = i < decor.Count ? decor[i] : _db.FloorDecors.Add(new FloorDecor()).Entity;
             d.Type = spec.Type;
-            // Rooms and rugs grow with the rooms around them; walls, glazing, counters, racks,
+            // Rooms, corridors and rugs grow with the rooms around them; walls, glazing, counters, racks,
             // planters and benches stretch along their length (keeping their thickness) so they
             // still meet at the corners; everything else keeps its size and is re-centred.
-            var fills = spec.Type is FloorDecorType.Kitchen or FloorDecorType.Restrooms or FloorDecorType.Rug;
+            var fills = spec.Type is FloorDecorType.Kitchen or FloorDecorType.Restrooms or FloorDecorType.Rug or FloorDecorType.Corridor;
             var stretches = spec.Type is FloorDecorType.Wall or FloorDecorType.Window or FloorDecorType.GlassWall
                 or FloorDecorType.BarCounter or FloorDecorType.WineRack or FloorDecorType.Planter or FloorDecorType.Banquette;
             var horizontal = spec.W >= spec.H;
