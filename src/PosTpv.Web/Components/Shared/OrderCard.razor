@@ -216,12 +216,6 @@
         </div>
     }
     </div>
-
-    <div class="order-card__foot">
-        <strong>@Order.Total.ToString("N2")</strong>
-        <span class="spacer"></span>
-        <button class="btn btn--success" @onclick="OnPayClick"><LucideIcon Name="credit-card" Size="16" />@Loc.T("Charge")</button>
-    </div>
 </div>
 
 @code {
@@ -257,8 +251,6 @@
     [Parameter] public EventCallback<int> OnUnserveDessertItem { get; set; }
     /// <summary>Open the editor for this order (carries the order id).</summary>
     [Parameter] public EventCallback<int> OnEdit { get; set; }
-    /// <summary>Open the payment dialog for this order (carries the order id).</summary>
-    [Parameter] public EventCallback<int> OnPay { get; set; }
 
     private OrderDto? _rendered;                       // last Order reference we partitioned/rendered
     private List<OrderItemDto> _drinks = new();
@@ -386,7 +378,6 @@
         ? OnFireSeconds.InvokeAsync(Order.Id)
         : OnUnfireSeconds.InvokeAsync(Order.Id);
     private Task OnEditClick() => OnEdit.InvokeAsync(Order.Id);
-    private Task OnPayClick() => OnPay.InvokeAsync(Order.Id);
 
     private static string StatusClass(OrderStatus s) => s switch
     {

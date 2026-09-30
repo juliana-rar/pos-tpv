@@ -289,9 +289,9 @@
        that alone): each vertical icon here (Zones/Floor style/Paint/Plants/Design) opens its own
        .floor-tex-menu flyout further left, and the widest of those (.zone-pick, max-width 18rem)
        was getting cut down to a sliver — only whatever fell within 2rem of this panel's edge
-       painted, the rest of the flyout existed in layout but never rendered. -24rem clears every
-       flyout's full width with room to spare. */
-    clip-path: inset(0 -2rem -2rem -24rem);
+       painted, the rest of the flyout existed in layout but never rendered. The left inset is a
+       full viewport width so no flyout (the Furniture strip is the widest) is ever cut short. */
+    clip-path: inset(0 -2rem -2rem -100vw);
     transform-origin: top center;
     /* Unfolds downward out of the gear button instead of just appearing — scaleY, not the shared
        "pop" animation's translateY, since stacking a slide on top of this panel already being
@@ -424,14 +424,19 @@
 /* Design-elements picker: same treatment as .tex-pick right above — single-row swatch strip
    flush against the gear panel instead of the vertical text list, so it matches the other two
    pickers in this same dropdown. */
+/* Design/Furniture have many more options than the other pickers: the strip wraps onto extra
+   rows (right-aligned, growing leftwards like the rest) instead of running off the left edge of
+   narrow screens, so every element stays visible. */
 .floor-tex-menu.design-pick {
     flex-direction: row;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     align-items: center;
-    height: 2rem;
+    min-height: 2rem;
+    max-width: min(28rem, calc(100vw - 5rem));
     gap: .3rem;
     width: max-content;
-    padding: 0 .35rem;
+    padding: .25rem .35rem;
     border-right: none;
     border-radius: var(--radius-sm) 0 0 var(--radius-sm);
 }
@@ -605,40 +610,58 @@
 .floor-zoom-dock > * { pointer-events: auto; }
 /* Every zone name stays on a single line; when they don't all fit the pill scrolls sideways
    instead of wrapping. */
+/* Zone switcher — a refined floating segmented control: a soft near-opaque pill with a hairline
+   border, an inner top highlight and a long, diffuse shadow; each zone is marked by a small dot
+   in its own map colour, and the selected one becomes an ink-coloured chip (inverts in dark
+   theme) rather than a loud brand-colour block. Near-opaque instead of a backdrop-filter blur:
+   it floats over the scrolling map, and re-blurring underneath every frame made scrolling stutter. */
 .floor-zoom-dock > .zone-filter {
     max-width: 100%;
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
     margin: 0;
-    padding: 4px;
-    gap: .15rem;
-    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-    /* Near-opaque instead of a frosted-glass backdrop-filter blur: these float over the scrolling
-       map, and re-blurring everything underneath on every scroll frame made scrolling stutter. */
-    background: color-mix(in srgb, var(--card) 94%, transparent);
-    box-shadow: 0 10px 28px -10px rgba(0, 0, 0, .3), 0 1px 2px rgba(0, 0, 0, .08);
+    padding: 5px;
+    gap: 2px;
+    border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+    background: color-mix(in srgb, var(--card) 96%, transparent);
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent),
+        0 22px 44px -20px rgba(15, 23, 42, .38),
+        0 3px 8px -3px rgba(15, 23, 42, .14);
 }
-/* Flat pill options — same family as the base .tabs__opt (app.css) rather than the toolbar
-   buttons' skeuomorphic gradient/emboss treatment, so this reads as a clean modern segmented
-   control instead of a row of physical buttons. */
 .zone-filter .tabs__opt {
+    --zc: var(--text-soft);
     flex: none;
+    gap: .45rem;
+    padding: .46rem .9rem;
     white-space: nowrap;
     border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .01em;
     color: var(--text-soft);
-    transition: background 130ms ease, color 130ms ease, transform 110ms ease;
+    transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 110ms ease;
+}
+.zone-filter .tabs__opt[style]::before {
+    content: "";
+    flex: none;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--zc);
+    box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--zc) 20%, transparent);
 }
 .zone-filter .tabs__opt:hover {
     color: var(--text);
-    background: color-mix(in srgb, var(--text) 8%, transparent);
+    background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 .zone-filter .tabs__opt:active { transform: scale(.96); }
-.zone-filter .tabs__opt--on {
-    background: var(--primary);
-    color: var(--on-primary);
-    box-shadow: 0 2px 8px -1px color-mix(in srgb, var(--primary) 55%, transparent);
+.zone-filter .tabs__opt--on, .zone-filter .tabs__opt--on:hover {
+    background: var(--text);
+    color: var(--card);
+    box-shadow: 0 6px 14px -6px rgba(15, 23, 42, .55), inset 0 1px 0 rgba(255, 255, 255, .12);
 }
+.zone-filter .tabs__opt--on[style]::before { box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--zc) 35%, transparent); }
 
 /* Floating hint bar shown while picking the table to reassign, before a source table is
    clicked — centred at the top of the map, below the toolbar overlay. */
@@ -982,7 +1005,24 @@
    edge of the table box — without this the customer name crowds right up against it.
    --tfg (set inline in TableStyle only for dark custom accent colours) overrides the default
    colours above so labels stay legible on a black/dark table instead of going dark-on-dark. */
-.tbl__total { font-size: .64rem; font-weight: 700; color: var(--tfg, var(--primary)); margin-bottom: .35rem; }
+/* A two-word name ("Marco Gutiérrez") wraps onto a second line inside a small table: keep both
+   lines centred under the table name and tight together instead of left-aligned with the
+   body's full line-height between them. */
+.tbl__total {
+    max-width: 100%;
+    font-size: .64rem; font-weight: 700; line-height: 1.05;
+    text-align: center;
+    overflow-wrap: break-word;
+    color: var(--tfg, var(--primary));
+    margin-bottom: .45rem;
+}
+/* A bar table is too shallow for name + seats + a wrapped guest name: while it carries a
+   reservation it drops the seat count and shows the guest on one truncated line instead. */
+.tbl--bartable .tbl__content { max-width: 100%; padding: 0 .3rem; }
+.tbl--bartable .tbl__content:has(.tbl__total) .tbl__seats { display: none; }
+.tbl--bartable .tbl__total { max-width: 100%; margin-bottom: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* ...and its reservation badge hangs fully below the bar top instead of overlapping that line. */
+.tbl--bartable > .tbl__resv { bottom: auto; top: calc(100% + 2px); }
 /* Inside a joined group's badge (see .tbl__group below), the customer name sits right above the
    group's own name/number instead — the .35rem clearance above exists for the single-table case
    (keeping it clear of .tbl__resv hanging right underneath), which doesn't apply here since the
@@ -1425,6 +1465,15 @@
 @keyframes floor-resv-unfold {
     from { opacity: 0; transform: scaleY(.7); }
     to   { opacity: 1; transform: scaleY(1); }
+}
+/* Folding back up when the calendar toggle is clicked again: the same unfold, reversed. */
+.resv-col--closing {
+    animation: floor-resv-fold 240ms cubic-bezier(.7, 0, .84, 0) forwards;
+    pointer-events: none;
+}
+@keyframes floor-resv-fold {
+    from { opacity: 1; transform: scaleY(1); }
+    to   { opacity: 0; transform: scaleY(.7); }
 }
 /* Grip strip above the date bar — grabbing it (not the header buttons themselves) is what
    .resv-col's drag JS (posPanelDrag, see pos.js) binds to, so dragging never fights clicks on
@@ -2059,70 +2108,107 @@
     .decor--window::before, .decor--glasswall::before { --along: 180deg; --across: 90deg; }
 }
 
-/* Door — an opening in the wall (pale threshold between two jambs in the wall colour) with the
-   leaf standing open and its dashed swing arc, anchored at the hinge. The arc square is sized to
-   the door's own width, so a wider door gets a proportionally wider swing; vertical doors are
-   the same element rotated 90°. */
-.decor--door {
+/* Doors — the opening in the wall: a stone threshold between two timber door-frame jambs set
+   into the wall ends. The leaf itself (solid oak with grain, lever handle and hinges) stands open
+   in a square under the opening, with the faint swept area and dashed swing arc, anchored at the
+   hinge; the square is sized to the opening, so a wider door gets a proportionally wider swing.
+   Vertical doors are the same element rotated 90°. A double door has two half-width leaves
+   swinging from opposite jambs. */
+.decor--door, .decor--doubledoor {
     border-radius: 0;
-    background: linear-gradient(to bottom, #f3eee6, #e2dbcd);
-    border-left: 4px solid var(--wall);
-    border-right: 4px solid var(--wall);
-    box-shadow: 0 2px 4px -2px rgba(0, 0, 0, .35);
+    background:
+        linear-gradient(90deg, var(--wall) 0 3px, #6b4529 3px 6px, transparent 6px calc(100% - 6px), #6b4529 calc(100% - 6px) calc(100% - 3px), var(--wall) calc(100% - 3px)),
+        repeating-linear-gradient(90deg, transparent 0 22px, rgba(0, 0, 0, .06) 22px 23px),
+        linear-gradient(to bottom, #f1ece3, #ddd5c6 60%, #cfc6b5);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), 0 2px 4px -2px rgba(0, 0, 0, .35);
 }
-.decor--door::after {
+.decor--door::after, .decor--doubledoor::before, .decor--doubledoor::after {
+    --leaf: calc(100% - 12px);
     content: "";
     position: absolute;
-    left: 0; top: 100%;
-    width: 100%;
+    top: 100%;
+    /* The leaf image carries a margin round the hinge for the leaf's thickness, handles and
+       shadow: it is 1.16x the door width, and the hinge sits .12/.06 of the width in from its
+       top-left corner, so it is offset back by that much to land exactly on the jamb. */
+    width: calc(var(--leaf) * 1.16);
     aspect-ratio: 1;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M0,100 C55.23,100 100,55.23 100,0' fill='none' stroke='%233b4049' stroke-width='1.4' stroke-dasharray='4 3' stroke-opacity='.6'/%3E%3Cline x1='0' y1='0' x2='0' y2='100' stroke='%233b4049' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+    margin-top: calc(var(--leaf) * -.06);
+    background: url("/img/decor/door-swing.svg") 0 0 / 100% 100% no-repeat;
     pointer-events: none;
 }
-[data-theme="dark"] .decor--door { background: linear-gradient(to bottom, #6b6358, #5a534a); }
-[data-theme="dark"] .decor--door::after { filter: invert(.85); }
-
-/* Bar counter — matte graphite stone top with faint veining and a crisp light edge, plus a thin
-   brass footrail standing just proud of the front edge (the detail that reads as "a bar" rather
-   than just "a dark counter" from above). Contemporary rather than glossy lacquered wood. */
-.decor--barcounter {
-    border-radius: 8px;
+.decor--door::after { left: 6px; margin-left: calc(var(--leaf) * -.12); }
+.decor--doubledoor::before, .decor--doubledoor::after { --leaf: calc(50% - 6px); }
+.decor--doubledoor::before { left: 6px; margin-left: calc(var(--leaf) * -.12); }
+.decor--doubledoor::after { right: 6px; margin-right: calc(var(--leaf) * -.12); transform: scaleX(-1); }
+/* Architraves — the timber casing trim round the opening, standing a few px proud of both wall
+   faces at each jamb, as on a real doorway. */
+.decor--door::before {
+    content: "";
+    position: absolute;
+    top: -3px; bottom: -3px; left: 1px; right: 1px;
     background:
-        url("/img/decor/stone-veins.svg") 0 0 / 100% 100% no-repeat,
-        linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, .06) 32%, transparent 40%, transparent 62%, rgba(255, 255, 255, .05) 70%, transparent 78%),
-        linear-gradient(170deg, #454b54 0%, #33383f 55%, #2a2e34 100%);
-    border: 1px solid #1c1f24;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, .14),
-        inset 0 -6px 0 -3px #5a3a26,
-        0 14px 22px -14px rgba(0, 0, 0, .55);
+        linear-gradient(90deg, #7a5234 0 5px, transparent 5px calc(100% - 5px), #7a5234 calc(100% - 5px));
+    border-radius: 1px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+    pointer-events: none;
+    z-index: -1;
 }
-/* Beer-tap tower on the bartender's (back) side: a chrome bar with round tap handles over its
-   drip tray, so the counter reads as a working bar from above. */
+[data-theme="dark"] :is(.decor--door, .decor--doubledoor) {
+    background:
+        linear-gradient(90deg, var(--wall) 0 3px, #4a3020 3px 6px, transparent 6px calc(100% - 6px), #4a3020 calc(100% - 6px) calc(100% - 3px), var(--wall) calc(100% - 3px)),
+        linear-gradient(to bottom, #6b6358, #5a534a);
+}
+
+/* Sliding door — two framed glass panels on parallel tracks inside the wall line, with the
+   double-headed arrow showing the slide drawn just outside the opening. */
+.decor--slidingdoor {
+    background: url("/img/decor/sliding-door.svg") 0 0 / 100% 100% no-repeat;
+    box-shadow: 0 0 0 .5px rgba(0, 0, 0, .4), 0 2px 4px -2px rgba(0, 0, 0, .35);
+}
+.decor--slidingdoor::after {
+    content: "";
+    position: absolute;
+    left: 50%; top: calc(100% + 3px);
+    width: min(40px, 45%); height: 10px;
+    transform: translateX(-50%);
+    background: url("/img/decor/slide-arrow.svg") center / contain no-repeat;
+    pointer-events: none;
+}
+
+/* Bar counter — a working bar seen from above (wwwroot/img/decor/bar-counter.svg): spirit bottles
+   along the back-bar shelf, the beer-tap tower over its drip tray, a glass rack of upturned
+   glasses, the ice well with its speed rail, cocktail tools and a board of cut limes, the
+   espresso machine and the POS terminal, then the polished stone bar top with its bullnose edge.
+   The run repeats along the counter at its natural size and is simply cut off where the counter
+   ends, so nothing is ever stretched. A brass footrail stands just proud of the front edge. */
+.decor--barcounter {
+    border-radius: 6px;
+    background: #23272d url("/img/decor/bar-counter.svg") 0 0 / auto 100% repeat-x;
+    border: 1px solid #111316;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .12),
+        inset 0 -3px 0 -1px #5a3a26,
+        0 14px 22px -14px rgba(0, 0, 0, .6),
+        0 2px 4px rgba(0, 0, 0, .3);
+}
+/* Rounded end caps in the same stone as the bar top, so the cut-off run reads as a finished end. */
 .decor--barcounter::before {
     content: "";
     position: absolute;
-    left: 14%; top: 12%;
-    width: min(30%, 5rem); height: 10px;
-    border-radius: 2px;
+    inset: 0;
+    border-radius: inherit;
     background:
-        /* tap handles: black levers with a chrome collar */
-        linear-gradient(90deg, transparent 4px, #111316 4px 7px, transparent 7px) 0 0 / 12px 6px repeat-x,
-        linear-gradient(90deg, transparent 3.5px, #e9edf1 3.5px 7.5px, transparent 7.5px) 0 5px / 12px 1.5px repeat-x,
-        /* drip tray grille under the spouts */
-        repeating-linear-gradient(90deg, #1b1d20 0 1px, #3a3f45 1px 3px) 0 100% / 100% 3px no-repeat,
-        /* brushed-steel tower */
-        linear-gradient(#c9ced4, #7b838b) 0 6px / 100% 1.5px no-repeat;
-    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .5));
+        linear-gradient(90deg, #2d3239 0 4px, transparent 12px calc(100% - 12px), #2d3239 calc(100% - 4px));
+    pointer-events: none;
 }
 .decor--barcounter::after {
     content: "";
     position: absolute;
-    left: 6%; right: 6%; bottom: -5px;
+    left: 4%; right: 4%; bottom: -6px;
     height: 3px;
     border-radius: 2px;
-    background: linear-gradient(to bottom, #f3d98a, #b8862f);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, .5);
+    background: linear-gradient(to bottom, #fbe7a6, #c9a24a 50%, #8a6420);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 0 0 .5px rgba(0, 0, 0, .25);
 }
 
 /* Column — a structural pillar, drawn the way architectural plans draw structure: the same
@@ -2312,28 +2398,95 @@
     box-shadow: 0 3px 6px -3px rgba(0, 0, 0, .3);
 }
 
-/* Stairs — shaded treads with a nosing highlight, handrails on both sides and the walking line
-   (with its arrow) up the middle. */
+/* Stairs — oak treads, each with a rounded nosing highlight and the shadow it casts on the riser
+   below, a wool runner held by a brass rod on every tread down the middle, polished handrails on
+   brackets along both sides inside the stringers, and a light gradient that brightens toward the
+   top of the flight (the upper treads are closer to the viewer). A small arrow marks "up". */
 .decor--stairs {
     border-radius: 2px;
     background:
-        linear-gradient(#4a4640, #4a4640) 50% 45% / 2px 64% no-repeat,
-        linear-gradient(90deg, #6b4a2e, #9a7350 50%, #6b4a2e) 3px 0 / 4px 100% no-repeat,
-        linear-gradient(90deg, #6b4a2e, #9a7350 50%, #6b4a2e) calc(100% - 3px) 0 / 4px 100% no-repeat,
-        repeating-linear-gradient(to bottom, #f1ece4 0 1.5px, #e2dcd2 1.5px 10px, #b3ab9f 10px 11.5px, #8e867a 11.5px 13px);
-    border: 2px solid var(--wall);
-    box-shadow: 0 3px 6px -2px rgba(0, 0, 0, .35);
+        url("/img/decor/stairs-arrow.svg") 50% 5px / 12px 12px no-repeat,
+        linear-gradient(to bottom, rgba(255, 255, 255, .16), transparent 45%, rgba(0, 0, 0, .22)),
+        radial-gradient(circle, #6d757e 0 1.8px, transparent 2.2px) 7px 7px / 5px 28px repeat-y,
+        radial-gradient(circle, #6d757e 0 1.8px, transparent 2.2px) calc(100% - 7px) 7px / 5px 28px repeat-y,
+        linear-gradient(90deg, #6b4529, #c89b62 50%, #6b4529) 4px 0 / 4px 100% no-repeat,
+        linear-gradient(90deg, #6b4529, #c89b62 50%, #6b4529) calc(100% - 4px) 0 / 4px 100% no-repeat,
+        url("/img/decor/stairs-runner.svg") 50% 0 / 54% 14px repeat-y,
+        url("/img/decor/stairs-tread.svg") 0 0 / 100% 14px repeat-y,
+        #c9a877;
+    border: 3px solid var(--wall);
+    border-top-width: 2px;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, .3), inset 3px 0 4px -2px rgba(0, 0, 0, .35), inset -3px 0 4px -2px rgba(0, 0, 0, .35), 0 3px 6px -2px rgba(0, 0, 0, .35);
 }
-.decor--stairs::before {
+.decor--stairs::after { color: #3f3a34; background: rgba(245, 240, 230, .92); }
+
+/* Spiral staircase — wedge treads winding round a stainless centre pole inside a handrail
+   ring, with the walking line curling up to its arrow. */
+.decor--spiralstairs {
+    border-radius: 50%;
+    background: url("/img/decor/spiral-stairs.svg") center / contain no-repeat;
+    filter: drop-shadow(0 4px 5px rgba(0, 0, 0, .35));
+}
+
+/* ---- More furniture: plan-view renderings (wwwroot/img/decor/*.svg) with their own contact
+   shadow baked in, scaled to fit the element. ---- */
+.decor--sofa, .decor--armchair, .decor--fireplace, .decor--piano,
+.decor--waiterstation, .decor--buffet, .decor--coatrack, .decor--floorlamp {
+    background: center / contain no-repeat;
+}
+.decor--sofa { background-image: url("/img/decor/sofa.svg"); }
+.decor--armchair { background-image: url("/img/decor/armchair.svg"); }
+.decor--fireplace { background-image: url("/img/decor/fireplace.svg"); }
+.decor--piano { background-image: url("/img/decor/piano.svg"); }
+.decor--waiterstation { background-image: url("/img/decor/waiter-station.svg"); }
+.decor--buffet { background-image: url("/img/decor/buffet.svg"); }
+.decor--coatrack { background-image: url("/img/decor/coat-rack.svg"); }
+.decor--floorlamp { background-image: url("/img/decor/floor-lamp.svg"); }
+
+/* ---- Games room / leisure: plan-view renderings of the games themselves (baize, rods, air-hole
+   grid, net, cabinet lighting) with their own shadows baked in. ---- */
+.decor--pooltable, .decor--foosball, .decor--airhockey, .decor--pingpong,
+.decor--arcademachine, .decor--dartboard, .decor--jukebox, .decor--beanbag {
+    background: center / contain no-repeat;
+}
+.decor--pooltable { background-image: url("/img/decor/pool-table.svg"); }
+.decor--foosball { background-image: url("/img/decor/foosball.svg"); }
+.decor--airhockey { background-image: url("/img/decor/air-hockey.svg"); }
+.decor--pingpong { background-image: url("/img/decor/ping-pong.svg"); }
+.decor--arcademachine { background-image: url("/img/decor/arcade.svg"); }
+.decor--dartboard { background-image: url("/img/decor/dartboard.svg"); }
+.decor--jukebox { background-image: url("/img/decor/jukebox.svg"); }
+.decor--beanbag { background-image: url("/img/decor/bean-bag.svg"); }
+.decor--cuerack { background: url("/img/decor/cue-rack.svg") center / contain no-repeat; }
+/* Billiard lamp hanging over the pool table: its three pools of warm light on the baize and the
+   fixture drawn dashed, the way plans show anything overhead. */
+.decor--pooltable::after {
     content: "";
     position: absolute;
-    left: 50%; top: 10%;
-    border: 6px solid transparent;
-    border-bottom: 9px solid #4a4640;
-    border-top: none;
-    transform: translateX(-50%);
+    inset: 0;
+    background: url("/img/decor/pool-lamp.svg") center / contain no-repeat;
+    pointer-events: none;
 }
-.decor--stairs::after { color: #3f3a34; background: rgba(230, 225, 217, .9); }
+/* Play clearance — the space players need around each game (cueing room round the pool table,
+   the run-back behind a table-tennis end...), marked with a fine dashed line as on a
+   professional layout plan so nothing else gets placed inside it. */
+.decor--pooltable, .decor--pingpong, .decor--airhockey, .decor--foosball {
+    outline: 1px dashed rgba(150, 156, 165, .6);
+    outline-offset: 22px;
+    border-radius: 6px;
+}
+.decor--pingpong { outline-offset: 26px; }
+.decor--airhockey, .decor--foosball { outline-offset: 12px; }
+[data-theme="dark"] :is(.decor--pooltable, .decor--pingpong, .decor--airhockey, .decor--foosball) { outline-color: rgba(230, 225, 217, .3); }
+
+/* Carpet — wall-to-wall commercial carpet tiles (graphite loop pile, quarter-turned) for rooms
+   like the games room. Sits under tables and zones like a rug. */
+.decor--carpet {
+    z-index: -1;
+    border-radius: 2px;
+    background: #2d3038 url("/img/decor/carpet-tile.svg") 0 0 / 48px 48px;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .45), inset 0 0 18px rgba(0, 0, 0, .35);
+}
 
 /* Menu preview swatches (in the Plants / Design elements dropdowns) — same shapes as the floor
    elements above, scaled down to the fixed 22px size shared with .floor-tex-swatch. */
@@ -2357,9 +2510,7 @@
 .decor-swatch--smalltree { background-image: url("/img/decor/small-tree.svg"); }
 .decor-swatch--fern { background-image: url("/img/decor/fern.svg"); }
 .decor-swatch--barcounter {
-    background:
-        linear-gradient(#c89b43, #c89b43) 50% 88% / 80% 2px no-repeat,
-        linear-gradient(170deg, #454b54, #2a2e34);
+    background: #23272d url("/img/decor/bar-counter.svg") 0 50% / auto 70% no-repeat;
 }
 .decor-swatch--column {
     border-radius: 50%;
@@ -2422,5 +2573,50 @@
     background: #eef1f4 url("/img/decor/restrooms.svg") center / cover no-repeat;
 }
 .decor-swatch--stairs {
-    background: repeating-linear-gradient(to bottom, #e6e1d9 0 3px, #9e978c 3px 4px);
+    background:
+        linear-gradient(90deg, #8b939b 0 2px, transparent 2px calc(100% - 2px), #8b939b calc(100% - 2px)),
+        url("/img/decor/stairs-tread.svg") 0 0 / 100% 5px repeat-y,
+        #c9a877;
 }
+.decor-swatch--doubledoor {
+    background:
+        url("/img/decor/door-swing.svg") 2px 5px / 9px 9px no-repeat,
+        url("/img/decor/door-swing.svg") 2px 5px / 9px 9px no-repeat,
+        linear-gradient(#3b4049, #3b4049) 0 0 / 100% 3px no-repeat,
+        var(--card-2);
+}
+.decor-swatch--slidingdoor {
+    background:
+        linear-gradient(#b8def0, #b8def0) 2px 7px / 12px 3px no-repeat,
+        linear-gradient(#cde8f5, #cde8f5) 8px 11px / 12px 3px no-repeat,
+        linear-gradient(90deg, #3b4049 0 2px, transparent 2px calc(100% - 2px), #3b4049 calc(100% - 2px)) 0 6px / 100% 9px no-repeat,
+        var(--card-2);
+}
+.decor-swatch--spiralstairs, .decor-swatch--sofa, .decor-swatch--armchair, .decor-swatch--fireplace,
+.decor-swatch--piano, .decor-swatch--waiterstation, .decor-swatch--buffet, .decor-swatch--coatrack,
+.decor-swatch--floorlamp {
+    background: var(--card-2) center / 88% no-repeat;
+}
+.decor-swatch--spiralstairs { background-image: url("/img/decor/spiral-stairs.svg"); }
+.decor-swatch--sofa { background-image: url("/img/decor/sofa.svg"); }
+.decor-swatch--armchair { background-image: url("/img/decor/armchair.svg"); }
+.decor-swatch--fireplace { background-image: url("/img/decor/fireplace.svg"); }
+.decor-swatch--piano { background-image: url("/img/decor/piano.svg"); }
+.decor-swatch--waiterstation { background-image: url("/img/decor/waiter-station.svg"); }
+.decor-swatch--buffet { background-image: url("/img/decor/buffet.svg"); }
+.decor-swatch--coatrack { background-image: url("/img/decor/coat-rack.svg"); }
+.decor-swatch--floorlamp { background-image: url("/img/decor/floor-lamp.svg"); }
+.decor-swatch--pooltable, .decor-swatch--foosball, .decor-swatch--airhockey, .decor-swatch--pingpong,
+.decor-swatch--arcademachine, .decor-swatch--dartboard, .decor-swatch--jukebox, .decor-swatch--beanbag {
+    background: var(--card-2) center / 90% no-repeat;
+}
+.decor-swatch--pooltable { background-image: url("/img/decor/pool-table.svg"); }
+.decor-swatch--foosball { background-image: url("/img/decor/foosball.svg"); }
+.decor-swatch--airhockey { background-image: url("/img/decor/air-hockey.svg"); }
+.decor-swatch--pingpong { background-image: url("/img/decor/ping-pong.svg"); }
+.decor-swatch--arcademachine { background-image: url("/img/decor/arcade.svg"); }
+.decor-swatch--dartboard { background-image: url("/img/decor/dartboard.svg"); }
+.decor-swatch--jukebox { background-image: url("/img/decor/jukebox.svg"); }
+.decor-swatch--beanbag { background-image: url("/img/decor/bean-bag.svg"); }
+.decor-swatch--cuerack { background: var(--card-2) url("/img/decor/cue-rack.svg") center / 90% no-repeat; }
+.decor-swatch--carpet { background: #2d3038 url("/img/decor/carpet-tile.svg") 0 0 / 12px 12px; }

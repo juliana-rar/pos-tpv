@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50"><defs><filter id="s" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="1.8"/><feOffset dx="1.4" dy="2.4"/><feComponentTransfer><feFuncA type="linear" slope="0.45"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<radialGradient id="b" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#f6a26d"/><stop offset=".55" stop-color="#e0763c"/><stop offset="1" stop-color="#9c421a"/></radialGradient>
+<radialGradient id="d" cx=".5" cy=".55" r=".5"><stop offset="0" stop-color="#6b2a0e" stop-opacity=".45"/><stop offset=".7" stop-color="#6b2a0e" stop-opacity=".12"/><stop offset="1" stop-color="#6b2a0e" stop-opacity="0"/></radialGradient>
+<radialGradient id="r" cx=".5" cy=".5" r=".5"><stop offset=".6" stop-color="#fff" stop-opacity="0"/><stop offset=".85" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
+<g filter="url(#s)"><path d="M25 3.5C36 3 46.5 11 46.5 24C47 36.5 38 46.5 25 46.5C12.5 47 3.5 38 3.5 25.5C3 13 13 4 25 3.5Z" fill="url(#b)"/></g>
+<ellipse cx="25.5" cy="27" rx="13.5" ry="12" fill="url(#d)"/><ellipse cx="25.5" cy="27" rx="16" ry="14.5" fill="url(#r)"/>
+<path d="M9 15C15 20 16 32 10 40M41 13C35 19 34 32 40 39" fill="none" stroke="#7a3212" stroke-opacity=".35" stroke-width=".7"/>
+<path d="M9 15C15 20 16 32 10 40M41 13C35 19 34 32 40 39" fill="none" stroke="#fff" stroke-opacity=".15" stroke-width=".4" transform="translate(-.6 -.6)"/>
+<path d="M19 5.5Q25 3 31 5.5" fill="none" stroke="#7a3212" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M11 13Q17 7 26 6.5" stroke="#fff" stroke-opacity=".3" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>

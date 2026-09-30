@@ -128,15 +128,12 @@
                    OnServeDesserts="ServeDesserts"
                    OnUnserveDesserts="UnserveDesserts"
                    OnUnserveDessertItem="UnserveDessertItem"
-                   OnEdit="OpenEditor"
-                   OnPay="OpenPayment" />
+                   OnEdit="OpenEditor" />
     }
     @if (Filtered.Count == 0) { <p class="empty">@Loc.T("No open orders.")</p> }
 </div>
 
 <OrderEditor OrderId="_editorOrderId" OnClose="CloseEditor" OnChanged="EditorChanged" OnNavigate="NavigateOrder" />
-
-<PaymentDialog Order="_payingOrder" Visible="_payingOrder is not null" OnClose="ClosePayment" OnConfirm="ConfirmPayment" />
 
 @code {
     private List<OrderDto> _orders = new();
@@ -144,7 +141,6 @@
     private HubConnection? _hub;
 
     private int? _editorOrderId;
-    private OrderDto? _payingOrder;
     private bool _showFilters;
     private bool _chipsExpanded;
 
@@ -243,9 +239,6 @@
             _orders.Sort((a, b) => a.CreatedAt.CompareTo(b.CreatedAt));
         }
 
-        // Keep an open payment dialog in sync with the refreshed total.
-        if (_payingOrder?.Id == orderId) _payingOrder = fresh;
-
         await InvokeAsync(StateHasChanged);
     }
 
@@ -266,19 +259,6 @@
         var newIdx = idx + delta;
         if (newIdx < 0 || newIdx >= list.Count) return;
         _editorOrderId = list[newIdx].Id;
-    }
-
-    // ---- Payment (single button → dialog with cash / card / split) ----
-    private void OpenPayment(int orderId) => _payingOrder = _orders.FirstOrDefault(o => o.Id == orderId);
-    private void ClosePayment() => _payingOrder = null;
-
-    private async Task ConfirmPayment(IReadOnlyList<PaymentInput> payments)
-    {
-        if (_payingOrder is null) return;
-        var orderId = _payingOrder.Id;
-        await OrderSvc.CheckoutAsync(orderId, payments);
-        _payingOrder = null;
-        await RefreshOrder(orderId);   // checkout has no broadcast, so drop it locally
     }
 
     // Drinks come from the bar: one button serves the whole block. The single DrinksServed

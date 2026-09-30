@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><defs><filter id="n" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="3" stitchTiles="stitch" seed="7"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 -.35"/></filter>
+<pattern id="h" width="2" height="2" patternUnits="userSpaceOnUse"><path d="M0 1H2" stroke="#fff" stroke-opacity=".05" stroke-width=".6"/></pattern>
+<pattern id="v" width="2" height="2" patternUnits="userSpaceOnUse"><path d="M1 0V2" stroke="#fff" stroke-opacity=".05" stroke-width=".6"/></pattern></defs>
+<rect width="48" height="48" fill="#2d3038"/>
+<rect width="24" height="24" fill="url(#h)"/><rect x="24" width="24" height="24" fill="url(#v)"/><rect y="24" width="24" height="24" fill="url(#v)"/><rect x="24" y="24" width="24" height="24" fill="url(#h)"/>
+<rect x="24" width="24" height="24" fill="#000" fill-opacity=".06"/><rect y="24" width="24" height="24" fill="#000" fill-opacity=".06"/>
+<rect width="48" height="48" filter="url(#n)" opacity=".5"/>
+<path d="M0 .25H48M0 24.25H48M.25 0V48M24.25 0V48" stroke="#000" stroke-opacity=".28" stroke-width=".5"/></svg>

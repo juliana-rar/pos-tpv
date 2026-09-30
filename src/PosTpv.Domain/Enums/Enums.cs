@@ -152,5 +152,47 @@ public enum FloorDecorType
     /// <summary>Host / reception stand by the entrance.</summary>
     HostStand = 20,
     /// <summary>Walkway/circulation corridor between rooms, drawn under tables like a rug.</summary>
-    Corridor = 21
+    Corridor = 21,
+    /// <summary>Double-leaf swing door, e.g. the main entrance.</summary>
+    DoubleDoor = 22,
+    /// <summary>Glazed sliding door running inside the wall line.</summary>
+    SlidingDoor = 23,
+    /// <summary>Spiral staircase.</summary>
+    SpiralStairs = 24,
+    /// <summary>Three-seater sofa.</summary>
+    Sofa = 25,
+    /// <summary>Upholstered armchair.</summary>
+    Armchair = 26,
+    /// <summary>Fireplace with its stone surround and hearth.</summary>
+    Fireplace = 27,
+    /// <summary>Grand piano with its bench.</summary>
+    Piano = 28,
+    /// <summary>Waiters' service station (POS terminal, cutlery, water).</summary>
+    WaiterStation = 29,
+    /// <summary>Buffet counter with chafing dishes.</summary>
+    Buffet = 30,
+    /// <summary>Coat stand.</summary>
+    CoatRack = 31,
+    /// <summary>Floor lamp.</summary>
+    FloorLamp = 32,
+    /// <summary>Pool (billiards) table with balls racked and a cue.</summary>
+    PoolTable = 33,
+    /// <summary>Foosball table.</summary>
+    Foosball = 34,
+    /// <summary>Air-hockey table with mallets and puck.</summary>
+    AirHockey = 35,
+    /// <summary>Table-tennis table with net and paddles.</summary>
+    PingPong = 36,
+    /// <summary>Upright arcade cabinet.</summary>
+    ArcadeMachine = 37,
+    /// <summary>Wall-mounted dartboard with its throw line.</summary>
+    Dartboard = 38,
+    /// <summary>Retro jukebox.</summary>
+    Jukebox = 39,
+    /// <summary>Bean-bag seat.</summary>
+    BeanBag = 40,
+    /// <summary>Wall-to-wall carpet tiles covering a room, drawn under tables like a rug.</summary>
+    Carpet = 41,
+    /// <summary>Wall-mounted cue rack with cues, triangle and balls.</summary>
+    CueRack = 42
 }

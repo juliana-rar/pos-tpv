@@ -41,12 +41,12 @@
        (Edit/Select/Reassign/default) is showing on the right. *@
     <div class="floor-tex-widget floor-resv-corner">
     <button class="btn btn--icon @(_resSidebarOpen ? "btn--primary" : "btn--ghost") btn--sm" type="button"
-            title="@(_resSidebarOpen ? Loc.T("Hide reservations") : Loc.T("Show reservations"))" @onclick="() => _resSidebarOpen = !_resSidebarOpen">
+            title="@(_resSidebarOpen ? Loc.T("Hide reservations") : Loc.T("Show reservations"))" @onclick="ToggleResSidebar">
         <LucideIcon Name="calendar" Size="16" />
     </button>
     @if (_resSidebarOpen)
     {
-        <div class="resv-col" @ref="_resvPanelEl">
+        <div class="resv-col @(_resSidebarClosing ? "resv-col--closing" : "")" @ref="_resvPanelEl">
         <aside class="resv card">
         <div class="tables-datebar" @ref="_resvHeaderEl">
             <div class="resv__day-nav">
@@ -455,6 +455,36 @@
                             </div>
                         }
                     </div>
+                    <div class="floor-tex-widget">
+                        <button class="btn btn--icon @(_furnitureMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Furniture")" @onclick="ToggleFurnitureMenu"><LucideIcon Name="sofa" Size="16" /></button>
+                        @if (_furnitureMenuOpen || _furnitureMenuClosing)
+                        {
+                            <div class="floor-tex-menu design-pick @(_furnitureMenuClosing ? "floor-tex-menu--closing" : "")">
+                                @foreach (var type in FurnitureTypes)
+                                {
+                                    <button type="button" class="floor-tex-opt" title="@Loc.T(DecorLabel(type))" @onclick="() => AddDecor(type)">
+                                        <span class="decor-swatch decor-swatch--@DecorSlug(type)"></span>
+                                        <span class="floor-tex-opt__label">@Loc.T(DecorLabel(type))</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="floor-tex-widget">
+                        <button class="btn btn--icon @(_leisureMenuOpen ? "btn--primary" : "btn--ghost") btn--sm" title="@Loc.T("Leisure")" @onclick="ToggleLeisureMenu"><LucideIcon Name="gamepad-2" Size="16" /></button>
+                        @if (_leisureMenuOpen || _leisureMenuClosing)
+                        {
+                            <div class="floor-tex-menu design-pick @(_leisureMenuClosing ? "floor-tex-menu--closing" : "")">
+                                @foreach (var type in LeisureTypes)
+                                {
+                                    <button type="button" class="floor-tex-opt" title="@Loc.T(DecorLabel(type))" @onclick="() => AddDecor(type)">
+                                        <span class="decor-swatch decor-swatch--@DecorSlug(type)"></span>
+                                        <span class="floor-tex-opt__label">@Loc.T(DecorLabel(type))</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
                 </div>
             }
         </div>
@@ -513,7 +543,7 @@
                 <button class="tabs__opt @(_zoneFilter is null ? "tabs__opt--on" : "")" @onclick="() => _zoneFilter = null">@Loc.T("All zones")</button>
                 @foreach (var z in Zones)
                 {
-                    <button class="tabs__opt @(_zoneFilter == z ? "tabs__opt--on" : "")" @onclick="() => _zoneFilter = z">@z</button>
+                    <button class="tabs__opt @(_zoneFilter == z ? "tabs__opt--on" : "")" style="@ZoneDotStyle(z)" @onclick="() => _zoneFilter = z">@z</button>
                 }
             </div>
         }
@@ -745,7 +775,7 @@
         else
         {
             _floorMenuOpen = true;
-            _paintMenuOpen = false; _plantMenuOpen = false; _designMenuOpen = false; _zoneMenuOpen = false;
+            _paintMenuOpen = false; _plantMenuOpen = false; _designMenuOpen = false; _furnitureMenuOpen = false; _leisureMenuOpen = false; _zoneMenuOpen = false;
         }
     }
     private static string TextureLabel(string tex) => tex switch
@@ -783,7 +813,7 @@
         else
         {
             _paintMenuOpen = true;
-            _floorMenuOpen = false; _plantMenuOpen = false; _designMenuOpen = false; _zoneMenuOpen = false;
+            _floorMenuOpen = false; _plantMenuOpen = false; _designMenuOpen = false; _furnitureMenuOpen = false; _leisureMenuOpen = false; _zoneMenuOpen = false;
         }
         return Task.CompletedTask;
     }
@@ -817,12 +847,26 @@
         FloorDecorType.PottedPlant, FloorDecorType.SmallPlant, FloorDecorType.HangingPlant,
         FloorDecorType.Bush, FloorDecorType.SmallTree, FloorDecorType.Fern
     };
+    // Building shell and circulation (the "Design elements" picker) vs. loose furniture and
+    // fittings (the "Furniture" picker), split so neither swatch strip grows too long.
     private static readonly FloorDecorType[] InteriorTypes =
     {
-        FloorDecorType.Wall, FloorDecorType.Window, FloorDecorType.GlassWall, FloorDecorType.Door, FloorDecorType.Column,
-        FloorDecorType.BarCounter, FloorDecorType.WineRack, FloorDecorType.Banquette, FloorDecorType.Rug,
-        FloorDecorType.Planter, FloorDecorType.Parasol, FloorDecorType.HostStand, FloorDecorType.Corridor,
-        FloorDecorType.Kitchen, FloorDecorType.Restrooms, FloorDecorType.Stairs,
+        FloorDecorType.Wall, FloorDecorType.Window, FloorDecorType.GlassWall, FloorDecorType.Column,
+        FloorDecorType.Door, FloorDecorType.DoubleDoor, FloorDecorType.SlidingDoor, FloorDecorType.Corridor,
+        FloorDecorType.Stairs, FloorDecorType.SpiralStairs, FloorDecorType.Kitchen, FloorDecorType.Restrooms,
+    };
+    private static readonly FloorDecorType[] FurnitureTypes =
+    {
+        FloorDecorType.BarCounter, FloorDecorType.WineRack, FloorDecorType.Banquette, FloorDecorType.Sofa,
+        FloorDecorType.Armchair, FloorDecorType.Rug, FloorDecorType.Fireplace, FloorDecorType.Piano,
+        FloorDecorType.WaiterStation, FloorDecorType.Buffet, FloorDecorType.HostStand, FloorDecorType.CoatRack,
+        FloorDecorType.FloorLamp, FloorDecorType.Planter, FloorDecorType.Parasol,
+    };
+    private static readonly FloorDecorType[] LeisureTypes =
+    {
+        FloorDecorType.PoolTable, FloorDecorType.Foosball, FloorDecorType.AirHockey, FloorDecorType.PingPong,
+        FloorDecorType.ArcadeMachine, FloorDecorType.Dartboard, FloorDecorType.Jukebox, FloorDecorType.BeanBag,
+        FloorDecorType.CueRack, FloorDecorType.Carpet,
     };
 
     private bool _plantMenuOpen;
@@ -848,7 +892,7 @@
         else
         {
             _plantMenuOpen = true;
-            _floorMenuOpen = false; _paintMenuOpen = false; _designMenuOpen = false; _zoneMenuOpen = false;
+            _floorMenuOpen = false; _paintMenuOpen = false; _designMenuOpen = false; _furnitureMenuOpen = false; _leisureMenuOpen = false; _zoneMenuOpen = false;
         }
     }
 
@@ -866,7 +910,45 @@
         else
         {
             _designMenuOpen = true;
-            _floorMenuOpen = false; _paintMenuOpen = false; _plantMenuOpen = false; _zoneMenuOpen = false;
+            _floorMenuOpen = false; _paintMenuOpen = false; _plantMenuOpen = false; _furnitureMenuOpen = false; _leisureMenuOpen = false; _zoneMenuOpen = false;
+        }
+    }
+
+    private bool _furnitureMenuOpen;
+    private bool _furnitureMenuClosing;
+    private async Task ToggleFurnitureMenu()
+    {
+        if (_furnitureMenuOpen)
+        {
+            _furnitureMenuClosing = true;
+            StateHasChanged();
+            await Task.Delay(200);
+            _furnitureMenuOpen = false; _leisureMenuOpen = false;
+            _furnitureMenuClosing = false;
+        }
+        else
+        {
+            _furnitureMenuOpen = true;
+            _floorMenuOpen = false; _paintMenuOpen = false; _plantMenuOpen = false; _designMenuOpen = false; _leisureMenuOpen = false; _zoneMenuOpen = false;
+        }
+    }
+
+    private bool _leisureMenuOpen;
+    private bool _leisureMenuClosing;
+    private async Task ToggleLeisureMenu()
+    {
+        if (_leisureMenuOpen)
+        {
+            _leisureMenuClosing = true;
+            StateHasChanged();
+            await Task.Delay(200);
+            _leisureMenuOpen = false;
+            _leisureMenuClosing = false;
+        }
+        else
+        {
+            _leisureMenuOpen = true;
+            _floorMenuOpen = false; _paintMenuOpen = false; _plantMenuOpen = false; _designMenuOpen = false; _furnitureMenuOpen = false; _zoneMenuOpen = false;
         }
     }
 
@@ -890,7 +972,7 @@
         else
         {
             _zoneMenuOpen = true;
-            _floorMenuOpen = false; _paintMenuOpen = false; _plantMenuOpen = false; _designMenuOpen = false;
+            _floorMenuOpen = false; _paintMenuOpen = false; _plantMenuOpen = false; _designMenuOpen = false; _furnitureMenuOpen = false; _leisureMenuOpen = false;
         }
     }
 
@@ -898,6 +980,7 @@
     {
         _plantMenuOpen = false;
         _designMenuOpen = false;
+        _furnitureMenuOpen = false; _leisureMenuOpen = false;
         var dto = await DecorService.CreateAsync(type);
         _decor = [.. _decor, dto];
         StartEdit();
@@ -1079,6 +1162,19 @@
     // ---- Reservations panel state ----
     // Floats over the map, anchored under the calendar toggle (see .resv-col in Tables.razor.css).
     private bool _resSidebarOpen = false;
+    // Closing plays the unfold animation in reverse before the panel leaves the DOM (same
+    // "closing" pattern as the floor pickers — Blazor would otherwise drop it instantly).
+    private bool _resSidebarClosing;
+    private async Task ToggleResSidebar()
+    {
+        if (_resSidebarClosing) return;
+        if (!_resSidebarOpen) { _resSidebarOpen = true; return; }
+        _resSidebarClosing = true;
+        StateHasChanged();
+        await Task.Delay(240);
+        _resSidebarOpen = false;
+        _resSidebarClosing = false;
+    }
     private ElementReference _resvPanelEl;
     private ElementReference _resvResizeEl;
     private ElementReference _resvHeaderEl;
@@ -1172,6 +1268,14 @@
     // on it here meant a second click on the same chip silently dropped the buttons even though
     // editing had just (re)started.
     private bool _zoneEditActive;
+
+    // Each zone tab leads with a dot in that zone's own colour (as drawn on the map); zones filled
+    // with an image instead of a colour just get the neutral dot.
+    private string? ZoneDotStyle(string zone)
+    {
+        var color = _zones.FirstOrDefault(z => z.Name == zone)?.Color;
+        return color is not null && !IsImageColor(color) ? $"--zc:{color}" : null;
+    }
 
     private List<string> Zones => _tables
         .Select(t => t.Zone)

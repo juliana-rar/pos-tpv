@@ -548,11 +548,12 @@ public class DemoContentSeeder
 
     private sealed record DecorSpec(FloorDecorType Type, double X, double Y, double W, double H, double Rotation = 0);
 
-    // Whole restaurant, in spec coordinates about 2225x1035 (FloorSpacing then spreads it to roughly
-    // 2560x1190 on the canvas): main hall top-left with the bar below it, terrace and garden across
+    // Whole restaurant, in spec coordinates about 2225x1345 (FloorSpacing then spreads it to roughly
+    // 2560x1550 on the canvas): main hall top-left with the bar below it, terrace and garden across
     // the top, a guest corridor under them leading to the private room, lounge, chef's table and
-    // wine cellar in the middle band, street terrace and event hall along the bottom, and a service
-    // corridor to the back of house (kitchen, restrooms, stairs) on the right.
+    // wine cellar in the middle band, street terrace and event hall along the bottom with the games
+    // room behind the event hall, and a service corridor to the back of house (kitchen, restrooms,
+    // stairs) on the right.
     // Table pitch (~125px) leaves room for the chairs drawn around each table (see ChairStyles in
     // Tables.razor), so no two tables' chairs overlap.
     private const string Wood = "#c08a52";
@@ -564,6 +565,7 @@ public class DemoContentSeeder
     private const string Burgundy = "#7f1d1d";
     private const string Slate = "#475569";
     private const string Rose = "#be185d";
+    private const string Orange = "#c2410c";
 
     // Everything is shifted down a little so the floor map's top-left overlay button doesn't
     // cover the first zone's label.
@@ -672,6 +674,9 @@ public class DemoContentSeeder
         // Event hall — banquet tables for groups and celebrations.
         new("E1", 12, TableShape.Rectangular, 1295, 895, 330, 70, "Event hall", Rose),
         new("E2", 8, TableShape.Rectangular, 1680, 895, 190, 70, "Event hall", Rose),
+        // Games room — two board-game tables between the pool/air-hockey and the arcades.
+        new("J1", 4, TableShape.Round, 1650, 1240, 60, 60, "Games room", Orange),
+        new("J2", 4, TableShape.Round, 1755, 1240, 60, 60, "Games room", Orange),
     };
 
     private static readonly (string Name, double X, double Y, double W, double H, string Color)[] FloorZoneSpecs =
@@ -686,6 +691,7 @@ public class DemoContentSeeder
         ("Wine cellar", 1542, 510, 353, 315, "#be123c"),
         ("Street terrace", 20, 852, 1230, 170, "#0ea5e9"),
         ("Event hall", 1265, 852, 630, 170, "#ec4899"),
+        ("Games room", 1265, 1040, 950, 290, "#f97316"),
     };
 
     private static readonly DecorSpec[] FloorDecorSpecs =
@@ -713,11 +719,13 @@ public class DemoContentSeeder
         new(FloorDecorType.Wall, 1900, 6, 10, 1030),     // dining | service corridor
         new(FloorDecorType.Wall, 1900, 6, 325, 10),      // back of house: top
         new(FloorDecorType.Wall, 1980, 6, 10, 1030),     // service corridor | back rooms
-        new(FloorDecorType.Wall, 2215, 6, 10, 1030),     // back of house: right
+        new(FloorDecorType.Wall, 2215, 6, 10, 1340),     // back of house + games room: right
         new(FloorDecorType.Wall, 1990, 645, 225, 10),    // kitchen | restrooms
         new(FloorDecorType.Wall, 1990, 832, 225, 10),    // restrooms | stairs
         new(FloorDecorType.Wall, 1255, 840, 10, 192),    // street terrace | event hall
-        new(FloorDecorType.Wall, 1255, 1025, 970, 10),   // event hall + back of house: bottom
+        new(FloorDecorType.Wall, 1255, 1025, 970, 10),   // event hall + back of house | games room
+        new(FloorDecorType.Wall, 1255, 1025, 10, 320),   // games room: left
+        new(FloorDecorType.Wall, 1255, 1335, 970, 10),   // games room: bottom
         // ---- Windows and doors sit on top of the walls; vertical doors are rotated 90°.
         new(FloorDecorType.Window, 70, 4, 140, 14),
         new(FloorDecorType.Window, 330, 4, 140, 14),
@@ -727,16 +735,16 @@ public class DemoContentSeeder
         new(FloorDecorType.Window, 1080, 828, 120, 14),
         new(FloorDecorType.Window, 1320, 828, 140, 14),
         new(FloorDecorType.Window, 1640, 828, 160, 14),
-        new(FloorDecorType.Window, 1400, 1023, 160, 14),
-        new(FloorDecorType.Window, 1650, 1023, 160, 14),
+        new(FloorDecorType.Window, 1420, 1333, 160, 14),
+        new(FloorDecorType.Window, 1860, 1333, 160, 14),
         new(FloorDecorType.Window, 2213, 180, 14, 140),
-        new(FloorDecorType.Door, 230, 823, 90, 16, 180), // main entrance, swinging inwards
+        new(FloorDecorType.DoubleDoor, 220, 823, 110, 16, 180), // main entrance, both leaves swinging inwards
         new(FloorDecorType.Door, 547, 232, 60, 16, 90),  // main hall -> terrace
         new(FloorDecorType.Door, 547, 450, 60, 16, 90),  // main hall -> corridor
         new(FloorDecorType.Door, 547, 712, 60, 16, 90),  // bar -> private room
-        new(FloorDecorType.Door, 760, 405, 60, 16),      // terrace -> corridor
-        new(FloorDecorType.Door, 1110, 405, 60, 16),     // terrace -> corridor
-        new(FloorDecorType.Door, 1690, 405, 60, 16),     // garden -> corridor
+        new(FloorDecorType.SlidingDoor, 745, 406, 90, 14),  // terrace -> corridor (glazed)
+        new(FloorDecorType.SlidingDoor, 1095, 406, 90, 14), // terrace -> corridor (glazed)
+        new(FloorDecorType.SlidingDoor, 1675, 406, 90, 14), // garden -> corridor (glazed)
         new(FloorDecorType.Door, 700, 495, 60, 16),      // corridor -> private room
         new(FloorDecorType.Door, 1110, 495, 60, 16),     // corridor -> lounge
         new(FloorDecorType.Door, 1360, 495, 60, 16),     // corridor -> chef's table
@@ -746,6 +754,7 @@ public class DemoContentSeeder
         new(FloorDecorType.Door, 1480, 827, 60, 16),     // chef's table -> event hall
         new(FloorDecorType.Door, 1875, 450, 60, 16, 90), // corridor -> service corridor
         new(FloorDecorType.Door, 1875, 922, 60, 16, 90), // event hall -> service corridor
+        new(FloorDecorType.Door, 1615, 1022, 60, 16),    // event hall -> games room
         new(FloorDecorType.Door, 1955, 292, 60, 16, 90), // service corridor -> kitchen
         new(FloorDecorType.Door, 1955, 737, 60, 16, 90), // service corridor -> restrooms
         new(FloorDecorType.Door, 1955, 922, 60, 16, 90), // service corridor -> stairs
@@ -761,6 +770,12 @@ public class DemoContentSeeder
         new(FloorDecorType.PottedPlant, 505, 525, 50, 50),
         new(FloorDecorType.SmallPlant, 518, 735, 36, 36),
         new(FloorDecorType.HangingPlant, 26, 780, 40, 40),
+        new(FloorDecorType.CoatRack, 150, 790, 36, 36),
+        // ---- Main hall: a waiting corner with a sofa, armchair and lamp, and a waiter station.
+        new(FloorDecorType.Sofa, 60, 528, 140, 46),
+        new(FloorDecorType.Armchair, 214, 528, 46, 46),
+        new(FloorDecorType.FloorLamp, 26, 534, 32, 32),
+        new(FloorDecorType.WaiterStation, 380, 534, 76, 36),
         // ---- Terrace: planter along the glass.
         new(FloorDecorType.Planter, 596, 380, 646, 20),
         // ---- Garden: hedge against the terrace, planter along the glass, trees in the corners.
@@ -791,17 +806,38 @@ public class DemoContentSeeder
         new(FloorDecorType.Planter, 340, 998, 900, 18),
         new(FloorDecorType.SmallTree, 246, 866, 46, 46),
         new(FloorDecorType.SmallTree, 286, 952, 42, 42),
+        new(FloorDecorType.Parasol, 30, 885, 90, 90),
+        new(FloorDecorType.Parasol, 575, 885, 90, 90),
+        new(FloorDecorType.Parasol, 1035, 885, 90, 90),
         // ---- Event hall: banquettes along the back wall.
         new(FloorDecorType.Banquette, 1300, 995, 300, 26),
         new(FloorDecorType.Banquette, 1690, 995, 180, 26),
         new(FloorDecorType.PottedPlant, 1268, 975, 40, 40),
+        // ---- Games room: pool and table tennis either side of the entrance from the event hall,
+        // foosball and air hockey below, arcades against the back wall, a dartboard and jukebox on
+        // the right wall, and bean bags to lounge on.
+        new(FloorDecorType.Carpet, 1265, 1035, 950, 300),
+        new(FloorDecorType.PoolTable, 1305, 1090, 200, 110),
+        new(FloorDecorType.CueRack, 1345, 1037, 120, 22),
+        new(FloorDecorType.PingPong, 1745, 1065, 180, 100),
+        new(FloorDecorType.Foosball, 1300, 1240, 130, 70),
+        new(FloorDecorType.AirHockey, 1455, 1225, 140, 78),
+        new(FloorDecorType.ArcadeMachine, 1990, 1262, 60, 56),
+        new(FloorDecorType.ArcadeMachine, 2058, 1262, 60, 56),
+        new(FloorDecorType.ArcadeMachine, 2126, 1262, 60, 56),
+        new(FloorDecorType.Dartboard, 2160, 1135, 44, 54),
+        new(FloorDecorType.Jukebox, 2140, 1055, 62, 48),
+        new(FloorDecorType.BeanBag, 1868, 1240, 44, 44),
+        new(FloorDecorType.BeanBag, 1918, 1276, 40, 40),
+        new(FloorDecorType.FloorLamp, 1960, 1060, 32, 32),
+        new(FloorDecorType.SmallTree, 1270, 1290, 42, 42),
     };
 
     /// <summary>
     /// Lays out the whole floor plan: repositions existing tables by name, adds the missing ones and
     /// rewrites zones/decor in place — nothing is deleted. Runs on a fresh database, and once more on
     /// a database still holding an earlier demo layout (T2 untouched at its pre-spacing spot, no
-    /// kitchen or corridors drawn yet, or the bar still made of round stools) so it picks up the current design; after that it never overwrites what
+    /// kitchen, corridors, sliding doors or games room drawn yet, or the bar still made of round stools) so it picks up the current design; after that it never overwrites what
     /// was moved in the editor.
     /// </summary>
     private async Task SeedFloorAsync(CancellationToken ct)
@@ -810,7 +846,9 @@ public class DemoContentSeeder
         var previousLayout = await _db.Tables.AnyAsync(t => t.Name == "T2" && t.PositionX == 178 && t.PositionY == 55 + FloorOffsetY, ct)
                              || !await _db.FloorDecors.AnyAsync(d => d.Type == FloorDecorType.Kitchen, ct)
                              || await _db.Tables.AnyAsync(t => t.Name == "B1" && t.Shape == TableShape.Round && t.Width == 48, ct)
-                             || !await _db.FloorDecors.AnyAsync(d => d.Type == FloorDecorType.Corridor, ct);
+                             || !await _db.FloorDecors.AnyAsync(d => d.Type == FloorDecorType.Corridor, ct)
+                             || !await _db.FloorDecors.AnyAsync(d => d.Type == FloorDecorType.SlidingDoor, ct)
+                             || !await _db.FloorDecors.AnyAsync(d => d.Type == FloorDecorType.CueRack, ct);
         if (laidOut && !previousLayout) return;
         _log.LogInformation("Demo content: laying out the floor plan.");
 
@@ -881,7 +919,7 @@ public class DemoContentSeeder
             // Rooms, corridors and rugs grow with the rooms around them; walls, glazing, counters, racks,
             // planters and benches stretch along their length (keeping their thickness) so they
             // still meet at the corners; everything else keeps its size and is re-centred.
-            var fills = spec.Type is FloorDecorType.Kitchen or FloorDecorType.Restrooms or FloorDecorType.Rug or FloorDecorType.Corridor;
+            var fills = spec.Type is FloorDecorType.Kitchen or FloorDecorType.Restrooms or FloorDecorType.Rug or FloorDecorType.Corridor or FloorDecorType.Carpet;
             var stretches = spec.Type is FloorDecorType.Wall or FloorDecorType.Window or FloorDecorType.GlassWall
                 or FloorDecorType.BarCounter or FloorDecorType.WineRack or FloorDecorType.Planter or FloorDecorType.Banquette;
             var horizontal = spec.W >= spec.H;

@@ -76,7 +76,7 @@
                                                                   @onclick="() => TogglePressedExtra(ex)" @onclick:stopPropagation="true"
                                                                   @onpointerdown:stopPropagation="true" @onpointerup:stopPropagation="true">
                                                                 <span class="productCard__extra-check">
-                                                                    @if (_pressedSelectedExtraIds.Contains(ex.Id)) { <LucideIcon Name="check" Size="12" /> }
+                                                                    @if (_pressedSelectedExtraIds.Contains(ex.Id)) { <LucideIcon Name="check" Size="9" /> }
                                                                 </span>
                                                                 <span class="productCard__extra-name">@ex.Name</span>
                                                                 <span class="productCard__extra-price">＋@ex.Price.ToString("N2")</span>
@@ -127,7 +127,7 @@
                                                     {
                                                         <span class="productCard__extra-row @(_closingSelectedIds.Contains(ex.Id) ? "productCard__extra-row--on" : "")">
                                                             <span class="productCard__extra-check">
-                                                                @if (_closingSelectedIds.Contains(ex.Id)) { <LucideIcon Name="check" Size="12" /> }
+                                                                @if (_closingSelectedIds.Contains(ex.Id)) { <LucideIcon Name="check" Size="9" /> }
                                                             </span>
                                                             <span class="productCard__extra-name">@ex.Name</span>
                                                             <span class="productCard__extra-price">＋@ex.Price.ToString("N2")</span>
@@ -293,6 +293,9 @@
                                                                                 <button class="orderLine__expand-btn @(_expandedShowExtras ? "orderLine__expand-btn--active" : "")" type="button" title="@Loc.T("Extra")" @onclick="() => ToggleLineExtras(it)">
                                                                                     <LucideIcon Name="plus" Size="10" />
                                                                                 </button>
+                                                                                <button class="orderLine__expand-btn @(_expandedShowCourse ? "orderLine__expand-btn--active" : "")" type="button" title="@Loc.T("Move to another course")" @onclick="ToggleLineCourse">
+                                                                                    <LucideIcon Name="arrow-up-down" Size="10" />
+                                                                                </button>
                                                                             </div>
                                                                         }
                                                                     </div>
@@ -336,6 +339,21 @@
                                                                 <div class="orderLine__comment-row" @onclick:stopPropagation="true">
                                                                     <input class="orderLine__comment-inline input" @bind="_lineCommentText" @bind:event="oninput"
                                                                            @onblur="() => SaveLineComment(it)" />
+                                                                </div>
+                                                            }
+                                                            @* Course picker for this one line: the same Drinks/1st/2nd/Dessert ladder the
+                                                               toolbar's Up/Down buttons step through for a selection, but jumping straight
+                                                               to the chosen course. *@
+                                                            @if (_expandedItemId == it.Id && _expandedShowCourse)
+                                                            {
+                                                                var currentStep = CourseStep(it);
+                                                                <div class="orderLine__course" @onclick:stopPropagation="true">
+                                                                    @for (var step = 0; step < CourseSteps.Length; step++)
+                                                                    {
+                                                                        var target = step;
+                                                                        <button type="button" class="orderLine__course-opt @(target == currentStep ? "orderLine__course-opt--on" : "")"
+                                                                                title="@Loc.T(CourseSteps[target])" disabled="@(_busy || target == currentStep)" @onclick="() => MoveLineToCourse(it, target)">@Loc.T(CourseStepShort[target])</button>
+                                                                    }
                                                                 </div>
                                                             }
                                                             @if (!string.IsNullOrWhiteSpace(it.Comment))
@@ -594,6 +612,7 @@
     private int? _expandedItemId;
     private bool _expandedShowExtras;
     private bool _expandedShowComment;
+    private bool _expandedShowCourse;
     private List<ExtraDto> _lineExtras = new();
     private bool _lineExtrasLoading;
     private readonly HashSet<int> _lineSelectedExtraIds = new();
@@ -1031,6 +1050,7 @@
         _expandedItemId = item.Id;
         _expandedShowExtras = false;
         _expandedShowComment = false;
+        _expandedShowCourse = false;
         _lineExtras = new();
         _lineCommentText = item.Comment;
         _lineSelectedExtraIds.Clear();
@@ -1042,6 +1062,7 @@
     {
         _expandedShowExtras = !_expandedShowExtras;
         _expandedShowComment = false;
+        _expandedShowCourse = false;
         if (!_expandedShowExtras || _lineExtras.Count > 0) return;
 
         _lineExtrasLoading = true;
@@ -1055,6 +1076,33 @@
     {
         _expandedShowComment = !_expandedShowComment;
         _expandedShowExtras = false;
+        _expandedShowCourse = false;
+    }
+
+    // ---- Per-line course move (the third pill button next to Comment/Extra) ----
+    // Same 4-step ladder MoveItemsCourseAsync works on: 0 = Drinks, 1 = first course,
+    // 2 = second course, 3 = dessert.
+    private static readonly string[] CourseSteps = { "Drinks", "First course", "Second course", "Desserts" };
+    // Short labels for the picker's four segments (the full name stays in each one's tooltip).
+    private static readonly string[] CourseStepShort = { "Drink", "1st", "2nd", "Dessert" };
+    private static int CourseStep(OrderItemDto item) => item.IsDrink ? 0 : 1 + (int)item.Course;
+
+    private void ToggleLineCourse()
+    {
+        _expandedShowCourse = !_expandedShowCourse;
+        _expandedShowExtras = false;
+        _expandedShowComment = false;
+    }
+
+    private async Task MoveLineToCourse(OrderItemDto item, int targetStep)
+    {
+        if (_order is null) return;
+        var delta = targetStep - CourseStep(item);
+        if (delta == 0) return;
+        await Mutate(async () => await Orders.MoveItemsCourseAsync(_order.Id, new[] { item.Id }, delta));
+        // The line re-sorts to the bottom of its new section: follow it there, picker still open,
+        // so the move is visible and can be changed again with one more tap.
+        _scrollToItemId = item.Id;
     }
 
     // Applies immediately, no separate Save step — consistent with every other line action in

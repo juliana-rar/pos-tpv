@@ -98,8 +98,11 @@
    .editor__topbar's fixed height evenly across however many of the three are showing, instead
    of each button keeping its natural size — one button fills the strip, three compress to a
    third each. */
-.editor__topbar-actions .order-card__actions-row { flex-direction: column; gap: .15rem; height: 100%; }
-.editor__topbar-actions .order-card__actions-row .btn { flex: 1 1 0; min-height: 0; padding-top: 0; padding-bottom: 0; }
+/* Each button is one toolbar row tall at most (half the strip), so a lone "Serve drinks" stays a
+   single line centred in the strip instead of stretching to fill both rows; with three showing
+   they still shrink to share the fixed height. */
+.editor__topbar-actions .order-card__actions-row { flex-direction: column; justify-content: center; gap: .15rem; height: 100%; }
+.editor__topbar-actions .order-card__actions-row .btn { flex: 0 1 calc((100% - .15rem) / 2); min-height: 0; padding-top: 0; padding-bottom: 0; }
 
 /* Placeholder action buttons pinned to the topbar's extreme right — margin-left:auto pushes
    them past .editor__topbar-meta/.editor__topbar-actions regardless of whether the latter
@@ -395,9 +398,9 @@
 .productCard__extras-footer { display: flex; align-items: center; gap: .3rem; margin-top: .05rem; }
 /* Extras-only sum stays flush-right with a small gap to the running-total pill next to it. */
 .productCard__extras-total { display: flex; align-items: center; gap: .12rem; margin-left: auto; }
-.productCard__extras-count { font-size: .74rem; font-weight: 700; color: var(--text-soft); }
+.productCard__extras-count { font-size: .62rem; font-weight: 700; color: var(--text-soft); }
 .productCard__extras-price {
-    font-size: .74rem; font-weight: 700;
+    font-size: .62rem; font-weight: 700;
     padding: .06rem .32rem; border-radius: 999px;
     background: var(--card-2);
     color: var(--text-soft);
@@ -406,12 +409,12 @@
 .productCard__extra-row {
     display: flex; align-items: center; justify-content: space-between;
     gap: .3rem;
-    padding: .28rem .2rem;
+    padding: .22rem .2rem;
     border-radius: var(--radius-sm);
     background: var(--card-2);
     color: var(--text);
-    font-size: .74rem; font-weight: 600;
-    line-height: 1.35;
+    font-size: .64rem; font-weight: 600;
+    line-height: 1.3;
     transition: background var(--transition), border-color var(--transition);
     border: 1px solid transparent;
     /* Otherwise every tap flashes the browser/OS's own default highlight over the row. */
@@ -430,7 +433,7 @@
 .productCard__extra-check {
     flex: none;
     display: grid; place-items: center;
-    width: 16px; height: 16px;
+    width: 12px; height: 12px;
     border-radius: 3px;
     border: 1px solid var(--border);
     background: var(--card);
@@ -438,7 +441,7 @@
 }
 .productCard__extra-row--on .productCard__extra-check { border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); }
 .productCard__extra-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.productCard__extra-price { flex: none; opacity: .8; }
+.productCard__extra-price { flex: none; font-size: .58rem; opacity: .8; }
 
 /* Cancel/confirm pair pinned to the card's top-right corner, level with the title (the same
    spot the price pill vacates while pressed, see .productCard__price) instead of trailing the
@@ -813,6 +816,39 @@
     line-height: 1.2;
     background: var(--card);
 }
+
+/* Course picker row (the arrow-up-down pill button): one compact segmented control with the four
+   courses, the line's current one filled. */
+.orderLine__course {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    margin: 0 0 .3rem;
+    padding: 2px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--card-2);
+}
+.orderLine__course-opt {
+    min-width: 0;
+    padding: .18rem .25rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-soft);
+    font: inherit;
+    font-size: .56rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: background var(--transition), color var(--transition), transform var(--transition);
+}
+.orderLine__course-opt:hover:not(:disabled) { color: var(--text); background: color-mix(in srgb, var(--text) 7%, transparent); }
+.orderLine__course-opt:active:not(:disabled) { transform: scale(.95); }
+.orderLine__course-opt--on { background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow-sm); cursor: default; }
+.orderLine__course-opt:disabled:not(.orderLine__course-opt--on) { opacity: .5; cursor: default; }
 
 .orderLine__extras-panel {
     display: grid; grid-template-columns: repeat(2, 1fr); gap: .2rem;
