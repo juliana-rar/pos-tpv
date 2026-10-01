@@ -126,6 +126,5 @@
    OrderEditor renders the same pattern) — scoped by Blazor CSS isolation to this component only,
    so OrderEditor's own copy is untouched. */
 .order-card__drink-batch { gap: .05rem; }
-.order-card__drink-batch[data-served="true"] { padding: .2rem var(--batch-bleed, .5rem); }
 .order-card__time-group { gap: .3rem; }
 .order-card__time-group-time { width: 1.9rem; font-size: .54rem; padding-right: .4rem; }

@@ -762,60 +762,43 @@ public class DemoContentSeeder
         new(FloorDecorType.Kitchen, 1990, 16, 225, 629),
         new(FloorDecorType.Restrooms, 1990, 655, 225, 177),
         new(FloorDecorType.Stairs, 2058, 852, 90, 164),
-        // ---- Main hall and bar.
-        new(FloorDecorType.BarCounter, 35, 730, 470, 46),
+        // ---- Main hall and bar. Kept deliberately sparse — only furniture that is actually part
+        // of the room, no scattered plants, lamps or columns sitting between the tables.
+        // Turned round so the bar top and footrail face the stools above it, with the back bar
+        // (bottles) on the bartender's side.
+        new(FloorDecorType.BarCounter, 35, 730, 470, 46, 180),
         new(FloorDecorType.HostStand, 336, 788, 46, 30),
-        new(FloorDecorType.SmallTree, 302, 412, 76, 76),
-        new(FloorDecorType.Column, 452, 428, 36, 36),
-        new(FloorDecorType.PottedPlant, 505, 525, 50, 50),
-        new(FloorDecorType.SmallPlant, 518, 735, 36, 36),
-        new(FloorDecorType.HangingPlant, 26, 780, 40, 40),
-        new(FloorDecorType.CoatRack, 150, 790, 36, 36),
-        // ---- Main hall: a waiting corner with a sofa, armchair and lamp, and a waiter station.
+        // ---- Main hall: a waiting corner with a sofa and armchair, and a waiter station.
         new(FloorDecorType.Sofa, 60, 528, 140, 46),
         new(FloorDecorType.Armchair, 214, 528, 46, 46),
-        new(FloorDecorType.FloorLamp, 26, 534, 32, 32),
         new(FloorDecorType.WaiterStation, 380, 534, 76, 36),
         // ---- Terrace: planter along the glass.
         new(FloorDecorType.Planter, 596, 380, 646, 20),
-        // ---- Garden: hedge against the terrace, planter along the glass, trees in the corners.
+        // ---- Garden: hedge against the terrace, planter along the glass.
         new(FloorDecorType.Planter, 1254, 26, 16, 346),
         new(FloorDecorType.Planter, 1276, 380, 616, 20),
-        new(FloorDecorType.SmallTree, 1858, 24, 40, 40),
-        // ---- Corridor: plants between the doors.
-        new(FloorDecorType.Fern, 905, 437, 40, 40),
-        new(FloorDecorType.Fern, 1515, 437, 40, 40),
         // ---- Private room: rugs under the banquet tables.
         new(FloorDecorType.Rug, 600, 530, 404, 136),
         new(FloorDecorType.Rug, 604, 684, 322, 122),
-        new(FloorDecorType.PottedPlant, 952, 768, 50, 50),
         // ---- Lounge: one rug under the four tables.
         new(FloorDecorType.Rug, 1034, 525, 208, 290),
-        new(FloorDecorType.Fern, 1030, 780, 42, 42),
-        new(FloorDecorType.HangingPlant, 1200, 780, 42, 42),
-        // ---- Chef's table: the kitchen pass and the chef's counter.
+        // ---- Chef's table: the kitchen pass and the chef's counter, each with its counter top
+        // facing the tables between them.
         new(FloorDecorType.BarCounter, 1285, 532, 225, 34),
-        new(FloorDecorType.BarCounter, 1285, 770, 225, 34),
-        // ---- Wine cellar: racks along the walls, barrels between the tables.
+        new(FloorDecorType.BarCounter, 1285, 770, 225, 34, 180),
+        // ---- Wine cellar: racks along the walls.
         new(FloorDecorType.WineRack, 1560, 784, 300, 26),
         new(FloorDecorType.WineRack, 1866, 520, 24, 240),
-        new(FloorDecorType.Column, 1640, 740, 30, 30),
-        new(FloorDecorType.Column, 1790, 600, 30, 30),
-        // ---- Street terrace: planters along the kerb (gap left at the entrance), trees by the door.
+        // ---- Street terrace: planters along the kerb (gap left at the entrance). No parasols —
+        // drawn over the tables they hid the table numbers and status.
         new(FloorDecorType.Planter, 30, 998, 190, 18),
         new(FloorDecorType.Planter, 340, 998, 900, 18),
-        new(FloorDecorType.SmallTree, 246, 866, 46, 46),
-        new(FloorDecorType.SmallTree, 286, 952, 42, 42),
-        new(FloorDecorType.Parasol, 30, 885, 90, 90),
-        new(FloorDecorType.Parasol, 575, 885, 90, 90),
-        new(FloorDecorType.Parasol, 1035, 885, 90, 90),
         // ---- Event hall: banquettes along the back wall.
         new(FloorDecorType.Banquette, 1300, 995, 300, 26),
         new(FloorDecorType.Banquette, 1690, 995, 180, 26),
-        new(FloorDecorType.PottedPlant, 1268, 975, 40, 40),
         // ---- Games room: pool and table tennis either side of the entrance from the event hall,
         // foosball and air hockey below, arcades against the back wall, a dartboard and jukebox on
-        // the right wall, and bean bags to lounge on.
+        // the right wall.
         new(FloorDecorType.Carpet, 1265, 1035, 950, 300),
         new(FloorDecorType.PoolTable, 1305, 1090, 200, 110),
         new(FloorDecorType.CueRack, 1345, 1037, 120, 22),
@@ -827,33 +810,40 @@ public class DemoContentSeeder
         new(FloorDecorType.ArcadeMachine, 2126, 1262, 60, 56),
         new(FloorDecorType.Dartboard, 2160, 1135, 44, 54),
         new(FloorDecorType.Jukebox, 2140, 1055, 62, 48),
-        new(FloorDecorType.BeanBag, 1868, 1240, 44, 44),
-        new(FloorDecorType.BeanBag, 1918, 1276, 40, 40),
-        new(FloorDecorType.FloorLamp, 1960, 1060, 32, 32),
-        new(FloorDecorType.SmallTree, 1270, 1290, 42, 42),
     };
 
     /// <summary>
     /// Lays out the whole floor plan: repositions existing tables by name, adds the missing ones and
-    /// rewrites zones/decor in place — nothing is deleted. Runs on a fresh database, and once more on
+    /// rewrites zones/decor in place, deleting only decor rows beyond the current design. Runs on a fresh database, and once more on
     /// a database still holding an earlier demo layout (T2 untouched at its pre-spacing spot, no
-    /// kitchen, corridors, sliding doors or games room drawn yet, or the bar still made of round stools) so it picks up the current design; after that it never overwrites what
+    /// kitchen, corridors, sliding doors or games room drawn yet, the bar still made of round stools,
+    /// or the old parasols and scattered plants still on the floor) so it picks up the current design; after that it never overwrites what
     /// was moved in the editor.
     /// </summary>
     private async Task SeedFloorAsync(CancellationToken ct)
     {
+        // Scale a fixed-size item's centre, so it stays centred in its (now larger) slot.
+        static double Centre(double pos, double size) => (pos + size / 2) * FloorSpacing - size / 2;
+
+        // The busier earlier design still had a parasol over the first street-terrace table.
+        var clutteredParasolX = Centre(30, 90);
+        var clutteredParasolY = Centre(885, 90) + FloorOffsetY;
+        // ...and the main bar still faced away from its stools.
+        var mainBarX = 35 * FloorSpacing;
+
         var laidOut = await _db.Tables.AnyAsync(t => t.Name == "E2", ct);
         var previousLayout = await _db.Tables.AnyAsync(t => t.Name == "T2" && t.PositionX == 178 && t.PositionY == 55 + FloorOffsetY, ct)
                              || !await _db.FloorDecors.AnyAsync(d => d.Type == FloorDecorType.Kitchen, ct)
                              || await _db.Tables.AnyAsync(t => t.Name == "B1" && t.Shape == TableShape.Round && t.Width == 48, ct)
                              || !await _db.FloorDecors.AnyAsync(d => d.Type == FloorDecorType.Corridor, ct)
                              || !await _db.FloorDecors.AnyAsync(d => d.Type == FloorDecorType.SlidingDoor, ct)
-                             || !await _db.FloorDecors.AnyAsync(d => d.Type == FloorDecorType.CueRack, ct);
+                             || !await _db.FloorDecors.AnyAsync(d => d.Type == FloorDecorType.CueRack, ct)
+                             || await _db.FloorDecors.AnyAsync(d => d.Type == FloorDecorType.Parasol && d.IsLocked
+                                                                 && d.PositionX == clutteredParasolX && d.PositionY == clutteredParasolY, ct)
+                             || await _db.FloorDecors.AnyAsync(d => d.Type == FloorDecorType.BarCounter && d.IsLocked
+                                                                 && d.PositionX == mainBarX && d.Rotation == 0, ct);
         if (laidOut && !previousLayout) return;
         _log.LogInformation("Demo content: laying out the floor plan.");
-
-        // Scale a fixed-size item's centre, so it stays centred in its (now larger) slot.
-        static double Centre(double pos, double size) => (pos + size / 2) * FloorSpacing - size / 2;
 
         var tables = await _db.Tables.ToListAsync(ct);
         foreach (var spec in FloorTables)
@@ -931,6 +921,9 @@ public class DemoContentSeeder
             (d.PositionX, d.PositionY, d.Width, d.Height, d.Rotation) = (x, y + FloorOffsetY, w, h, spec.Rotation);
             d.IsLocked = true;
         }
+        // Rows left over from an earlier, busier design would otherwise keep their old type and
+        // position and stay on the floor.
+        if (decor.Count > FloorDecorSpecs.Length) _db.FloorDecors.RemoveRange(decor.Skip(FloorDecorSpecs.Length));
 
         var settings = await _db.AppSettings.FirstOrDefaultAsync(ct);
         if (settings is not null && settings.FloorTexture == "grid") settings.FloorTexture = "wood";

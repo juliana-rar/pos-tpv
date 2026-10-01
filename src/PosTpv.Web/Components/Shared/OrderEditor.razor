@@ -230,11 +230,11 @@
                                         <LucideIcon Name="@grp.Icon" Size="14" /> @Loc.T(grp.Label)
                                         @if (grp.Items.Count > 6)
                                         {
-                                            <LucideIcon Name="@(_expandedGroups.Contains(grp.Label) ? "chevron-up" : "chevron-down")" Size="12" />
+                                            <LucideIcon Name="@(_collapsedGroups.Contains(grp.Label) ? "chevron-down" : "chevron-up")" Size="12" />
                                         }
                                     </div>
                                 }
-                                <div class="@GroupLinesClass(grp, _expandedGroups.Contains(grp.Label ?? ""))">
+                                <div class="@GroupLinesClass(grp, !_collapsedGroups.Contains(grp.Label ?? ""))">
                                     @foreach (var batch in GroupByServeBatch(grp.Items))
                                     {
                                         <div class="order-card__drink-batch" data-served="@(batch.ServedAt is not null ? "true" : "false")">
@@ -1172,14 +1172,14 @@
 
     private static string GroupLinesClass(OrderPresentation.OrderSection section, bool expanded) => OrderPresentation.GroupLinesClass(section, expanded);
 
-    // Course sections capped to 6 lines (see GroupLinesClass) can be expanded to full height by
-    // clicking their header, and collapsed back the same way — tracked per label so Drinks/First/
-    // Second/Desserts expand independently of each other.
-    private readonly HashSet<string> _expandedGroups = new();
+    // Course sections open fully expanded while editing; clicking a header of one with more than
+    // 6 lines caps it back to 6 (see GroupLinesClass), and clicking again re-expands it — tracked
+    // per label so Drinks/First/Second/Desserts collapse independently of each other.
+    private readonly HashSet<string> _collapsedGroups = new();
 
     private void ToggleGroupExpanded(string label)
     {
-        if (!_expandedGroups.Remove(label)) _expandedGroups.Add(label);
+        if (!_collapsedGroups.Remove(label)) _collapsedGroups.Add(label);
     }
 
     // Same "served together" batching as OrderCard.razor, so a batch already marked served

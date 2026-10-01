@@ -148,7 +148,7 @@
 
     private string _tableSearch = "";
     private string _zoneFilter = "";
-    private int _cardsPerRow = 4;
+    private int _cardsPerRow = 3;
     private List<string> Zones => _orders
         .Select(o => o.Zone)
         .Where(z => !string.IsNullOrWhiteSpace(z))

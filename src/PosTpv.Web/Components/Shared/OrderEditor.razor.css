@@ -246,12 +246,12 @@
 .cat__name { font-size: .7rem; font-weight: 600; text-align: left; line-height: 1.15; white-space: nowrap; }
 
 .pos__products { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
-/* Always exactly 5 columns (not auto-fill) so cards stay a fixed, wider size regardless of
+/* Always exactly 4 columns (not auto-fill) so cards stay a fixed, wider size regardless of
    how many products are in the category. minmax(0, 1fr) (not bare 1fr) so a wide order panel
    can shrink this grid below its cards' min-content width instead of overflowing the page. */
 .product-grid {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0;
     overflow-y: auto;
     min-width: 0;
@@ -646,8 +646,7 @@
 .order__group-lines--scroll { max-height: 12.5rem; overflow-y: auto; margin: 0 calc(-1 * var(--batch-bleed, .6rem)); padding: 0 var(--batch-bleed, .6rem); }
 
 /* .order-card__drink-batch (served-batch frame) and .order__time-group* (ordered-together
-   bracket) live in app.css — shared with OrderCard.razor, which renders the same patterns. */
-/* Smaller, tighter-to-the-line time label than the shared app.css default — the line text itself
+   bracket) live in app.css — shared with OrderCard.razor, which renders the same patterns. *//* Smaller, tighter-to-the-line time label than the shared app.css default — the line text itself
    shrank (.orderLine__main above), so the HH:mm reads as a quiet aside rather than competing with
    it. Width shrinks along with the font so the vertical divider (border-right) hugs the digits
    with just a sliver of breathing room (.15rem, not the shared rule's .5rem) instead of the same
